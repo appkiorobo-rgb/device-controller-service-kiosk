@@ -1,0 +1,26 @@
+---
+alwaysApply: true
+---
+# OUTPUT FORMAT RULES (Mandatory)
+
+When producing code or changes:
+
+## Always
+- Output COMPLETE files (not snippets) unless explicitly asked otherwise.
+- Include file paths at the top of each file.
+- Add concise comments for non-trivial logic.
+- Include error handling and timeouts.
+
+## For changes
+- If editing existing files: show full updated file content.
+- If adding new files: show full file content.
+- List all files created/modified at the end.
+
+## For architecture/logic tasks
+- Provide:
+  1) minimal plan (bullet list)
+  2) clear assumptions
+  3) boundaries (what belongs where)
+
+## Testing
+- If you add behavior, also add/describe how to test it (unit/widget/integration).

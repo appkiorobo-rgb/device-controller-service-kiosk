@@ -1,0 +1,18 @@
+---
+alwaysApply: true
+---
+# SERVICE RECOVERY RULES
+
+## Recovery is mandatory
+- reconnect + backoff for disconnects
+- hung detection for no-response states
+- bounded retries (no infinite tight loops)
+
+## Hung detection
+- Every operation has a timeout.
+- If no progress/state change within timeout: enter hung recovery path.
+
+## Restart strategy
+- Restart is a normal recovery option.
+- Expose a safe restart request command (admin trigger).
+- Prefer fail-fast + restart over silent deadlocks.

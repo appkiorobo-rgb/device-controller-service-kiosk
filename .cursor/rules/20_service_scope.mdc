@@ -1,0 +1,21 @@
+---
+alwaysApply: true
+---
+# SERVICE SCOPE (Device Controller Service - C++)
+
+## Service is a hardware control PLATFORM
+- No UI/UX logic
+- No session/business/policy logic
+- No dependence on Flutter
+
+## Service owns
+- device control (camera/printer/payment)
+- device state machines
+- recovery (reconnect/backoff/hung detection)
+- IPC command handling + event streaming + state snapshots
+- logging/telemetry for operations
+
+## Service must NOT
+- generate collage images
+- interpret app layouts or prompts
+- decide customer flow

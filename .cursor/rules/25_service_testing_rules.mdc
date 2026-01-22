@@ -1,0 +1,15 @@
+---
+alwaysApply: true
+---
+# SERVICE TESTING RULES
+
+## No hardware required
+- Core logic must be testable with Fake devices/adapters.
+- Adding a feature requires:
+  - unit tests for state transitions
+  - tests for idempotency and duplicate commands
+  - tests for recovery paths (disconnect/hung)
+
+## Forbidden
+- "Cannot test without device" is not acceptable.
+- Do not couple logic to real SDK in unit tests.

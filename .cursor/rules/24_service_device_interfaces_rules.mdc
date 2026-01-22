@@ -1,0 +1,16 @@
+---
+alwaysApply: true
+---
+# DEVICE INTERFACES RULES
+
+## Interfaces
+- ICamera, IPrinter, IPaymentTerminal are stable abstractions.
+- Service Core depends ONLY on these interfaces.
+
+## State-first
+- Device results are expressed as states/events, not thrown exceptions.
+- Implement explicit state machines (enum + data).
+
+## No UI concepts
+- No countdown, no screen flow, no pricing.
+- Only hardware capabilities and device states.

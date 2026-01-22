@@ -1,0 +1,22 @@
+---
+alwaysApply: true
+---
+# SERVICE IPC RULES
+
+## Dual channels
+- Commands/Responses (request/response)
+- Events (async, state changes)
+
+## Idempotency
+- Every command MUST include commandId.
+- Service MUST NOT re-execute the same commandId.
+- On duplicate commandId: return the previously computed response.
+
+## Events
+- Events may be duplicated or reordered.
+- Client must rely on State Snapshot as source of truth.
+- Service MUST provide state snapshot query.
+
+## Versioning
+- Include protocolVersion in every message.
+- Add fields as optional to preserve backward compatibility.

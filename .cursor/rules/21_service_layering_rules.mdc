@@ -1,0 +1,19 @@
+---
+alwaysApply: true
+---
+# SERVICE LAYERING RULES
+
+## Mandatory layers
+1) Service Core (orchestrates, state management)
+2) Device Abstraction Layer (ICamera/IPrinter/IPaymentTerminal)
+3) Vendor Adapter Layer (SDK-specific implementations)
+4) IPC Layer (transport, protocol)
+
+## Forbidden dependencies
+- IPC Layer -> Vendor SDK direct calls (FORBIDDEN)
+- Service Core -> Vendor SDK direct calls (FORBIDDEN)
+- Vendor Adapter -> IPC Layer references (FORBIDDEN)
+- Lower layer referencing upper layer (FORBIDDEN)
+
+## Guideline
+- SDK ugliness must be contained inside Vendor Adapter only.

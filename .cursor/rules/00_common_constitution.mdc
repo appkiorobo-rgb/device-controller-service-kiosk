@@ -1,0 +1,33 @@
+---
+alwaysApply: true
+---
+# COMMON CONSTITUTION (Kiosk System)
+
+You MUST follow these rules for every change.
+
+## System split
+- This system has TWO separate products:
+  1) Flutter Client (UI, session, content, collage)
+  2) Device Controller Service (hardware control platform)
+- They communicate ONLY via IPC contract.
+- NEVER move responsibilities across the boundary.
+
+## Hard boundaries
+- Flutter Client must NOT:
+  - use hardware SDKs directly
+  - call Windows device APIs directly
+  - assume service internal behavior
+- Device Controller Service must NOT:
+  - include UI/UX logic
+  - include session/business/policy logic
+  - depend on Flutter or client UI
+
+## Design rules
+- No infinite waits/spinners. Every operation must have timeouts and failure paths.
+- Failures are normal. Expose failures as states.
+- Prefer explicit state machines over implicit boolean flags.
+- Keep modules testable (dependency injection / fakes).
+
+## Work discipline
+- If unsure about responsibility, STOP and propose the correct owner (Flutter vs Service).
+- Do not "just make it work" by breaking boundaries.
