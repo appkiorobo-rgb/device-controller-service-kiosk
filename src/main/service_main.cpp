@@ -5,6 +5,7 @@
 #include "ipc/message_types.h"
 #include "logging/logger.h"
 #include "common/uuid_generator.h"
+#include "device_abstraction/ipayment_terminal.h"
 #include <windows.h>
 #include <iostream>
 #include <memory>
@@ -79,7 +80,8 @@ void WINAPI ServiceMain(DWORD argc, LPTSTR* argv) {
         auto orchestrator = g_serviceCore->getOrchestrator();
         auto commandProcessor = std::make_shared<CommandProcessor>(orchestrator);
         
-        NamedPipeServer::MessageHandler handler = [commandProcessor](const std::string& message, std::string& response) {
+        // Create pipe server first (needed for event callbacks)
+        g_pipeServer = std::make_unique<NamedPipeServer>(PIPE_NAME, [commandProcessor](const std::string& message, std::string& response) {
             try {
                 auto json = nlohmann::json::parse(message);
                 Command cmd;
@@ -106,10 +108,67 @@ void WINAPI ServiceMain(DWORD argc, LPTSTR* argv) {
                 };
                 response = errorResp.toJson().dump();
             }
-        };
+        });
+
+        // Setup payment terminal event callback to broadcast IPC events
+        auto paymentTerminal = orchestrator->getPaymentTerminal();
+        if (paymentTerminal) {
+            paymentTerminal->setEventCallback([](const PaymentEvent& event) {
+                if (!g_pipeServer || !g_pipeServer->isRunning()) {
+                    return;
+                }
+
+                Event ipcEvent;
+                ipcEvent.eventId = UUIDGenerator::generate();
+                ipcEvent.deviceType = DEVICE_TYPE_PAYMENT;
+                ipcEvent.timestampMs = event.timestamp.count();
+
+                // Map payment event types to IPC event types
+                switch (event.type) {
+                    case PaymentEventType::STATE_CHANGED:
+                        ipcEvent.eventType = "payment_state_changed";
+                        ipcEvent.data = {
+                            {"state", static_cast<int>(event.state)}
+                        };
+                        break;
+                    case PaymentEventType::PAYMENT_COMPLETE:
+                        ipcEvent.eventType = "payment_complete";
+                        ipcEvent.data = {
+                            {"transactionId", event.transactionId},
+                            {"amount", event.amount},
+                            {"state", static_cast<int>(event.state)}
+                        };
+                        break;
+                    case PaymentEventType::PAYMENT_FAILED:
+                        ipcEvent.eventType = "payment_failed";
+                        ipcEvent.data = {
+                            {"errorCode", event.errorCode},
+                            {"errorMessage", event.errorMessage},
+                            {"amount", event.amount},
+                            {"state", static_cast<int>(event.state)}
+                        };
+                        break;
+                    case PaymentEventType::PAYMENT_CANCELLED:
+                        ipcEvent.eventType = "payment_cancelled";
+                        ipcEvent.data = {
+                            {"state", static_cast<int>(event.state)}
+                        };
+                        break;
+                    case PaymentEventType::ERROR_OCCURRED:
+                        ipcEvent.eventType = "payment_error";
+                        ipcEvent.data = {
+                            {"errorCode", event.errorCode},
+                            {"errorMessage", event.errorMessage},
+                            {"state", static_cast<int>(event.state)}
+                        };
+                        break;
+                }
+
+                g_pipeServer->broadcastEvent(ipcEvent);
+            });
+        }
 
         // Start Named Pipe server
-        g_pipeServer = std::make_unique<NamedPipeServer>(PIPE_NAME, handler);
         if (!g_pipeServer->start()) {
             g_logger->error("Failed to start Named Pipe server");
             g_serviceStatus.dwCurrentState = SERVICE_STOPPED;

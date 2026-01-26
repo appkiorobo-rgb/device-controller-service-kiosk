@@ -34,6 +34,10 @@ private:
     Response handleCameraCapture(const Command& command);
     Response handlePrinterPrint(const Command& command);
     Response handlePaymentStart(const Command& command);
+    Response handlePaymentCancel(const Command& command);
+    Response handlePaymentStatusCheck(const Command& command);
+    Response handlePaymentReset(const Command& command);
+    Response handlePaymentDeviceCheck(const Command& command);
     Response handleSnapshotRequest(const Command& command);
     Response handleUnknownCommand(const Command& command);
 

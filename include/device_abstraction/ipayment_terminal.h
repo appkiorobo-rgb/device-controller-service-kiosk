@@ -65,6 +65,9 @@ public:
     // Cancel ongoing payment transaction
     virtual void cancelPayment() = 0;
 
+    // Reset payment terminal (vendor-specific implementation)
+    virtual bool reset() = 0;
+
     // Register event callback
     virtual void setEventCallback(PaymentEventCallback callback) = 0;
 

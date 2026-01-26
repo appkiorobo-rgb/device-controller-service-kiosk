@@ -1,8 +1,10 @@
 // src/ipc/named_pipe_server.cpp
 #include "ipc/named_pipe_server.h"
+#include "common/uuid_generator.h"
 #include <windows.h>
 #include <iostream>
 #include <sstream>
+#include <algorithm>
 
 namespace device_controller::ipc {
 
@@ -32,6 +34,29 @@ void NamedPipeServer::stop() {
     }
 
     running_ = false;
+    
+    // Close all client connections
+    {
+        std::lock_guard<std::mutex> lock(clientsMutex_);
+        for (auto& client : clients_) {
+            client->active = false;
+            if (client->pipeHandle != INVALID_HANDLE_VALUE) {
+                CloseHandle(client->pipeHandle);
+            }
+        }
+    }
+
+    // Wait for all client threads
+    {
+        std::lock_guard<std::mutex> lock(clientsMutex_);
+        for (auto& client : clients_) {
+            if (client->thread.joinable()) {
+                client->thread.join();
+            }
+        }
+        clients_.clear();
+    }
+
     if (serverThread_.joinable()) {
         serverThread_.join();
     }
@@ -41,7 +66,7 @@ void NamedPipeServer::serverLoop() {
     while (running_) {
         HANDLE pipeHandle = CreateNamedPipe(
             pipeName_.c_str(),
-            PIPE_ACCESS_DUPLEX,
+            PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,
             PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT,
             PIPE_UNLIMITED_INSTANCES,
             4096,  // Output buffer size
@@ -63,14 +88,46 @@ void NamedPipeServer::serverLoop() {
                         (GetLastError() == ERROR_PIPE_CONNECTED);
 
         if (connected && running_) {
-            handleClient(pipeHandle);
-        }
+            // Create client connection
+            auto client = std::make_shared<ClientConnection>();
+            client->pipeHandle = pipeHandle;
+            client->active = true;
+            client->thread = std::thread(&NamedPipeServer::clientThread, this, client);
 
-        CloseHandle(pipeHandle);
+            std::lock_guard<std::mutex> lock(clientsMutex_);
+            clients_.push_back(client);
+        } else {
+            CloseHandle(pipeHandle);
+        }
     }
 }
 
+void NamedPipeServer::clientThread(std::shared_ptr<ClientConnection> client) {
+    while (running_ && client->active) {
+        std::string message = readMessage(client->pipeHandle);
+        if (message.empty()) {
+            break;
+        }
+
+        std::string response;
+        handler_(message, response);
+
+        if (!writeMessage(client->pipeHandle, response)) {
+            break;
+        }
+    }
+
+    // Cleanup
+    if (client->pipeHandle != INVALID_HANDLE_VALUE) {
+        CloseHandle(client->pipeHandle);
+        client->pipeHandle = INVALID_HANDLE_VALUE;
+    }
+
+    removeClient(client);
+}
+
 void NamedPipeServer::handleClient(HANDLE pipeHandle) {
+    // Legacy method - now handled by clientThread
     std::string message = readMessage(pipeHandle);
     if (message.empty()) {
         return;
@@ -102,8 +159,36 @@ bool NamedPipeServer::writeMessage(HANDLE pipeHandle, const std::string& message
 }
 
 void NamedPipeServer::broadcastEvent(const Event& event) {
-    // TODO: Implement event broadcasting to all connected clients
-    // This requires maintaining a list of connected clients
+    std::string eventJson = event.toJson().dump();
+    
+    std::lock_guard<std::mutex> lock(clientsMutex_);
+    
+    // Remove inactive clients
+    clients_.erase(
+        std::remove_if(clients_.begin(), clients_.end(),
+            [](const std::shared_ptr<ClientConnection>& client) {
+                return !client->active || client->pipeHandle == INVALID_HANDLE_VALUE;
+            }),
+        clients_.end()
+    );
+
+    // Broadcast to all active clients
+    for (auto& client : clients_) {
+        if (client->active && client->pipeHandle != INVALID_HANDLE_VALUE) {
+            writeMessage(client->pipeHandle, eventJson);
+        }
+    }
+}
+
+void NamedPipeServer::removeClient(std::shared_ptr<ClientConnection> client) {
+    std::lock_guard<std::mutex> lock(clientsMutex_);
+    clients_.erase(
+        std::remove_if(clients_.begin(), clients_.end(),
+            [&client](const std::shared_ptr<ClientConnection>& c) {
+                return c == client;
+            }),
+        clients_.end()
+    );
 }
 
 } // namespace device_controller::ipc

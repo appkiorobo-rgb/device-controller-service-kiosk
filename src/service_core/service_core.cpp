@@ -2,6 +2,7 @@
 #include "service_core/service_core.h"
 #include "service_core/device_orchestrator.h"
 #include "service_core/recovery_manager.h"
+#include "vendor_adapters/smartro/smartro_payment_terminal.h"
 #include <memory>
 
 namespace device_controller {
@@ -17,8 +18,9 @@ ServiceCore::~ServiceCore() {
 }
 
 bool ServiceCore::initialize() {
-    // TODO: Register devices from vendor adapters
-    // For now, this is a placeholder
+    // Register SMARTRO payment terminal
+    auto paymentTerminal = std::make_shared<vendor::smartro::SMARTROPaymentTerminal>();
+    orchestrator_->registerPaymentTerminal(paymentTerminal);
     
     orchestrator_->initializeAll();
     return true;

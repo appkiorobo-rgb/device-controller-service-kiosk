@@ -39,6 +39,14 @@ Response CommandProcessor::processCommand(const Command& command) {
         response = handlePrinterPrint(command);
     } else if (command.type == "payment_start") {
         response = handlePaymentStart(command);
+    } else if (command.type == "payment_cancel") {
+        response = handlePaymentCancel(command);
+    } else if (command.type == "payment_status_check") {
+        response = handlePaymentStatusCheck(command);
+    } else if (command.type == "payment_reset") {
+        response = handlePaymentReset(command);
+    } else if (command.type == "payment_device_check") {
+        response = handlePaymentDeviceCheck(command);
     } else if (command.type == "snapshot_request") {
         response = handleSnapshotRequest(command);
     } else {
@@ -156,6 +164,104 @@ Response CommandProcessor::handlePaymentStart(const Command& command) {
         response.result = {
             {"deviceId", terminal->getDeviceId()},
             {"state", static_cast<int>(terminal->getState())}
+        };
+    } catch (const std::exception& e) {
+        return createErrorResponse(command.commandId, "PROCESSING_ERROR", e.what());
+    }
+
+    return response;
+}
+
+Response CommandProcessor::handlePaymentCancel(const Command& command) {
+    Response response;
+    response.commandId = command.commandId;
+    response.status = STATUS_OK;
+
+    try {
+        auto terminal = orchestrator_->getPaymentTerminal();
+        if (!terminal) {
+            return createErrorResponse(command.commandId, "DEVICE_NOT_FOUND", "No payment terminal available");
+        }
+
+        terminal->cancelPayment();
+
+        response.result = {
+            {"deviceId", terminal->getDeviceId()},
+            {"state", static_cast<int>(terminal->getState())}
+        };
+    } catch (const std::exception& e) {
+        return createErrorResponse(command.commandId, "PROCESSING_ERROR", e.what());
+    }
+
+    return response;
+}
+
+Response CommandProcessor::handlePaymentStatusCheck(const Command& command) {
+    Response response;
+    response.commandId = command.commandId;
+    response.status = STATUS_OK;
+
+    try {
+        auto terminal = orchestrator_->getPaymentTerminal();
+        if (!terminal) {
+            return createErrorResponse(command.commandId, "DEVICE_NOT_FOUND", "No payment terminal available");
+        }
+
+        response.result = {
+            {"deviceId", terminal->getDeviceId()},
+            {"state", static_cast<int>(terminal->getState())},
+            {"deviceName", terminal->getDeviceName()}
+        };
+    } catch (const std::exception& e) {
+        return createErrorResponse(command.commandId, "PROCESSING_ERROR", e.what());
+    }
+
+    return response;
+}
+
+Response CommandProcessor::handlePaymentReset(const Command& command) {
+    Response response;
+    response.commandId = command.commandId;
+    response.status = STATUS_OK;
+
+    try {
+        auto terminal = orchestrator_->getPaymentTerminal();
+        if (!terminal) {
+            return createErrorResponse(command.commandId, "DEVICE_NOT_FOUND", "No payment terminal available");
+        }
+
+        if (!terminal->reset()) {
+            return createErrorResponse(command.commandId, "RESET_FAILED", 
+                "Failed to reset payment terminal");
+        }
+
+        response.result = {
+            {"deviceId", terminal->getDeviceId()},
+            {"state", static_cast<int>(terminal->getState())}
+        };
+    } catch (const std::exception& e) {
+        return createErrorResponse(command.commandId, "PROCESSING_ERROR", e.what());
+    }
+
+    return response;
+}
+
+Response CommandProcessor::handlePaymentDeviceCheck(const Command& command) {
+    Response response;
+    response.commandId = command.commandId;
+    response.status = STATUS_OK;
+
+    try {
+        auto terminal = orchestrator_->getPaymentTerminal();
+        if (!terminal) {
+            return createErrorResponse(command.commandId, "DEVICE_NOT_FOUND", "No payment terminal available");
+        }
+
+        // Device check is vendor-specific, so we'll just return current state
+        response.result = {
+            {"deviceId", terminal->getDeviceId()},
+            {"state", static_cast<int>(terminal->getState())},
+            {"deviceName", terminal->getDeviceName()}
         };
     } catch (const std::exception& e) {
         return createErrorResponse(command.commandId, "PROCESSING_ERROR", e.what());

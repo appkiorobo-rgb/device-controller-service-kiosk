@@ -35,6 +35,12 @@ set(DEVICE_ABSTRACTION_SOURCES
     src/device_abstraction/ipayment_terminal.cpp
 )
 
+set(VENDOR_ADAPTER_SOURCES
+    src/vendor_adapters/smartro/serial_port.cpp
+    src/vendor_adapters/smartro/smartro_protocol.cpp
+    src/vendor_adapters/smartro/smartro_payment_terminal.cpp
+)
+
 set(IPC_LAYER_SOURCES
     src/ipc/named_pipe_server.cpp
     src/ipc/command_processor.cpp
@@ -55,6 +61,7 @@ add_executable(${PROJECT_NAME}
     src/main/service_main.cpp
     ${SERVICE_CORE_SOURCES}
     ${DEVICE_ABSTRACTION_SOURCES}
+    ${VENDOR_ADAPTER_SOURCES}
     ${IPC_LAYER_SOURCES}
     ${LOGGING_SOURCES}
     ${COMMON_SOURCES}

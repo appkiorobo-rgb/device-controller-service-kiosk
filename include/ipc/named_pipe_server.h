@@ -6,10 +6,19 @@
 #include <memory>
 #include <thread>
 #include <atomic>
+#include <vector>
+#include <mutex>
 #include <windows.h>
 #include "ipc/message_types.h"
 
 namespace device_controller::ipc {
+
+// Client connection info
+struct ClientConnection {
+    HANDLE pipeHandle;
+    std::thread thread;
+    std::atomic<bool> active{true};
+};
 
 // NamedPipeServer - handles Named Pipe communication
 // Part of IPC Layer
@@ -37,11 +46,16 @@ private:
     MessageHandler handler_;
     std::atomic<bool> running_{false};
     std::thread serverThread_;
+    
+    std::mutex clientsMutex_;
+    std::vector<std::shared_ptr<ClientConnection>> clients_;
 
     void serverLoop();
     void handleClient(HANDLE pipeHandle);
+    void clientThread(std::shared_ptr<ClientConnection> client);
     std::string readMessage(HANDLE pipeHandle);
     bool writeMessage(HANDLE pipeHandle, const std::string& message);
+    void removeClient(std::shared_ptr<ClientConnection> client);
 };
 
 } // namespace device_controller::ipc
