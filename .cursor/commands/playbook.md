@@ -1,10 +1,12 @@
 You are working on the Device Controller Service (C++ Windows Service).
 
 SOURCE OF TRUTH:
+
 - docs/cursor/DEVICE_SERVICE_PLAYBOOK.md
 - docs/cursor/IPC_CONTRACT.md
 
 MANDATORY:
+
 - Treat that document as the highest-priority specification.
 - Do NOT introduce UI, session, or business logic.
 - Preserve strict architectural layering.
