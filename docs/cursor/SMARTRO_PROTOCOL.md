@@ -156,17 +156,26 @@ STX(1) + HEADER(35) + DATA(N) + ETX(1) + BCC(1)
 ### 7.1 장치체크 (A / a)
 
 #### 요청 (A)
-- Data 없음
-- Data Length = 0
+- **Data 없음** (Data Length = 0)
+- **패킷 구조**: STX(1) + HEADER(35) + ETX(1) + BCC(1) = 총 38 bytes
+  - STX: 0x02
+  - Terminal ID: 16 bytes (좌측 정렬, 나머지 0x00)
+  - DateTime: 14 bytes (YYYYMMDDhhmmss)
+  - Job Code: 'A' (0x41)
+  - Response Code: 0x00
+  - Data Length: 0x00 0x00 (Little Endian)
+  - ETX: 0x03
+  - BCC: STX부터 ETX까지 XOR
 
 #### 응답 (a)
+- **Data Length**: 4 bytes
 
-| 항목 | 값 |
-|----|----|
-| 카드 모듈 상태 | N / O / X |
-| RF 모듈 상태 | O / X |
-| VAN 서버 연결 | N / O / X / F |
-| 연동 서버 연결 | N / O / X / F |
+| 항목 | 설명 | Byte | 값 |
+|----|----|----|----|
+| 카드 모듈 상태 | CHAR | 1 | N (미설치) / O (정상) / X (오류) |
+| RF 모듈 상태 | CHAR | 1 | O (정상) / X (오류) |
+| VAN 서버 연결 | CHAR | 1 | N (미설치) / O (정상) / X (연결 디바이스 오류) / F (서버 연결 실패) |
+| 연동 서버 연결 | CHAR | 1 | N (미설치) / O (정상) / X (연결 디바이스 오류) / F (서버 연결 실패) |
 
 ---
 

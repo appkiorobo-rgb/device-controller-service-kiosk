@@ -9,7 +9,26 @@
 #include <thread>
 #include <atomic>
 #include <mutex>
+#include <condition_variable>
 #include <chrono>
+#include <iomanip>
+#include <sstream>
+
+// Helper function to get current timestamp string
+inline std::string getTimestamp() {
+    auto now = std::chrono::system_clock::now();
+    auto time = std::chrono::system_clock::to_time_t(now);
+    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+        now.time_since_epoch()) % 1000;
+    
+    std::tm tm_buf;
+    localtime_s(&tm_buf, &time);
+    
+    std::ostringstream oss;
+    oss << std::put_time(&tm_buf, "%H:%M:%S")
+        << "." << std::setfill('0') << std::setw(3) << ms.count();
+    return oss.str();
+}
 
 namespace device_controller::vendor::smartro {
 
@@ -120,12 +139,15 @@ private:
     std::shared_ptr<SerialPort> serialPort_;
     std::atomic<bool> running_{false};
     std::thread receiveThread_;
-    std::mutex mutex_;
+    mutable std::mutex mutex_;
     
     ProtocolEventCallback eventCallback_;
     DeviceStatus lastDeviceStatus_;
     PaymentResponse lastPaymentResponse_;
     std::atomic<bool> waitingForResponse_{false};
+    std::atomic<bool> ackReceived_{false};
+    std::mutex ackMutex_;
+    std::condition_variable ackCondition_;
     std::string terminalId_;
     
     // Packet building

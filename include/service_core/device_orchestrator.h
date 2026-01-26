@@ -40,7 +40,7 @@ public:
     nlohmann::json getStateSnapshot(const std::vector<std::string>& deviceTypes = {}) const;
 
 private:
-    std::mutex mutex_;
+    mutable std::mutex mutex_;
     std::vector<std::shared_ptr<ICamera>> cameras_;
     std::vector<std::shared_ptr<IPrinter>> printers_;
     std::vector<std::shared_ptr<IPaymentTerminal>> paymentTerminals_;

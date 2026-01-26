@@ -18,7 +18,7 @@ public:
     // portName: "COM1", "COM2", etc.
     // baudRate: typically 9600 for SMARTRO
     // Returns true if opened successfully
-    bool open(const std::string& portName, DWORD baudRate = 9600);
+    bool open(const std::string& portName, DWORD baudRate = 115200);
 
     // Close COM port
     void close();

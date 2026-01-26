@@ -2,6 +2,7 @@
 #include "service_core/device_orchestrator.h"
 #include <nlohmann/json.hpp>
 #include <algorithm>
+#include <iostream>
 
 namespace device_controller {
 
@@ -59,15 +60,28 @@ std::shared_ptr<IPaymentTerminal> DeviceOrchestrator::getPaymentTerminal(const s
 
 void DeviceOrchestrator::initializeAll() {
     std::lock_guard<std::mutex> lock(mutex_);
+    
+    std::cout << "[ORCHESTRATOR] Initializing all devices..." << std::endl;
+    std::cout << "[ORCHESTRATOR] Registered devices - Cameras: " << cameras_.size() 
+              << ", Printers: " << printers_.size() 
+              << ", Payment Terminals: " << paymentTerminals_.size() << std::endl;
+    
+    // Initialize cameras
     for (auto& camera : cameras_) {
         camera->initialize();
     }
+    
+    // Initialize printers
     for (auto& printer : printers_) {
         printer->initialize();
     }
+    
+    // Initialize payment terminals (this will trigger actual device detection)
     for (auto& terminal : paymentTerminals_) {
         terminal->initialize();
     }
+    
+    std::cout << "[ORCHESTRATOR] All devices initialization complete" << std::endl;
 }
 
 void DeviceOrchestrator::shutdownAll() {

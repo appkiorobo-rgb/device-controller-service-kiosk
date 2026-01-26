@@ -5,12 +5,15 @@
 #include <algorithm>
 #include <chrono>
 #include <thread>
+#include <cctype>
+#include <iostream>
 
 namespace device_controller::vendor::smartro {
 
 SMARTROProtocol::SMARTROProtocol(std::shared_ptr<SerialPort> serialPort)
-    : serialPort_(serialPort), terminalId_("TERMINAL001") {
+    : serialPort_(serialPort), terminalId_("KIOSK-01") {
     // Initialize device status
+    // Flutter 구현 참고: Terminal ID는 'KIOSK-01' 사용
     lastDeviceStatus_ = {'X', 'X', 'X', 'X'};
 }
 
@@ -20,11 +23,14 @@ SMARTROProtocol::~SMARTROProtocol() {
 
 bool SMARTROProtocol::initialize() {
     if (running_) {
+        std::cout << "[PROTOCOL] Already initialized" << std::endl;
         return false;
     }
 
+    std::cout << "[PROTOCOL] Starting receive thread..." << std::endl;
     running_ = true;
     receiveThread_ = std::thread(&SMARTROProtocol::receiveLoop, this);
+    std::cout << "[PROTOCOL] Receive thread started" << std::endl;
     return true;
 }
 
@@ -94,39 +100,42 @@ uint8_t SMARTROProtocol::calculateBCC(const std::vector<uint8_t>& packet, size_t
 std::vector<uint8_t> SMARTROProtocol::buildPacket(char jobCode, const std::vector<uint8_t>& data) {
     std::vector<uint8_t> packet;
 
-    // STX
-    packet.push_back(STX);
+    // 패킷 구조: STX(1) + HEADER(34) + DATA(N) + ETX(1) + BCC(1)
+    // HEADER: Terminal ID(16) + DateTime(14) + Job Code(1) + Response Code(1) + Data Length(2)
 
-    // Terminal ID (16 bytes, left-aligned, rest filled with 0x00)
+    // STX (Start of Text) - 1 byte
+    packet.push_back(STX); // 0x02
+
+    // Terminal ID - 16 bytes (좌측 정렬, 나머지 0x00)
     std::string termId = padString(terminalId_, 16, '\0', false);
     for (size_t i = 0; i < 16; i++) {
         packet.push_back(termId[i]);
     }
 
-    // DateTime (14 bytes, YYYYMMDDhhmmss)
+    // DateTime - 14 bytes (YYYYMMDDhhmmss)
     std::string dateTime = getCurrentDateTime();
     for (size_t i = 0; i < 14; i++) {
         packet.push_back(dateTime[i]);
     }
 
-    // Job Code (1 byte)
+    // Job Code - 1 byte (CHAR)
     packet.push_back(static_cast<uint8_t>(jobCode));
 
-    // Response Code (1 byte, 0x00 for request)
+    // Response Code - 1 byte (BYTE, 요청 시 0x00)
     packet.push_back(0x00);
 
-    // Data Length (2 bytes, little endian)
+    // Data Length - 2 bytes (USHORT, Little Endian)
     uint16_t dataLength = static_cast<uint16_t>(data.size());
-    packet.push_back(static_cast<uint8_t>(dataLength & 0xFF));
-    packet.push_back(static_cast<uint8_t>((dataLength >> 8) & 0xFF));
+    packet.push_back(static_cast<uint8_t>(dataLength & 0xFF));        // Low byte
+    packet.push_back(static_cast<uint8_t>((dataLength >> 8) & 0xFF));  // High byte
 
-    // Data
+    // Data - N bytes (가변 길이, 장치체크 요청 시 0 bytes)
     packet.insert(packet.end(), data.begin(), data.end());
 
-    // ETX
-    packet.push_back(ETX);
+    // ETX (End of Text) - 1 byte
+    packet.push_back(ETX); // 0x03
 
-    // BCC (XOR from STX to ETX)
+    // BCC (Block Check Character) - 1 byte (STX부터 ETX까지 XOR)
     uint8_t bcc = calculateBCC(packet, 0, packet.size());
     packet.push_back(bcc);
 
@@ -143,10 +152,25 @@ bool SMARTROProtocol::sendPacket(const std::vector<uint8_t>& packet) {
 }
 
 bool SMARTROProtocol::waitForACK(DWORD timeoutMs) {
-    std::vector<uint8_t> buffer;
-    int bytesRead = serialPort_->read(buffer, 1, timeoutMs);
+    // ACK는 receiveLoop에서 받아서 ackReceived_ 플래그를 설정함
+    // 여기서는 그 플래그를 확인하고 기다림
+    std::unique_lock<std::mutex> lock(ackMutex_);
     
-    if (bytesRead == 1 && buffer[0] == ACK) {
+    // 이미 ACK를 받았는지 먼저 확인
+    if (ackReceived_.load()) {
+        ackReceived_ = false; // Reset for next use
+        return true;
+    }
+    
+    // ACK를 기다림
+    ackReceived_ = false; // Reset before waiting
+    auto timeout = std::chrono::milliseconds(timeoutMs);
+    bool received = ackCondition_.wait_for(lock, timeout, [this] { 
+        return ackReceived_.load(); 
+    });
+    
+    if (received) {
+        ackReceived_ = false; // Reset for next use
         return true;
     }
     
@@ -156,22 +180,48 @@ bool SMARTROProtocol::waitForACK(DWORD timeoutMs) {
 bool SMARTROProtocol::sendDeviceCheck() {
     std::lock_guard<std::mutex> lock(mutex_);
     
-    std::vector<uint8_t> data; // Empty data for device check
+    // 장치체크 요청: Data 없음 (Data Length = 0)
+    // 패킷 구조: STX(1) + HEADER(35) + ETX(1) + BCC(1) = 총 38 bytes
+    // HEADER: Terminal ID(16) + DateTime(14) + Job Code('A') + Response Code(0x00) + Data Length(0x00 0x00)
+    auto buildStartTime = std::chrono::steady_clock::now();
+    std::cout << "[" << getTimestamp() << "] [PROTOCOL] Building device check packet (Job Code 'A')..." << std::endl;
+    std::vector<uint8_t> data; // Empty data for device check (Data Length = 0)
     std::vector<uint8_t> packet = buildPacket(JOB_CODE_DEVICE_CHECK, data);
+    auto buildElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now() - buildStartTime).count();
     
+    std::cout << "[" << getTimestamp() << "] [PROTOCOL] Packet size: " << packet.size() << " bytes (build took " << buildElapsed << "ms)" << std::endl;
+    
+    auto sendStartTime = std::chrono::steady_clock::now();
+    std::cout << "[" << getTimestamp() << "] [PROTOCOL] Sending packet..." << std::endl;
     if (!sendPacket(packet)) {
+        std::cerr << "[" << getTimestamp() << "] [PROTOCOL] ERROR: Failed to send packet" << std::endl;
         return false;
     }
-
+    auto sendElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now() - sendStartTime).count();
+    
+    std::cout << "[" << getTimestamp() << "] [PROTOCOL] Packet sent (" << sendElapsed << "ms), waiting for ACK..." << std::endl;
     waitingForResponse_ = true;
     
-    // Wait for ACK
-    if (!waitForACK(3000)) {
+    // Wait for ACK (0x06) from terminal
+    // 프로토콜: 요청 전문 전송 후 수신 정상 시 ACK (0x06) 수신
+    // 디바이스 감지 시 빠른 실패를 위해 타임아웃을 500ms로 단축
+    // 실제 SMARTRO 장치는 빠르게 응답하므로 짧은 타임아웃으로 충분
+    auto ackStartTime = std::chrono::steady_clock::now();
+    if (!waitForACK(500)) {
+        auto ackElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now() - ackStartTime).count();
+        std::cerr << "[" << getTimestamp() << "] [PROTOCOL] ERROR: ACK timeout (" << ackElapsed << "ms) - device not responding" << std::endl;
         waitingForResponse_ = false;
         return false;
     }
+    auto ackElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now() - ackStartTime).count();
+    std::cout << "[" << getTimestamp() << "] [PROTOCOL] ACK received (" << ackElapsed << "ms), waiting for response..." << std::endl;
 
     // Response will be handled by receiveLoop
+    // 응답 전문: Job Code 'a' + Data(4 bytes: 카드모듈, RF모듈, VAN서버, 연동서버 상태)
     return true;
 }
 
@@ -293,7 +343,13 @@ bool SMARTROProtocol::isWaitingForResponse() const {
 }
 
 bool SMARTROProtocol::parseDeviceCheckResponse(const std::vector<uint8_t>& data) {
+    // 장치체크 응답: Data Length = 4 bytes
+    // [0]: 카드 모듈 상태 (N/O/X)
+    // [1]: RF 모듈 상태 (O/X)
+    // [2]: VAN 서버 연결 상태 (N/O/X/F)
+    // [3]: 연동 서버 연결 상태 (N/O/X/F)
     if (data.size() < 4) {
+        std::cerr << "[PROTOCOL] ERROR: Device check response too short: " << data.size() << " bytes (expected 4)" << std::endl;
         return false;
     }
 
@@ -302,6 +358,11 @@ bool SMARTROProtocol::parseDeviceCheckResponse(const std::vector<uint8_t>& data)
     lastDeviceStatus_.rfModuleStatus = static_cast<char>(data[1]);
     lastDeviceStatus_.vanServerStatus = static_cast<char>(data[2]);
     lastDeviceStatus_.integrationServerStatus = static_cast<char>(data[3]);
+    
+    std::cout << "[PROTOCOL] Device check response parsed - Card:" << lastDeviceStatus_.cardModuleStatus 
+              << " RF:" << lastDeviceStatus_.rfModuleStatus 
+              << " VAN:" << lastDeviceStatus_.vanServerStatus 
+              << " Integration:" << lastDeviceStatus_.integrationServerStatus << std::endl;
 
     return true;
 }
@@ -412,34 +473,49 @@ bool SMARTROProtocol::parseEventPacket(const std::vector<uint8_t>& data) {
 }
 
 bool SMARTROProtocol::parsePacket(const std::vector<uint8_t>& buffer, size_t& offset) {
+    // Flutter 구현 참고: STX 동기화
     // Find STX
-    while (offset < buffer.size() && buffer[offset] != STX) {
-        offset++;
+    size_t stxPos = offset;
+    while (stxPos < buffer.size() && buffer[stxPos] != STX) {
+        stxPos++;
     }
 
-    if (offset >= buffer.size()) {
+    if (stxPos >= buffer.size()) {
+        std::cout << "[" << getTimestamp() << "] [PROTOCOL] No STX found, offset=" << offset << ", buffer_size=" << buffer.size() << std::endl;
         return false;
+    }
+
+    if (stxPos > offset) {
+        // STX 전 데이터 폐기
+        std::cout << "[" << getTimestamp() << "] [PROTOCOL] Skipping " << (stxPos - offset) << " bytes before STX" << std::endl;
+        offset = stxPos;
     }
 
     size_t startOffset = offset;
     offset++; // Skip STX
 
-    // Need at least header (35 bytes) + ETX + BCC
-    if (buffer.size() - offset < 37) {
+    // 고정 헤더 길이 확인: STX(1) + TerminalID(16) + DateTime(14) + JobCode(1) + Response(1) + Length(2) = 35
+    const size_t needFixed = 35;
+    if (buffer.size() - offset < needFixed) {
+        std::cout << "[" << getTimestamp() << "] [PROTOCOL] Not enough data for header, need=" << needFixed 
+                  << ", available=" << (buffer.size() - offset) << std::endl;
         return false;
     }
 
-    // Read header
-    size_t headerStart = offset;
-    
     // Terminal ID (16 bytes) - skip
     offset += 16;
     
     // DateTime (14 bytes) - skip
     offset += 14;
     
-    // Job Code (1 byte)
-    char jobCode = static_cast<char>(buffer[offset++]);
+    // Job Code (1 byte) - trim nulls and spaces (Flutter 구현 참고)
+    char jobCodeRaw = static_cast<char>(buffer[offset]);
+    // Trim nulls and spaces (right trim)
+    char jobCode = jobCodeRaw;
+    if (jobCodeRaw == 0x00 || jobCodeRaw == 0x20) {
+        jobCode = ' '; // Will be handled as empty
+    }
+    offset++;
     
     // Response Code (1 byte) - skip
     offset++;
@@ -449,10 +525,12 @@ bool SMARTROProtocol::parsePacket(const std::vector<uint8_t>& buffer, size_t& of
                          (static_cast<uint16_t>(buffer[offset + 1]) << 8);
     offset += 2;
 
-    // Check if we have enough data
-    if (buffer.size() - offset < dataLength + 2) { // +2 for ETX and BCC
-        offset = startOffset; // Reset to try again later
-        return false;
+    // 총 프레임 길이: STX(1) + Header(35) + Body(N) + ETX(1) + BCC(1)
+    size_t totalLen = 1 + needFixed + dataLength + 2; // +2 for ETX and BCC
+    if (buffer.size() - startOffset < totalLen) {
+        std::cout << "[" << getTimestamp() << "] [PROTOCOL] Not enough data for complete packet, need=" << totalLen 
+                  << ", available=" << (buffer.size() - startOffset) << ", dataLength=" << dataLength << std::endl;
+        return false; // Need more data
     }
 
     // Read data
@@ -461,15 +539,18 @@ bool SMARTROProtocol::parsePacket(const std::vector<uint8_t>& buffer, size_t& of
 
     // Check ETX
     if (buffer[offset++] != ETX) {
+        std::cerr << "[PROTOCOL] ERROR: Missing ETX" << std::endl;
         offset = startOffset + 1; // Skip this STX and try again
         return false;
     }
 
-    // Verify BCC
+    // Verify BCC (STX 포함 XOR, Flutter 구현 참고)
     uint8_t expectedBCC = calculateBCC(buffer, startOffset, offset);
     uint8_t receivedBCC = buffer[offset++];
     
     if (expectedBCC != receivedBCC) {
+        std::cerr << "[PROTOCOL] ERROR: BCC mismatch (expected=0x" << std::hex << (int)expectedBCC 
+                  << ", received=0x" << (int)receivedBCC << std::dec << ")" << std::endl;
         // BCC mismatch - send NACK
         std::vector<uint8_t> nack = {NACK};
         serialPort_->write(nack);
@@ -478,25 +559,49 @@ bool SMARTROProtocol::parsePacket(const std::vector<uint8_t>& buffer, size_t& of
     }
 
     // Send ACK (except for event packets)
-    if (jobCode != JOB_CODE_EVENT) {
+    // Flutter: 이벤트 전문은 ACK/NACK 미전송
+    if (jobCode != JOB_CODE_EVENT && jobCode != ' ') {
         std::vector<uint8_t> ack = {ACK};
         serialPort_->write(ack);
     }
 
-    // Parse response based on job code
+    // Parse response based on job code (case-insensitive, Flutter 구현 참고)
+    // Flutter: jobCode.trimRight().toLowerCase()
     bool parsed = false;
-    if (jobCode == JOB_CODE_RESP_DEVICE_CHECK) {
+    
+    // Trim nulls and spaces from jobCode
+    char jobCodeClean = jobCode;
+    if (jobCode == 0x00 || jobCode == 0x20) {
+        jobCodeClean = ' '; // Will be ignored
+    }
+    
+    char jobCodeLower = std::tolower(jobCodeClean);
+    
+    std::cout << "[" << getTimestamp() << "] [PROTOCOL] Parsing packet - JobCode: '" << jobCodeLower << "' (raw: 0x" 
+              << std::hex << (int)jobCodeRaw << std::dec << "), DataLength: " << dataLength 
+              << ", TotalLen: " << totalLen << ", BufferSize: " << buffer.size() << std::endl;
+    
+    if (jobCodeLower == 'a') { // JOB_CODE_RESP_DEVICE_CHECK
+        std::cout << "[" << getTimestamp() << "] [PROTOCOL] Processing device check response (JobCode 'a')" << std::endl;
         parsed = parseDeviceCheckResponse(data);
-    } else if (jobCode == JOB_CODE_RESP_PAYMENT) {
+        if (parsed) {
+            std::cout << "[" << getTimestamp() << "] [PROTOCOL] Device check response parsed successfully" << std::endl;
+        } else {
+            std::cout << "[" << getTimestamp() << "] [PROTOCOL] Failed to parse device check response" << std::endl;
+        }
+    } else if (jobCodeLower == 'b') { // JOB_CODE_RESP_PAYMENT
         parsed = parsePaymentResponse(data);
     } else if (jobCode == JOB_CODE_EVENT) {
         parsed = parseEventPacket(data);
-    } else if (jobCode == JOB_CODE_RESP_CANCEL || jobCode == JOB_CODE_RESP_RESET) {
+    } else if (jobCodeLower == 'c' || jobCodeLower == 'r') { // Cancel/Reset
         // Cancel/Reset responses - just mark as parsed
         parsed = true;
+    } else {
+        std::cout << "[" << getTimestamp() << "] [PROTOCOL] Unknown JobCode: '" << jobCodeLower << "'" << std::endl;
     }
 
     if (parsed) {
+        std::cout << "[" << getTimestamp() << "] [PROTOCOL] Packet parsed, setting waitingForResponse_=false" << std::endl;
         waitingForResponse_ = false;
     }
 
@@ -504,6 +609,7 @@ bool SMARTROProtocol::parsePacket(const std::vector<uint8_t>& buffer, size_t& of
 }
 
 void SMARTROProtocol::receiveLoop() {
+    std::cout << "[" << getTimestamp() << "] [PROTOCOL] Receive loop started" << std::endl;
     std::vector<uint8_t> receiveBuffer;
     size_t parseOffset = 0;
 
@@ -512,28 +618,70 @@ void SMARTROProtocol::receiveLoop() {
         int bytesRead = serialPort_->read(buffer, 4096, 100);
 
         if (bytesRead > 0) {
+            std::cout << "[" << getTimestamp() << "] [PROTOCOL] Received " << bytesRead << " bytes: ";
+            for (int i = 0; i < bytesRead && i < 20; i++) { // 최대 20바이트만 출력
+                std::cout << std::hex << std::setfill('0') << std::setw(2) << (int)buffer[i] << " ";
+            }
+            if (bytesRead > 20) std::cout << "...";
+            std::cout << std::dec << std::endl;
+            
             receiveBuffer.insert(receiveBuffer.end(), buffer.begin(), buffer.end());
+            
+            std::cout << "[" << getTimestamp() << "] [PROTOCOL] Buffer size after insert: " << receiveBuffer.size() << " bytes" << std::endl;
+
+            // Flutter 구현 참고: ACK(0x06) 먼저 처리
+            // 버퍼의 시작부터 ACK를 찾아야 함 (parseOffset과 무관하게)
+            int ackCount = 0;
+            size_t ackOffset = 0;
+            while (ackOffset < receiveBuffer.size() && receiveBuffer[ackOffset] == ACK) {
+                ackCount++;
+                ackOffset++;
+                
+                // ACK를 받았음을 알림 (waitForACK가 기다리고 있을 수 있음)
+                {
+                    std::lock_guard<std::mutex> lock(ackMutex_);
+                    ackReceived_ = true;
+                }
+                ackCondition_.notify_one();
+            }
+            
+            // ACK를 찾았으면 버퍼에서 제거하고 parseOffset 조정
+            if (ackCount > 0) {
+                std::cout << "[" << getTimestamp() << "] [PROTOCOL] Received " << ackCount << " ACK(s), removing from buffer" << std::endl;
+                receiveBuffer.erase(receiveBuffer.begin(), receiveBuffer.begin() + ackCount);
+                parseOffset = 0; // ACK 제거 후 parseOffset 리셋
+                std::cout << "[" << getTimestamp() << "] [PROTOCOL] Buffer size after ACK removal: " << receiveBuffer.size() << " bytes" << std::endl;
+            }
 
             // Try to parse packets
             while (parseOffset < receiveBuffer.size()) {
                 size_t oldOffset = parseOffset;
+                std::cout << "[" << getTimestamp() << "] [PROTOCOL] Attempting to parse packet, offset=" << parseOffset << ", buffer_size=" << receiveBuffer.size() << std::endl;
                 if (parsePacket(receiveBuffer, parseOffset)) {
+                    std::cout << "[" << getTimestamp() << "] [PROTOCOL] Packet parsed successfully, parsed_bytes=" << parseOffset << std::endl;
                     // Packet parsed successfully, remove processed data
                     receiveBuffer.erase(receiveBuffer.begin(), receiveBuffer.begin() + parseOffset);
                     parseOffset = 0;
+                    std::cout << "[" << getTimestamp() << "] [PROTOCOL] Buffer size after packet removal: " << receiveBuffer.size() << " bytes" << std::endl;
                 } else if (parseOffset == oldOffset) {
                     // No progress, break and wait for more data
+                    std::cout << "[" << getTimestamp() << "] [PROTOCOL] No progress in parsing, waiting for more data" << std::endl;
                     break;
+                } else {
+                    std::cout << "[" << getTimestamp() << "] [PROTOCOL] Parse offset advanced but packet not complete, offset=" << parseOffset << std::endl;
                 }
             }
 
             // Keep some data for next iteration (in case packet is split)
+            // Flutter: 버퍼가 너무 커지는 걸 방지, 마지막 몇 바이트만 유지
             if (receiveBuffer.size() > 4096) {
                 receiveBuffer.erase(receiveBuffer.begin(), receiveBuffer.begin() + (receiveBuffer.size() - 4096));
                 parseOffset = 0;
             }
         }
     }
+    
+    std::cout << "[" << getTimestamp() << "] [PROTOCOL] Receive loop stopped" << std::endl;
 }
 
 } // namespace device_controller::vendor::smartro

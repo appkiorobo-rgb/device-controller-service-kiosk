@@ -26,6 +26,7 @@ public:
     void shutdown() override;
     bool startPayment(int64_t amount) override;
     void cancelPayment() override;
+    bool reset() override;
     void setEventCallback(PaymentEventCallback callback) override;
     std::string getDeviceId() const override;
     std::string getDeviceName() const override;

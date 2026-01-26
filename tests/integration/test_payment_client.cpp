@@ -5,6 +5,7 @@
 #include <iostream>
 #include <string>
 #include <sstream>
+#include <random>
 #include <nlohmann/json.hpp>
 #include <thread>
 #include <chrono>
@@ -200,7 +201,7 @@ std::string stateName(int state) {
         case 1: return "CONNECTING";
         case 2: return "READY";
         case 3: return "PROCESSING";
-        case 4: return "ERROR";
+        case 4: return "ERR";  // ERROR conflicts with Windows.h macro
         case 5: return "HUNG";
         default: return "UNKNOWN(" + std::to_string(state) + ")";
     }
@@ -244,7 +245,7 @@ int main(int argc, char* argv[]) {
                 return 1;
             }
             int amount = std::stoi(argv[2]);
-            std::cout << "Starting payment: " << amount << "원" << std::endl;
+            std::cout << "Starting payment: " << amount << " won" << std::endl;
             auto response = client.sendCommand("payment_start", {{"amount", amount}});
             printResponse(response);
             
@@ -253,7 +254,7 @@ int main(int argc, char* argv[]) {
                 if (result.contains("state")) {
                     std::cout << "\nState: " << stateName(result["state"]) << std::endl;
                 }
-                std::cout << "\n결제 결과는 이벤트로 수신됩니다. 'listen' 명령으로 확인하세요." << std::endl;
+                std::cout << "\nPayment result will be received via events. Use 'listen' command to check." << std::endl;
             }
         }
         else if (command == "cancel") {

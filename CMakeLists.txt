@@ -51,8 +51,6 @@ set(LOGGING_SOURCES
 )
 
 set(COMMON_SOURCES
-    src/common/error_codes.cpp
-    src/common/device_types.cpp
     src/common/uuid_generator.cpp
 )
 
@@ -82,11 +80,23 @@ if(NOT nlohmann_json_FOUND)
     FetchContent_Declare(
         json
         GIT_REPOSITORY https://github.com/nlohmann/json.git
-        GIT_TAG v3.11.2
+        GIT_TAG v3.11.3
     )
     FetchContent_MakeAvailable(json)
 endif()
 target_link_libraries(${PROJECT_NAME} PRIVATE nlohmann_json::nlohmann_json)
+
+# Simple status check utility
+add_executable(check_status
+    check_status.cpp
+    ${VENDOR_ADAPTER_SOURCES}
+)
+
+if(WIN32)
+    target_link_libraries(check_status PRIVATE
+        setupapi  # Serial port enumeration
+    )
+endif()
 
 # Tests
 enable_testing()

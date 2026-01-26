@@ -11,3 +11,4 @@ FetchContent_MakeAvailable(googletest)
 
 # Test executables
 add_subdirectory(unit)
+add_subdirectory(integration)

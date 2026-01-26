@@ -25,6 +25,7 @@ SERVICE_STATUS_HANDLE g_serviceStatusHandle;
 std::unique_ptr<ServiceCore> g_serviceCore;
 std::unique_ptr<NamedPipeServer> g_pipeServer;
 std::unique_ptr<Logger> g_logger;
+bool g_isDevMode = false; // Dev mode flag for console logging
 
 // Windows Service control handler
 void WINAPI ServiceCtrlHandler(DWORD dwCtrl) {
@@ -46,34 +47,36 @@ void WINAPI ServiceCtrlHandler(DWORD dwCtrl) {
     }
 }
 
-// Windows Service main function
-void WINAPI ServiceMain(DWORD argc, LPTSTR* argv) {
-    g_serviceStatusHandle = RegisterServiceCtrlHandler(SERVICE_NAME, ServiceCtrlHandler);
-    if (!g_serviceStatusHandle) {
-        return;
-    }
-
-    g_serviceStatus.dwServiceType = SERVICE_WIN32_OWN_PROCESS;
-    g_serviceStatus.dwCurrentState = SERVICE_START_PENDING;
-    g_serviceStatus.dwControlsAccepted = SERVICE_ACCEPT_STOP;
-    g_serviceStatus.dwWin32ExitCode = 0;
-    g_serviceStatus.dwServiceSpecificExitCode = 0;
-    g_serviceStatus.dwCheckPoint = 0;
-    g_serviceStatus.dwWaitHint = 0;
-    SetServiceStatus(g_serviceStatusHandle, &g_serviceStatus);
-
+// Service initialization and main loop (shared between service and dev mode)
+bool RunService(bool isDevMode) {
+    g_isDevMode = isDevMode; // Set global flag
+    
     try {
         // Initialize logging
-        g_logger = std::make_unique<Logger>("C:\\ProgramData\\DeviceControllerService\\logs", "service.log");
+        std::string logDir = isDevMode ? ".\\logs" : "C:\\ProgramData\\DeviceControllerService\\logs";
+        g_logger = std::make_unique<Logger>(logDir, "service.log");
+        
+        if (isDevMode) {
+            std::cout << "[INFO] Device Controller Service starting (dev mode)..." << std::endl;
+        }
         g_logger->info("Device Controller Service starting...");
 
         // Initialize service core
+        if (isDevMode) {
+            std::cout << "[INFO] Initializing service core..." << std::endl;
+        }
         g_serviceCore = std::make_unique<ServiceCore>();
         if (!g_serviceCore->initialize()) {
-            g_logger->error("Failed to initialize service core");
-            g_serviceStatus.dwCurrentState = SERVICE_STOPPED;
-            SetServiceStatus(g_serviceStatusHandle, &g_serviceStatus);
-            return;
+            if (isDevMode) {
+                std::cerr << "[ERROR] Failed to initialize service core" << std::endl;
+            } else {
+                g_logger->error("Failed to initialize service core");
+            }
+            return false;
+        }
+        
+        if (isDevMode) {
+            std::cout << "[INFO] Service core initialized successfully" << std::endl;
         }
 
         // Setup IPC message handler
@@ -169,29 +172,81 @@ void WINAPI ServiceMain(DWORD argc, LPTSTR* argv) {
         }
 
         // Start Named Pipe server
+        if (isDevMode) {
+            std::cout << "[IPC] Starting Named Pipe server..." << std::endl;
+        }
         if (!g_pipeServer->start()) {
-            g_logger->error("Failed to start Named Pipe server");
-            g_serviceStatus.dwCurrentState = SERVICE_STOPPED;
-            SetServiceStatus(g_serviceStatusHandle, &g_serviceStatus);
-            return;
+            if (isDevMode) {
+                std::cerr << "[IPC] ERROR: Failed to start Named Pipe server" << std::endl;
+            } else {
+                g_logger->error("Failed to start Named Pipe server");
+            }
+            return false;
         }
 
-        g_logger->info("Device Controller Service started successfully");
-        g_serviceStatus.dwCurrentState = SERVICE_RUNNING;
-        SetServiceStatus(g_serviceStatusHandle, &g_serviceStatus);
+        if (isDevMode) {
+            std::cout << "[IPC] Named Pipe server started successfully" << std::endl;
+            std::cout << "[INFO] Device Controller Service started successfully" << std::endl;
+            std::cout << "[INFO] Named Pipe: " << PIPE_NAME << std::endl;
+            std::cout << "[INFO] Press Ctrl+C to stop..." << std::endl;
+        } else {
+            g_logger->info("Device Controller Service started successfully");
+        }
 
         // Main service loop
-        while (g_serviceStatus.dwCurrentState == SERVICE_RUNNING) {
-            Sleep(1000);  // Check every second
+        bool running = true;
+        while (running) {
+            if (isDevMode) {
+                // In dev mode, check for console input or use simple sleep
+                Sleep(1000);
+            } else {
+                // In service mode, check service status
+                if (g_serviceStatus.dwCurrentState != SERVICE_RUNNING) {
+                    running = false;
+                } else {
+                    Sleep(1000);
+                }
+            }
         }
 
+        return true;
+
     } catch (const std::exception& e) {
-        if (g_logger) {
-            g_logger->error(std::string("Service error: ") + e.what());
+        if (isDevMode) {
+            std::cerr << "Service error: " << e.what() << std::endl;
+        } else {
+            if (g_logger) {
+                g_logger->error(std::string("Service error: ") + e.what());
+            }
         }
+        return false;
+    }
+}
+
+// Windows Service main function
+void WINAPI ServiceMain(DWORD argc, LPTSTR* argv) {
+    g_serviceStatusHandle = RegisterServiceCtrlHandler(SERVICE_NAME, ServiceCtrlHandler);
+    if (!g_serviceStatusHandle) {
+        return;
+    }
+
+    g_serviceStatus.dwServiceType = SERVICE_WIN32_OWN_PROCESS;
+    g_serviceStatus.dwCurrentState = SERVICE_START_PENDING;
+    g_serviceStatus.dwControlsAccepted = SERVICE_ACCEPT_STOP;
+    g_serviceStatus.dwWin32ExitCode = 0;
+    g_serviceStatus.dwServiceSpecificExitCode = 0;
+    g_serviceStatus.dwCheckPoint = 0;
+    g_serviceStatus.dwWaitHint = 0;
+    SetServiceStatus(g_serviceStatusHandle, &g_serviceStatus);
+
+    if (!RunService(false)) {
         g_serviceStatus.dwCurrentState = SERVICE_STOPPED;
         SetServiceStatus(g_serviceStatusHandle, &g_serviceStatus);
+        return;
     }
+
+    g_serviceStatus.dwCurrentState = SERVICE_RUNNING;
+    SetServiceStatus(g_serviceStatusHandle, &g_serviceStatus);
 }
 
 // Install service
@@ -274,15 +329,32 @@ bool UninstallService() {
 
 // Entry point
 int main(int argc, char* argv[]) {
-    // Check for install/uninstall commands
+    // Check for install/uninstall/dev commands
     if (argc > 1) {
         std::string command = argv[1];
         if (command == "install") {
             return InstallService() ? 0 : 1;
         } else if (command == "uninstall") {
             return UninstallService() ? 0 : 1;
+        } else if (command == "--dev" || command == "-d" || command == "dev") {
+            // Development mode: run in console
+            if (!RunService(true)) {
+                return 1;
+            }
+            
+            // Cleanup on exit
+            if (g_pipeServer) {
+                g_pipeServer->stop();
+            }
+            if (g_serviceCore) {
+                g_serviceCore->shutdown();
+            }
+            return 0;
         } else {
-            std::cerr << "Usage: " << argv[0] << " [install|uninstall]" << std::endl;
+            std::cerr << "Usage: " << argv[0] << " [install|uninstall|--dev]" << std::endl;
+            std::cerr << "  install   - Install as Windows Service" << std::endl;
+            std::cerr << "  uninstall - Uninstall Windows Service" << std::endl;
+            std::cerr << "  --dev     - Run in development mode (console)" << std::endl;
             return 1;
         }
     }
@@ -295,6 +367,7 @@ int main(int argc, char* argv[]) {
 
     if (!StartServiceCtrlDispatcher(serviceTable)) {
         std::cerr << "Failed to start service control dispatcher" << std::endl;
+        std::cerr << "Tip: Use --dev flag to run in development mode" << std::endl;
         return 1;
     }
 

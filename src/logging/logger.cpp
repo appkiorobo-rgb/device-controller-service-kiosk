@@ -13,7 +13,11 @@ Logger::Logger(const std::string& logDirectory, const std::string& logFileName)
     , logFileName_(logFileName)
 {
     // Create log directory if it doesn't exist
-    std::filesystem::create_directories(logDirectory_);
+    try {
+        std::filesystem::create_directories(logDirectory_);
+    } catch (const std::exception&) {
+        // Ignore directory creation errors - will try to open file anyway
+    }
     openLogFile();
 }
 
@@ -42,17 +46,23 @@ void Logger::log(LogLevel level, const std::string& message) {
 void Logger::rotate() {
     closeLogFile();
 
-    // Generate rotated filename with timestamp
-    auto now = std::chrono::system_clock::now();
-    auto time_t = std::chrono::system_clock::to_time_t(now);
-    std::stringstream ss;
-    ss << std::put_time(std::localtime(&time_t), "%Y%m%d_%H%M%S");
-    std::string rotatedName = logFileName_ + "." + ss.str();
+    try {
+        // Generate rotated filename with timestamp
+        auto now = std::chrono::system_clock::now();
+        auto time_t = std::chrono::system_clock::to_time_t(now);
+        std::stringstream ss;
+        ss << std::put_time(std::localtime(&time_t), "%Y%m%d_%H%M%S");
+        std::string rotatedName = logFileName_ + "." + ss.str();
 
-    std::string currentPath = getLogFilePath();
-    std::string rotatedPath = logDirectory_ + "/" + rotatedName;
+        std::string currentPath = getLogFilePath();
+        std::string rotatedPath = logDirectory_ + "/" + rotatedName;
 
-    std::filesystem::rename(currentPath, rotatedPath);
+        if (std::filesystem::exists(currentPath)) {
+            std::filesystem::rename(currentPath, rotatedPath);
+        }
+    } catch (const std::exception&) {
+        // Ignore rotation errors - continue with new file
+    }
 
     openLogFile();
 }
@@ -76,7 +86,7 @@ std::string Logger::formatLogMessage(LogLevel level, const std::string& message)
         case LogLevel::DEBUG: levelStr = "DEBUG"; break;
         case LogLevel::INFO: levelStr = "INFO"; break;
         case LogLevel::WARNING: levelStr = "WARN"; break;
-        case LogLevel::ERROR: levelStr = "ERROR"; break;
+        case LogLevel::ERR: levelStr = "ERROR"; break;
     }
 
     ss << " [" << levelStr << "] " << message;
@@ -87,8 +97,12 @@ void Logger::openLogFile() {
     std::string path = getLogFilePath();
     logFile_.open(path, std::ios::app);
     if (logFile_.is_open()) {
-        currentFileSize_ = std::filesystem::exists(path) ? 
-                          std::filesystem::file_size(path) : 0;
+        try {
+            currentFileSize_ = std::filesystem::exists(path) ? 
+                              std::filesystem::file_size(path) : 0;
+        } catch (const std::exception&) {
+            currentFileSize_ = 0;
+        }
     }
 }
 

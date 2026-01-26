@@ -5,12 +5,14 @@
 #include <regstr.h>
 #include <sstream>
 #include <algorithm>
+#include <iostream>
+#include <chrono>
 
 #pragma comment(lib, "setupapi.lib")
 
 namespace device_controller::vendor::smartro {
 
-SerialPort::SerialPort() : handle_(INVALID_HANDLE_VALUE), baudRate_(9600) {
+SerialPort::SerialPort() : handle_(INVALID_HANDLE_VALUE), baudRate_(115200) {
 }
 
 SerialPort::~SerialPort() {
@@ -26,21 +28,36 @@ bool SerialPort::open(const std::string& portName, DWORD baudRate) {
     baudRate_ = baudRate;
 
     std::string fullPortName = "\\\\.\\" + portName;
+    std::cout << "[SERIAL] Opening port: " << fullPortName << " (baud: " << baudRate << ")" << std::endl;
+    
+    // FILE_FLAG_OVERLAPPED 없이 동기 모드로 열기 (타임아웃이 제대로 작동하도록)
     handle_ = CreateFile(
         fullPortName.c_str(),
         GENERIC_READ | GENERIC_WRITE,
         0,
         nullptr,
         OPEN_EXISTING,
-        0,
+        0,  // FILE_FLAG_OVERLAPPED 없음 = 동기 모드
         nullptr
     );
 
     if (handle_ == INVALID_HANDLE_VALUE) {
+        DWORD error = GetLastError();
+        std::cerr << "[SERIAL] ERROR: Failed to open port " << portName << " (Error: " << error << ")" << std::endl;
         return false;
     }
-
-    return configurePort(baudRate);
+    
+    std::cout << "[SERIAL] Port opened, configuring..." << std::endl;
+    bool configured = configurePort(baudRate);
+    if (!configured) {
+        std::cerr << "[SERIAL] ERROR: Failed to configure port " << portName << std::endl;
+        CloseHandle(handle_);
+        handle_ = INVALID_HANDLE_VALUE;
+        return false;
+    }
+    
+    std::cout << "[SERIAL] Port " << portName << " opened and configured successfully" << std::endl;
+    return true;
 }
 
 void SerialPort::close() {
@@ -76,18 +93,30 @@ bool SerialPort::configurePort(DWORD baudRate) {
     dcb.fNull = FALSE;
     dcb.fRtsControl = RTS_CONTROL_DISABLE;
     dcb.fAbortOnError = FALSE;
+    
+    // 중요: 흐름 제어 완전히 비활성화 (하드웨어/소프트웨어 모두)
+    dcb.fOutxCtsFlow = FALSE;  // CTS 흐름 제어 비활성화
+    dcb.fOutxDsrFlow = FALSE;  // DSR 흐름 제어 비활성화
+    dcb.fDtrControl = DTR_CONTROL_DISABLE;  // DTR 비활성화
+    dcb.fRtsControl = RTS_CONTROL_DISABLE;  // RTS 비활성화
+    dcb.fOutX = FALSE;  // XON/XOFF 출력 비활성화
+    dcb.fInX = FALSE;   // XON/XOFF 입력 비활성화
 
     if (!SetCommState(handle_, &dcb)) {
         return false;
     }
+    
+    // 버퍼 비우기
+    PurgeComm(handle_, PURGE_TXCLEAR | PURGE_RXCLEAR);
 
-    // Set timeouts
+    // Set timeouts - Write는 즉시 완료되어야 함
     COMMTIMEOUTS timeouts = {0};
     timeouts.ReadIntervalTimeout = 50;
     timeouts.ReadTotalTimeoutConstant = 1000;
     timeouts.ReadTotalTimeoutMultiplier = 10;
-    timeouts.WriteTotalTimeoutConstant = 1000;
-    timeouts.WriteTotalTimeoutMultiplier = 10;
+    // Write timeout: 매우 짧게 설정 (쓰기는 즉시 완료되어야 함)
+    timeouts.WriteTotalTimeoutConstant = 10;  // 10ms만 기다림
+    timeouts.WriteTotalTimeoutMultiplier = 0;   // 바이트당 추가 시간 없음
 
     if (!SetCommTimeouts(handle_, &timeouts)) {
         return false;
@@ -123,9 +152,51 @@ int SerialPort::write(const std::vector<uint8_t>& data) {
         return -1;
     }
 
+    // 출력 버퍼 비우기 (이전 데이터 제거)
+    PurgeComm(handle_, PURGE_TXCLEAR);
+    
+    // WriteFile 전 출력 버퍼 상태 확인
+    COMSTAT comStatBefore;
+    DWORD errorsBefore;
+    if (ClearCommError(handle_, &errorsBefore, &comStatBefore)) {
+        if (comStatBefore.cbOutQue > 0) {
+            std::cout << "[SERIAL] Warning: Output queue has " << comStatBefore.cbOutQue << " bytes before write" << std::endl;
+        }
+    }
+    
+    // 타임아웃 재설정 (매번 확인)
+    COMMTIMEOUTS timeouts = {0};
+    GetCommTimeouts(handle_, &timeouts);
+    timeouts.WriteTotalTimeoutConstant = 10;  // 10ms
+    timeouts.WriteTotalTimeoutMultiplier = 0;
+    SetCommTimeouts(handle_, &timeouts);
+    
     DWORD bytesWritten = 0;
-    if (!WriteFile(handle_, data.data(), static_cast<DWORD>(data.size()), &bytesWritten, nullptr)) {
+    auto writeStartTime = std::chrono::steady_clock::now();
+    
+    // WriteFile 호출
+    BOOL result = WriteFile(handle_, data.data(), static_cast<DWORD>(data.size()), &bytesWritten, nullptr);
+    
+    auto writeElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now() - writeStartTime).count();
+    
+    if (!result) {
+        DWORD error = GetLastError();
+        std::cerr << "[SERIAL] WriteFile failed (Error: " << error << ", elapsed: " << writeElapsed << "ms)" << std::endl;
         return -1;
+    }
+    
+    if (writeElapsed > 10) {
+        std::cout << "[SERIAL] WriteFile took " << writeElapsed << "ms for " << bytesWritten << " bytes (expected <10ms)" << std::endl;
+    }
+    
+    // WriteFile 후 출력 버퍼 상태 확인
+    COMSTAT comStatAfter;
+    DWORD errorsAfter;
+    if (ClearCommError(handle_, &errorsAfter, &comStatAfter)) {
+        if (comStatAfter.cbOutQue > 0) {
+            std::cout << "[SERIAL] Output queue after write: " << comStatAfter.cbOutQue << " bytes remaining" << std::endl;
+        }
     }
 
     return static_cast<int>(bytesWritten);
@@ -184,7 +255,7 @@ std::string SerialPort::detectTerminal() {
     
     for (const auto& portName : ports) {
         SerialPort testPort;
-        if (testPort.open(portName, 9600)) {
+        if (testPort.open(portName, 115200)) {
             // Try to send device check command (Job Code A)
             // This is a simple test - actual detection should be done by protocol layer
             // For now, just check if port opens successfully

@@ -13,7 +13,7 @@ enum class LogLevel {
     DEBUG,
     INFO,
     WARNING,
-    ERROR
+    ERR  // ERROR conflicts with Windows.h macro
 };
 
 // Logger - file-based logging with rotation
@@ -27,7 +27,7 @@ public:
     void debug(const std::string& message) { log(LogLevel::DEBUG, message); }
     void info(const std::string& message) { log(LogLevel::INFO, message); }
     void warning(const std::string& message) { log(LogLevel::WARNING, message); }
-    void error(const std::string& message) { log(LogLevel::ERROR, message); }
+    void error(const std::string& message) { log(LogLevel::ERR, message); }
 
     // Rotate log file (called by LogRotator)
     void rotate();
@@ -45,8 +45,5 @@ private:
     void openLogFile();
     void closeLogFile();
 };
-
-// Global logger instance (initialized in service_main)
-extern std::unique_ptr<Logger> g_logger;
 
 } // namespace device_controller::logging

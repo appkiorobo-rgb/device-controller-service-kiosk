@@ -14,7 +14,7 @@ enum class PaymentTerminalState {
     CONNECTING,
     READY,
     PROCESSING,
-    ERROR,
+    ERR,  // ERROR conflicts with Windows.h macro
     HUNG
 };
 
