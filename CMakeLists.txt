@@ -1,103 +1,223 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.15)
 project(DeviceControllerService VERSION 1.0.0 LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 20)
+# C++ 표준 설정
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# Windows Service specific settings
-if(WIN32)
-    add_definitions(-D_WIN32_WINNT=0x0A00)  # Windows 10
-    set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
+# 64비트 빌드 강제
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+    message(STATUS "Building for 64-bit")
+else()
+    message(FATAL_ERROR "This project requires 64-bit build")
 endif()
 
-# Output directories
+# 빌드 타입 설정
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Release)
+endif()
+
+# 출력 디렉토리 설정
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
-# Include directories
-include_directories(
-    ${CMAKE_SOURCE_DIR}/src
-    ${CMAKE_SOURCE_DIR}/include
-)
+# Include 디렉토리
+include_directories(${CMAKE_SOURCE_DIR}/include)
 
-# Source files
-set(SERVICE_CORE_SOURCES
-    src/service_core/service_core.cpp
-    src/service_core/device_orchestrator.cpp
-    src/service_core/recovery_manager.cpp
-)
-
-set(DEVICE_ABSTRACTION_SOURCES
-    src/device_abstraction/icamera.cpp
-    src/device_abstraction/iprinter.cpp
-    src/device_abstraction/ipayment_terminal.cpp
-)
-
-set(VENDOR_ADAPTER_SOURCES
-    src/vendor_adapters/smartro/serial_port.cpp
-    src/vendor_adapters/smartro/smartro_protocol.cpp
-    src/vendor_adapters/smartro/smartro_payment_terminal.cpp
-)
-
-set(IPC_LAYER_SOURCES
-    src/ipc/named_pipe_server.cpp
-    src/ipc/command_processor.cpp
-)
-
+# 소스 파일들
 set(LOGGING_SOURCES
     src/logging/logger.cpp
 )
 
-set(COMMON_SOURCES
-    src/common/uuid_generator.cpp
+set(SMARTRO_SOURCES
+    src/vendor_adapters/smartro/serial_port.cpp
+    src/vendor_adapters/smartro/smartro_protocol.cpp
+    src/vendor_adapters/smartro/smartro_comm.cpp
 )
 
-# Main service executable
-add_executable(${PROJECT_NAME}
-    src/main/service_main.cpp
-    ${SERVICE_CORE_SOURCES}
-    ${DEVICE_ABSTRACTION_SOURCES}
-    ${VENDOR_ADAPTER_SOURCES}
-    ${IPC_LAYER_SOURCES}
+# 테스트 프로그램
+add_executable(test_device_check
+    tests/test_device_check.cpp
     ${LOGGING_SOURCES}
-    ${COMMON_SOURCES}
+    ${SMARTRO_SOURCES}
 )
 
-# Windows Service linking
-if(WIN32)
-    target_link_libraries(${PROJECT_NAME} PRIVATE
-        advapi32  # Windows Service API
-        ws2_32    # Named Pipes
-    )
-endif()
-
-# JSON library (using nlohmann/json)
-find_package(nlohmann_json QUIET)
-if(NOT nlohmann_json_FOUND)
-    include(FetchContent)
-    FetchContent_Declare(
-        json
-        GIT_REPOSITORY https://github.com/nlohmann/json.git
-        GIT_TAG v3.11.3
-    )
-    FetchContent_MakeAvailable(json)
-endif()
-target_link_libraries(${PROJECT_NAME} PRIVATE nlohmann_json::nlohmann_json)
-
-# Simple status check utility
-add_executable(check_status
-    check_status.cpp
-    ${VENDOR_ADAPTER_SOURCES}
+add_executable(test_payment_wait
+    tests/test_payment_wait.cpp
+    ${LOGGING_SOURCES}
+    ${SMARTRO_SOURCES}
 )
 
-if(WIN32)
-    target_link_libraries(check_status PRIVATE
-        setupapi  # Serial port enumeration
+add_executable(test_card_uid_read
+    tests/test_card_uid_read.cpp
+    ${LOGGING_SOURCES}
+    ${SMARTRO_SOURCES}
+)
+
+add_executable(test_event_wait
+    tests/test_event_wait.cpp
+    ${LOGGING_SOURCES}
+    ${SMARTRO_SOURCES}
+)
+
+add_executable(test_integrated
+    tests/test_integrated.cpp
+    ${LOGGING_SOURCES}
+    ${SMARTRO_SOURCES}
+)
+
+# Windows 관련 링크 라이브러리
+target_link_libraries(test_device_check
+    PRIVATE
+)
+
+target_link_libraries(test_payment_wait
+    PRIVATE
+)
+
+target_link_libraries(test_card_uid_read
+    PRIVATE
+)
+
+target_link_libraries(test_event_wait
+    PRIVATE
+)
+
+target_link_libraries(test_integrated
+    PRIVATE
+)
+
+# Visual Studio 디버그 인자 설정 (예: COM3)
+# 실제 사용할 COM 포트로 변경하세요
+set_target_properties(test_device_check PROPERTIES
+    VS_DEBUGGER_COMMAND_ARGUMENTS "COM3 DEFAULT_TERM 115200"
+)
+
+set_target_properties(test_payment_wait PROPERTIES
+    VS_DEBUGGER_COMMAND_ARGUMENTS "COM3 DEFAULT_TERM 115200"
+)
+
+set_target_properties(test_card_uid_read PROPERTIES
+    VS_DEBUGGER_COMMAND_ARGUMENTS "COM3 DEFAULT_TERM 115200"
+)
+
+set_target_properties(test_event_wait PROPERTIES
+    VS_DEBUGGER_COMMAND_ARGUMENTS "COM3 DEFAULT_TERM 115200 0"
+)
+
+set_target_properties(test_integrated PROPERTIES
+    VS_DEBUGGER_COMMAND_ARGUMENTS "COM3 DEFAULT_TERM 115200"
+)
+
+# 컴파일러 플래그
+if(MSVC)
+    # MSVC 특정 설정
+    target_compile_options(test_device_check PRIVATE
+        /W4
+        /permissive-
+        /Zc:__cplusplus
+    )
+    
+    target_compile_options(test_payment_wait PRIVATE
+        /W4
+        /permissive-
+        /Zc:__cplusplus
+    )
+    
+    target_compile_options(test_card_uid_read PRIVATE
+        /W4
+        /permissive-
+        /Zc:__cplusplus
+    )
+    
+    target_compile_options(test_event_wait PRIVATE
+        /W4
+        /permissive-
+        /Zc:__cplusplus
+    )
+    
+    target_compile_options(test_integrated PRIVATE
+        /W4
+        /permissive-
+        /Zc:__cplusplus
+    )
+    
+    # 64비트 명시적 설정
+    set_target_properties(test_device_check PROPERTIES
+        VS_PLATFORM_TOOLSET_HOST_ARCHITECTURE x64
+    )
+    
+    set_target_properties(test_payment_wait PROPERTIES
+        VS_PLATFORM_TOOLSET_HOST_ARCHITECTURE x64
+    )
+    
+    set_target_properties(test_card_uid_read PROPERTIES
+        VS_PLATFORM_TOOLSET_HOST_ARCHITECTURE x64
+    )
+    
+    set_target_properties(test_event_wait PROPERTIES
+        VS_PLATFORM_TOOLSET_HOST_ARCHITECTURE x64
+    )
+    
+    set_target_properties(test_integrated PROPERTIES
+        VS_PLATFORM_TOOLSET_HOST_ARCHITECTURE x64
+    )
+else()
+    # GCC/Clang 설정
+    target_compile_options(test_device_check PRIVATE
+        -Wall
+        -Wextra
+        -Wpedantic
+    )
+    
+    target_compile_options(test_payment_wait PRIVATE
+        -Wall
+        -Wextra
+        -Wpedantic
+    )
+    
+    target_compile_options(test_card_uid_read PRIVATE
+        -Wall
+        -Wextra
+        -Wpedantic
+    )
+    
+    target_compile_options(test_event_wait PRIVATE
+        -Wall
+        -Wextra
+        -Wpedantic
+    )
+    
+    target_compile_options(test_integrated PRIVATE
+        -Wall
+        -Wextra
+        -Wpedantic
     )
 endif()
 
-# Tests
-enable_testing()
-add_subdirectory(tests)
+# 디버그 정보 포함
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    if(MSVC)
+        target_compile_options(test_device_check PRIVATE /Zi)
+        target_compile_options(test_payment_wait PRIVATE /Zi)
+        target_compile_options(test_card_uid_read PRIVATE /Zi)
+        target_compile_options(test_event_wait PRIVATE /Zi)
+        target_compile_options(test_integrated PRIVATE /Zi)
+    else()
+        target_compile_options(test_device_check PRIVATE -g)
+        target_compile_options(test_payment_wait PRIVATE -g)
+        target_compile_options(test_card_uid_read PRIVATE -g)
+        target_compile_options(test_event_wait PRIVATE -g)
+        target_compile_options(test_integrated PRIVATE -g)
+    endif()
+endif()
+
+# 설치 설정 (선택사항)
+install(TARGETS test_device_check test_payment_wait test_card_uid_read test_event_wait test_integrated
+    RUNTIME DESTINATION bin
+)
+
+message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
+message(STATUS "C++ standard: ${CMAKE_CXX_STANDARD}")

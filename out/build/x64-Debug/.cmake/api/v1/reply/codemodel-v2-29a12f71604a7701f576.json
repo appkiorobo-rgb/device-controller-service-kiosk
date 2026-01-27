@@ -1,0 +1,97 @@
+{
+	"configurations" : 
+	[
+		{
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-.-Debug-fba93c864138715b1790.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.15"
+					},
+					"projectIndex" : 0,
+					"source" : ".",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3,
+						4
+					]
+				}
+			],
+			"name" : "Debug",
+			"projects" : 
+			[
+				{
+					"directoryIndexes" : 
+					[
+						0
+					],
+					"name" : "DeviceControllerService",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3,
+						4
+					]
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 0,
+					"id" : "test_card_uid_read::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-test_card_uid_read-Debug-febcc25c3ec0f8524d0f.json",
+					"name" : "test_card_uid_read",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "test_device_check::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-test_device_check-Debug-c7fc7e2c2a31cdc1e436.json",
+					"name" : "test_device_check",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "test_event_wait::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-test_event_wait-Debug-e9bc49bc28537f57b92e.json",
+					"name" : "test_event_wait",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "test_integrated::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-test_integrated-Debug-4e9a1df5b82e5d273b45.json",
+					"name" : "test_integrated",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "test_payment_wait::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-test_payment_wait-Debug-d85899c68d93d8a70e1e.json",
+					"name" : "test_payment_wait",
+					"projectIndex" : 0
+				}
+			]
+		}
+	],
+	"kind" : "codemodel",
+	"paths" : 
+	{
+		"build" : "C:/Users/sam98/Desktop/device-controller-service-kiosk/out/build/x64-Debug",
+		"source" : "C:/Users/sam98/Desktop/device-controller-service-kiosk"
+	},
+	"version" : 
+	{
+		"major" : 2,
+		"minor" : 8
+	}
+}

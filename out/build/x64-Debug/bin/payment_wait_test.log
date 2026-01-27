@@ -1,0 +1,179 @@
+[2026-01-27 00:16:33.984] [INFO ] Logger initialized: payment_wait_test.log
+[2026-01-27 00:16:33.986] [INFO ] === Payment Wait Test ===
+[2026-01-27 00:16:33.986] [INFO ] Terminal ID: DEFAULT_TERM
+[2026-01-27 00:16:33.986] [INFO ] Baud Rate: 115200
+[2026-01-27 00:16:33.987] [INFO ] Loaded saved port: COM3
+[2026-01-27 00:16:33.987] [INFO ] Using saved COM Port: COM3
+[2026-01-27 00:16:33.987] [DEBUG] Trying COM port: COM3
+[2026-01-27 00:16:33.987] [DEBUG] Opening serial port: \\.\COM3 (Baud: 115200)
+[2026-01-27 00:16:34.029] [DEBUG] Serial port configured: BaudRate=115200
+[2026-01-27 00:16:34.030] [DEBUG] Serial port opened successfully: COM3
+[2026-01-27 00:16:34.030] [DEBUG] Created payment wait request packet: 37 bytes
+[2026-01-27 00:16:34.030] [DEBUG] Sending payment wait request...
+[2026-01-27 00:16:34.030] [DEBUG] Serial TX [37 bytes]: 02 44 45 46 41 55 4c 54 5f 54 45 52 4d 00 00 00 00 32 30 32 36 30 31 32 37 30 30 31 36 33 34 45 00 00 00 03 5c
+[2026-01-27 00:16:34.031] [DEBUG] Written 37 bytes
+[2026-01-27 00:16:34.038] [DEBUG] Serial RX [1 bytes]: 06
+[2026-01-27 00:16:34.038] [DEBUG] Serial RX [1 bytes]: 02
+[2026-01-27 00:16:34.039] [DEBUG] Serial RX [1 bytes]: 37
+[2026-01-27 00:16:34.039] [DEBUG] Serial RX [1 bytes]: 33
+[2026-01-27 00:16:34.039] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:16:34.039] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:16:34.040] [DEBUG] Serial RX [1 bytes]: 37
+[2026-01-27 00:16:34.040] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:16:34.040] [DEBUG] Serial RX [1 bytes]: 33
+[2026-01-27 00:16:34.040] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:16:34.041] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:16:34.041] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:16:34.041] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:16:34.041] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:16:34.042] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:16:34.042] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:16:34.042] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:16:34.043] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:16:34.043] [DEBUG] Serial RX [1 bytes]: 32
+[2026-01-27 00:16:34.043] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:16:34.043] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:16:34.044] [DEBUG] Serial RX [1 bytes]: 36
+[2026-01-27 00:16:34.044] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:16:34.044] [DEBUG] Serial RX [1 bytes]: 35
+[2026-01-27 00:16:34.044] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:16:34.045] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:16:34.045] [DEBUG] Serial RX [1 bytes]: 32
+[2026-01-27 00:16:34.045] [DEBUG] Serial RX [1 bytes]: 33
+[2026-01-27 00:16:34.045] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:16:34.045] [DEBUG] Serial RX [1 bytes]: 38
+[2026-01-27 00:16:34.046] [DEBUG] Serial RX [1 bytes]: 35
+[2026-01-27 00:16:34.046] [DEBUG] Serial RX [1 bytes]: 37
+[2026-01-27 00:16:34.046] [DEBUG] Serial RX [1 bytes]: 65
+[2026-01-27 00:16:34.046] [DEBUG] Serial RX [1 bytes]: 00
+[2026-01-27 00:16:34.047] [DEBUG] Serial RX [1 bytes]: 00
+[2026-01-27 00:16:34.047] [DEBUG] Serial RX [1 bytes]: 00
+[2026-01-27 00:16:34.047] [DEBUG] Serial RX [1 bytes]: 03
+[2026-01-27 00:16:34.054] [DEBUG] Serial RX [1 bytes]: 6f
+[2026-01-27 00:16:34.072] [DEBUG] Serial buffer flushed
+[2026-01-27 00:16:34.073] [DEBUG] Waiting for ACK...
+[2026-01-27 00:16:37.039] [DEBUG] Serial RX [1 bytes]: 02
+[2026-01-27 00:16:37.039] [DEBUG] STX received instead of ACK, treating as response start
+[2026-01-27 00:16:37.040] [DEBUG] Receiving response...
+[2026-01-27 00:16:37.040] [DEBUG] STX already received, continuing packet read...
+[2026-01-27 00:16:37.040] [DEBUG] Serial RX [1 bytes]: 37
+[2026-01-27 00:16:37.040] [DEBUG] Serial RX [1 bytes]: 33
+[2026-01-27 00:16:37.041] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:16:37.041] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:16:37.041] [DEBUG] Serial RX [1 bytes]: 37
+[2026-01-27 00:16:37.041] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:16:37.041] [DEBUG] Serial RX [1 bytes]: 33
+[2026-01-27 00:16:37.042] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:16:37.042] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:16:37.042] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:16:37.042] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:16:37.043] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:16:37.043] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:16:37.043] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:16:37.044] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:16:37.044] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:16:37.044] [DEBUG] Serial RX [1 bytes]: 32
+[2026-01-27 00:16:37.044] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:16:37.044] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:16:37.045] [DEBUG] Serial RX [1 bytes]: 36
+[2026-01-27 00:16:37.045] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:16:37.045] [DEBUG] Serial RX [1 bytes]: 35
+[2026-01-27 00:16:37.045] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:16:37.045] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:16:37.046] [DEBUG] Serial RX [1 bytes]: 32
+[2026-01-27 00:16:37.046] [DEBUG] Serial RX [1 bytes]: 33
+[2026-01-27 00:16:37.046] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:16:37.046] [DEBUG] Serial RX [1 bytes]: 38
+[2026-01-27 00:16:37.047] [DEBUG] Serial RX [1 bytes]: 35
+[2026-01-27 00:16:37.047] [DEBUG] Serial RX [1 bytes]: 37
+[2026-01-27 00:16:37.047] [DEBUG] Serial RX [1 bytes]: 65
+[2026-01-27 00:16:37.047] [DEBUG] Serial RX [1 bytes]: 00
+[2026-01-27 00:16:37.048] [DEBUG] Serial RX [1 bytes]: 00
+[2026-01-27 00:16:37.048] [DEBUG] Serial RX [1 bytes]: 00
+[2026-01-27 00:16:37.048] [DEBUG] Response data length: 0
+[2026-01-27 00:16:37.048] [DEBUG] Serial RX [1 bytes]: 03
+[2026-01-27 00:16:37.048] [DEBUG] Serial RX [1 bytes]: 6f
+[2026-01-27 00:16:37.049] [DEBUG] Response packet received: 37 bytes
+[2026-01-27 00:16:37.049] [DEBUG] BCC verified (STX included)
+[2026-01-27 00:16:37.049] [DEBUG] Packet parsed successfully. Data length: 0
+[2026-01-27 00:16:37.049] [ERROR] Payment wait response data is null
+[2026-01-27 00:16:37.049] [ERROR] SmartroComm error: Failed to parse payment wait response data
+[2026-01-27 00:16:37.049] [DEBUG] Sending NACK (0x15)
+[2026-01-27 00:16:37.050] [DEBUG] Serial TX [1 bytes]: 15
+[2026-01-27 00:16:37.050] [DEBUG] Written 1 bytes
+[2026-01-27 00:16:37.050] [WARN ] No response from port: COM3
+[2026-01-27 00:16:37.050] [DEBUG] Closing serial port: COM3
+[2026-01-27 00:16:37.173] [INFO ] Test completed
+[2026-01-27 00:16:37.173] [INFO ] Logger shutting down
+[2026-01-27 00:24:58.375] [INFO ] Logger initialized: payment_wait_test.log
+[2026-01-27 00:24:58.377] [INFO ] === Payment Wait Test ===
+[2026-01-27 00:24:58.377] [INFO ] Terminal ID: DEFAULT_TERM
+[2026-01-27 00:24:58.377] [INFO ] Baud Rate: 115200
+[2026-01-27 00:24:58.378] [INFO ] Loaded saved port: COM3
+[2026-01-27 00:24:58.378] [INFO ] Using saved COM Port: COM3
+[2026-01-27 00:24:58.378] [DEBUG] Trying COM port: COM3
+[2026-01-27 00:24:58.378] [DEBUG] Opening serial port: \\.\COM3 (Baud: 115200)
+[2026-01-27 00:24:58.434] [DEBUG] Serial port configured: BaudRate=115200
+[2026-01-27 00:24:58.434] [DEBUG] Serial port opened successfully: COM3
+[2026-01-27 00:24:58.435] [DEBUG] Created payment wait request packet: 37 bytes
+[2026-01-27 00:24:58.435] [DEBUG] Sending payment wait request...
+[2026-01-27 00:24:58.436] [DEBUG] Serial TX [37 bytes]: 02 44 45 46 41 55 4c 54 5f 54 45 52 4d 00 00 00 00 32 30 32 36 30 31 32 37 30 30 32 34 35 38 45 00 00 00 03 57
+[2026-01-27 00:24:58.436] [DEBUG] Written 37 bytes
+[2026-01-27 00:24:58.449] [DEBUG] Serial buffer flushed
+[2026-01-27 00:24:58.450] [DEBUG] Waiting for ACK...
+[2026-01-27 00:24:58.508] [DEBUG] Serial RX [1 bytes]: 06
+[2026-01-27 00:24:58.509] [DEBUG] ACK received (0x06)
+[2026-01-27 00:24:58.509] [DEBUG] Serial RX [1 bytes]: 02
+[2026-01-27 00:24:58.509] [DEBUG] STX received immediately after ACK
+[2026-01-27 00:24:58.509] [DEBUG] Receiving response...
+[2026-01-27 00:24:58.509] [DEBUG] STX already received, continuing packet read...
+[2026-01-27 00:24:58.509] [DEBUG] Serial RX [1 bytes]: 37
+[2026-01-27 00:24:58.510] [DEBUG] Serial RX [1 bytes]: 33
+[2026-01-27 00:24:58.510] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:24:58.510] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:24:58.510] [DEBUG] Serial RX [1 bytes]: 37
+[2026-01-27 00:24:58.511] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:24:58.511] [DEBUG] Serial RX [1 bytes]: 33
+[2026-01-27 00:24:58.511] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:24:58.511] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:24:58.511] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:24:58.511] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:24:58.512] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:24:58.512] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:24:58.512] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:24:58.512] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:24:58.512] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:24:58.514] [DEBUG] Serial RX [1 bytes]: 32
+[2026-01-27 00:24:58.514] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:24:58.515] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:24:58.515] [DEBUG] Serial RX [1 bytes]: 36
+[2026-01-27 00:24:58.515] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:24:58.516] [DEBUG] Serial RX [1 bytes]: 35
+[2026-01-27 00:24:58.524] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:24:58.525] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:24:58.525] [DEBUG] Serial RX [1 bytes]: 32
+[2026-01-27 00:24:58.525] [DEBUG] Serial RX [1 bytes]: 33
+[2026-01-27 00:24:58.525] [DEBUG] Serial RX [1 bytes]: 32
+[2026-01-27 00:24:58.525] [DEBUG] Serial RX [1 bytes]: 36
+[2026-01-27 00:24:58.526] [DEBUG] Serial RX [1 bytes]: 35
+[2026-01-27 00:24:58.526] [DEBUG] Serial RX [1 bytes]: 35
+[2026-01-27 00:24:58.526] [DEBUG] Serial RX [1 bytes]: 65
+[2026-01-27 00:24:58.526] [DEBUG] Serial RX [1 bytes]: 00
+[2026-01-27 00:24:58.526] [DEBUG] Serial RX [1 bytes]: 00
+[2026-01-27 00:24:58.527] [DEBUG] Serial RX [1 bytes]: 00
+[2026-01-27 00:24:58.527] [DEBUG] Response data length: 0
+[2026-01-27 00:24:58.527] [DEBUG] Serial RX [1 bytes]: 03
+[2026-01-27 00:24:58.527] [DEBUG] Serial RX [1 bytes]: 60
+[2026-01-27 00:24:58.527] [DEBUG] Response packet received: 37 bytes
+[2026-01-27 00:24:58.527] [DEBUG] BCC verified (STX included)
+[2026-01-27 00:24:58.528] [DEBUG] Packet parsed successfully. Data length: 0
+[2026-01-27 00:24:58.528] [INFO ] Payment wait response received: 0 bytes (no data, as per protocol)
+[2026-01-27 00:24:58.528] [DEBUG] Sending ACK (0x06)
+[2026-01-27 00:24:58.529] [DEBUG] Serial TX [1 bytes]: 06
+[2026-01-27 00:24:58.529] [DEBUG] Written 1 bytes
+[2026-01-27 00:24:58.529] [DEBUG] Payment wait request completed successfully
+[2026-01-27 00:24:58.530] [INFO ] Saved working port: COM3
+[2026-01-27 00:24:58.531] [INFO ] Payment wait request completed on port: COM3
+[2026-01-27 00:24:58.531] [DEBUG] Closing serial port: COM3
+[2026-01-27 00:24:58.654] [INFO ] Test completed
+[2026-01-27 00:24:58.654] [INFO ] Logger shutting down

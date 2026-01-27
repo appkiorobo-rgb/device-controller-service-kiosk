@@ -1,0 +1,1542 @@
+[2026-01-26 23:35:15.811] [ERROR] Fatal exception: resource deadlock would occur: resource deadlock would occur
+[2026-01-26 23:36:12.890] [INFO ] Logger shutting down
+[2026-01-26 23:36:31.586] [INFO ] Logger initialized: device_check_test.log
+[2026-01-26 23:37:11.353] [INFO ] Logger initialized: device_check_test.log
+[2026-01-26 23:37:30.453] [INFO ] Logger initialized: device_check_test.log
+[2026-01-26 23:38:19.000] [INFO ] Logger initialized: device_check_test.log
+[2026-01-26 23:40:53.639] [INFO ] Logger initialized: device_check_test.log
+[2026-01-26 23:40:53.641] [INFO ] === Device Check Test ===
+[2026-01-26 23:40:53.641] [INFO ] Terminal ID: DEFAULT_TERM
+[2026-01-26 23:40:53.641] [INFO ] Baud Rate: 115200
+[2026-01-26 23:40:53.642] [INFO ] Trying COM port: COM1
+[2026-01-26 23:40:53.642] [INFO ] Opening serial port: \\.\COM1 (Baud: 115200)
+[2026-01-26 23:40:53.644] [DEBUG] Serial port configured: BaudRate=115200
+[2026-01-26 23:40:53.644] [INFO ] Serial port opened successfully: COM1
+[2026-01-26 23:40:53.644] [DEBUG] Created device check request packet: 37 bytes
+[2026-01-26 23:40:53.644] [INFO ] Sending device check request...
+[2026-01-26 23:40:53.645] [INFO ] Serial TX [37 bytes]: 02 44 45 46 41 55 4c 54 5f 54 45 52 4d 00 00 00 00 32 30 32 36 30 31 32 36 32 33 34 30 35 33 41 00 00 00 03 5a
+[2026-01-26 23:40:53.647] [DEBUG] Written 37 bytes
+[2026-01-26 23:40:53.648] [DEBUG] Waiting for ACK...
+[2026-01-26 23:40:56.657] [ERROR] Timeout waiting for ACK/NACK
+[2026-01-26 23:40:56.658] [WARN ] ACK timeout or NACK received, retrying...
+[2026-01-26 23:40:56.658] [INFO ] Retry attempt 1/3
+[2026-01-26 23:40:56.658] [INFO ] Sending device check request...
+[2026-01-26 23:40:56.659] [INFO ] Serial TX [37 bytes]: 02 44 45 46 41 55 4c 54 5f 54 45 52 4d 00 00 00 00 32 30 32 36 30 31 32 36 32 33 34 30 35 33 41 00 00 00 03 5a
+[2026-01-26 23:40:56.661] [DEBUG] Written 37 bytes
+[2026-01-26 23:40:56.662] [DEBUG] Waiting for ACK...
+[2026-01-26 23:40:59.663] [ERROR] Timeout waiting for ACK/NACK
+[2026-01-26 23:40:59.663] [WARN ] ACK timeout or NACK received, retrying...
+[2026-01-26 23:40:59.663] [INFO ] Retry attempt 2/3
+[2026-01-26 23:40:59.664] [INFO ] Sending device check request...
+[2026-01-26 23:40:59.664] [INFO ] Serial TX [37 bytes]: 02 44 45 46 41 55 4c 54 5f 54 45 52 4d 00 00 00 00 32 30 32 36 30 31 32 36 32 33 34 30 35 33 41 00 00 00 03 5a
+[2026-01-26 23:40:59.667] [DEBUG] Written 37 bytes
+[2026-01-26 23:40:59.667] [DEBUG] Waiting for ACK...
+[2026-01-26 23:41:02.679] [ERROR] Timeout waiting for ACK/NACK
+[2026-01-26 23:41:02.679] [WARN ] ACK timeout or NACK received, retrying...
+[2026-01-26 23:41:02.680] [ERROR] SmartroComm error: Failed after 3 retries
+[2026-01-26 23:41:02.680] [WARN ] No response from port: COM1
+[2026-01-26 23:41:02.680] [INFO ] Closing serial port: COM1
+[2026-01-26 23:41:02.696] [INFO ] Trying COM port: COM3
+[2026-01-26 23:41:02.696] [INFO ] Opening serial port: \\.\COM3 (Baud: 115200)
+[2026-01-26 23:41:02.742] [DEBUG] Serial port configured: BaudRate=115200
+[2026-01-26 23:41:02.742] [INFO ] Serial port opened successfully: COM3
+[2026-01-26 23:41:02.742] [DEBUG] Created device check request packet: 37 bytes
+[2026-01-26 23:41:02.742] [INFO ] Sending device check request...
+[2026-01-26 23:41:02.743] [INFO ] Serial TX [37 bytes]: 02 44 45 46 41 55 4c 54 5f 54 45 52 4d 00 00 00 00 32 30 32 36 30 31 32 36 32 33 34 31 30 32 41 00 00 00 03 5f
+[2026-01-26 23:41:02.743] [DEBUG] Written 37 bytes
+[2026-01-26 23:41:02.743] [DEBUG] Waiting for ACK...
+[2026-01-26 23:41:02.747] [INFO ] Serial RX [1 bytes]: 06
+[2026-01-26 23:41:02.747] [INFO ] ACK received (0x06)
+[2026-01-26 23:41:02.747] [DEBUG] Receiving response...
+[2026-01-26 23:41:02.763] [INFO ] Serial RX [1 bytes]: 02
+[2026-01-26 23:41:02.763] [DEBUG] STX found, reading packet...
+[2026-01-26 23:41:02.763] [INFO ] Serial RX [1 bytes]: 37
+[2026-01-26 23:41:02.764] [INFO ] Serial RX [1 bytes]: 33
+[2026-01-26 23:41:02.764] [INFO ] Serial RX [1 bytes]: 31
+[2026-01-26 23:41:02.764] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:41:02.764] [INFO ] Serial RX [1 bytes]: 37
+[2026-01-26 23:41:02.764] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:41:02.764] [INFO ] Serial RX [1 bytes]: 33
+[2026-01-26 23:41:02.765] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:41:02.765] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:41:02.765] [INFO ] Serial RX [1 bytes]: 31
+[2026-01-26 23:41:02.765] [INFO ] Serial RX [1 bytes]: 20
+[2026-01-26 23:41:02.765] [INFO ] Serial RX [1 bytes]: 20
+[2026-01-26 23:41:02.765] [INFO ] Serial RX [1 bytes]: 20
+[2026-01-26 23:41:02.766] [INFO ] Serial RX [1 bytes]: 20
+[2026-01-26 23:41:02.766] [INFO ] Serial RX [1 bytes]: 20
+[2026-01-26 23:41:02.766] [INFO ] Serial RX [1 bytes]: 20
+[2026-01-26 23:41:02.766] [INFO ] Serial RX [1 bytes]: 32
+[2026-01-26 23:41:02.766] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:41:02.766] [INFO ] Serial RX [1 bytes]: 31
+[2026-01-26 23:41:02.766] [INFO ] Serial RX [1 bytes]: 36
+[2026-01-26 23:41:02.767] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:41:02.767] [INFO ] Serial RX [1 bytes]: 35
+[2026-01-26 23:41:02.767] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:41:02.767] [INFO ] Serial RX [1 bytes]: 31
+[2026-01-26 23:41:02.767] [INFO ] Serial RX [1 bytes]: 32
+[2026-01-26 23:41:02.767] [INFO ] Serial RX [1 bytes]: 32
+[2026-01-26 23:41:02.768] [INFO ] Serial RX [1 bytes]: 34
+[2026-01-26 23:41:02.768] [INFO ] Serial RX [1 bytes]: 33
+[2026-01-26 23:41:02.768] [INFO ] Serial RX [1 bytes]: 35
+[2026-01-26 23:41:02.768] [INFO ] Serial RX [1 bytes]: 38
+[2026-01-26 23:41:02.768] [INFO ] Serial RX [1 bytes]: 61
+[2026-01-26 23:41:02.769] [INFO ] Serial RX [1 bytes]: 00
+[2026-01-26 23:41:02.769] [INFO ] Serial RX [1 bytes]: 04
+[2026-01-26 23:41:02.769] [INFO ] Serial RX [1 bytes]: 00
+[2026-01-26 23:41:02.769] [DEBUG] Response data length: 4
+[2026-01-26 23:41:02.769] [INFO ] Serial RX [1 bytes]: 4f
+[2026-01-26 23:41:02.769] [INFO ] Serial RX [1 bytes]: 4f
+[2026-01-26 23:41:02.769] [INFO ] Serial RX [1 bytes]: 58
+[2026-01-26 23:41:02.770] [INFO ] Serial RX [1 bytes]: 4e
+[2026-01-26 23:41:02.770] [INFO ] Serial RX [1 bytes]: 03
+[2026-01-26 23:41:02.770] [INFO ] Serial RX [1 bytes]: 79
+[2026-01-26 23:41:02.770] [INFO ] Response packet received: 41 bytes
+[2026-01-26 23:41:02.770] [WARN ] BCC mismatch. Calculated: 0x122, Received: 0x121
+[2026-01-26 23:41:02.770] [ERROR] BCC verification failed
+[2026-01-26 23:41:02.771] [WARN ] Failed to parse response, retrying...
+[2026-01-26 23:41:02.771] [INFO ] Sending NACK (0x15)
+[2026-01-26 23:41:02.771] [INFO ] Serial TX [1 bytes]: 15
+[2026-01-26 23:41:02.771] [DEBUG] Written 1 bytes
+[2026-01-26 23:41:02.772] [INFO ] Retry attempt 1/3
+[2026-01-26 23:41:02.772] [INFO ] Sending device check request...
+[2026-01-26 23:41:02.772] [INFO ] Serial TX [37 bytes]: 02 44 45 46 41 55 4c 54 5f 54 45 52 4d 00 00 00 00 32 30 32 36 30 31 32 36 32 33 34 31 30 32 41 00 00 00 03 5f
+[2026-01-26 23:41:02.773] [DEBUG] Written 37 bytes
+[2026-01-26 23:41:02.773] [DEBUG] Waiting for ACK...
+[2026-01-26 23:41:05.755] [INFO ] Serial RX [1 bytes]: 02
+[2026-01-26 23:41:05.755] [ERROR] Unexpected byte received: 0x2
+[2026-01-26 23:41:05.756] [WARN ] ACK timeout or NACK received, retrying...
+[2026-01-26 23:41:05.756] [INFO ] Retry attempt 2/3
+[2026-01-26 23:41:05.756] [INFO ] Sending device check request...
+[2026-01-26 23:41:05.756] [INFO ] Serial TX [37 bytes]: 02 44 45 46 41 55 4c 54 5f 54 45 52 4d 00 00 00 00 32 30 32 36 30 31 32 36 32 33 34 31 30 32 41 00 00 00 03 5f
+[2026-01-26 23:41:05.757] [DEBUG] Written 37 bytes
+[2026-01-26 23:41:05.757] [DEBUG] Waiting for ACK...
+[2026-01-26 23:41:05.757] [INFO ] Serial RX [1 bytes]: 37
+[2026-01-26 23:41:05.757] [ERROR] Unexpected byte received: 0x55
+[2026-01-26 23:41:05.757] [WARN ] ACK timeout or NACK received, retrying...
+[2026-01-26 23:41:05.758] [ERROR] SmartroComm error: Failed after 3 retries
+[2026-01-26 23:41:05.758] [WARN ] No response from port: COM3
+[2026-01-26 23:41:05.758] [INFO ] Closing serial port: COM3
+[2026-01-26 23:41:05.878] [INFO ] Test completed
+[2026-01-26 23:41:05.879] [INFO ] Logger shutting down
+[2026-01-26 23:51:16.882] [INFO ] Logger initialized: device_check_test.log
+[2026-01-26 23:51:16.884] [INFO ] === Device Check Test ===
+[2026-01-26 23:51:16.884] [INFO ] Terminal ID: DEFAULT_TERM
+[2026-01-26 23:51:16.884] [INFO ] Baud Rate: 115200
+[2026-01-26 23:51:16.884] [INFO ] Trying COM port: COM1
+[2026-01-26 23:51:16.885] [INFO ] Opening serial port: \\.\COM1 (Baud: 115200)
+[2026-01-26 23:51:16.886] [DEBUG] Serial port configured: BaudRate=115200
+[2026-01-26 23:51:16.886] [INFO ] Serial port opened successfully: COM1
+[2026-01-26 23:51:16.886] [DEBUG] Created device check request packet: 37 bytes
+[2026-01-26 23:51:16.886] [INFO ] Sending device check request...
+[2026-01-26 23:51:16.887] [INFO ] Serial TX [37 bytes]: 02 44 45 46 41 55 4c 54 5f 54 45 52 4d 00 00 00 00 32 30 32 36 30 31 32 36 32 33 35 31 31 36 41 00 00 00 03 5b
+[2026-01-26 23:51:16.889] [DEBUG] Written 37 bytes
+[2026-01-26 23:51:16.914] [DEBUG] Serial buffer flushed
+[2026-01-26 23:51:16.915] [DEBUG] Waiting for ACK...
+[2026-01-26 23:51:19.916] [ERROR] Timeout waiting for ACK/NACK
+[2026-01-26 23:51:19.916] [WARN ] ACK timeout or NACK received, retrying...
+[2026-01-26 23:51:19.916] [INFO ] Retry attempt 1/3
+[2026-01-26 23:51:19.917] [INFO ] Sending device check request...
+[2026-01-26 23:51:19.917] [INFO ] Serial TX [37 bytes]: 02 44 45 46 41 55 4c 54 5f 54 45 52 4d 00 00 00 00 32 30 32 36 30 31 32 36 32 33 35 31 31 36 41 00 00 00 03 5b
+[2026-01-26 23:51:19.919] [DEBUG] Written 37 bytes
+[2026-01-26 23:51:19.931] [DEBUG] Serial buffer flushed
+[2026-01-26 23:51:19.931] [DEBUG] Waiting for ACK...
+[2026-01-26 23:51:22.935] [ERROR] Timeout waiting for ACK/NACK
+[2026-01-26 23:51:22.935] [WARN ] ACK timeout or NACK received, retrying...
+[2026-01-26 23:51:22.936] [INFO ] Retry attempt 2/3
+[2026-01-26 23:51:22.936] [INFO ] Sending device check request...
+[2026-01-26 23:51:22.936] [INFO ] Serial TX [37 bytes]: 02 44 45 46 41 55 4c 54 5f 54 45 52 4d 00 00 00 00 32 30 32 36 30 31 32 36 32 33 35 31 31 36 41 00 00 00 03 5b
+[2026-01-26 23:51:22.939] [DEBUG] Written 37 bytes
+[2026-01-26 23:51:22.951] [DEBUG] Serial buffer flushed
+[2026-01-26 23:51:22.951] [DEBUG] Waiting for ACK...
+[2026-01-26 23:51:25.958] [ERROR] Timeout waiting for ACK/NACK
+[2026-01-26 23:51:25.958] [WARN ] ACK timeout or NACK received, retrying...
+[2026-01-26 23:51:25.958] [ERROR] SmartroComm error: Failed after 3 retries
+[2026-01-26 23:51:25.959] [WARN ] No response from port: COM1
+[2026-01-26 23:51:25.959] [INFO ] Closing serial port: COM1
+[2026-01-26 23:51:25.975] [INFO ] Trying COM port: COM3
+[2026-01-26 23:51:25.975] [INFO ] Opening serial port: \\.\COM3 (Baud: 115200)
+[2026-01-26 23:51:26.016] [DEBUG] Serial port configured: BaudRate=115200
+[2026-01-26 23:51:26.016] [INFO ] Serial port opened successfully: COM3
+[2026-01-26 23:51:26.016] [DEBUG] Created device check request packet: 37 bytes
+[2026-01-26 23:51:26.016] [INFO ] Sending device check request...
+[2026-01-26 23:51:26.017] [INFO ] Serial TX [37 bytes]: 02 44 45 46 41 55 4c 54 5f 54 45 52 4d 00 00 00 00 32 30 32 36 30 31 32 36 32 33 35 31 32 36 41 00 00 00 03 58
+[2026-01-26 23:51:26.017] [DEBUG] Written 37 bytes
+[2026-01-26 23:51:26.025] [INFO ] Serial RX [1 bytes]: 06
+[2026-01-26 23:51:26.025] [INFO ] Serial RX [1 bytes]: 02
+[2026-01-26 23:51:26.025] [INFO ] Serial RX [1 bytes]: 37
+[2026-01-26 23:51:26.026] [INFO ] Serial RX [1 bytes]: 33
+[2026-01-26 23:51:26.026] [INFO ] Serial RX [1 bytes]: 31
+[2026-01-26 23:51:26.026] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:51:26.026] [INFO ] Serial RX [1 bytes]: 37
+[2026-01-26 23:51:26.026] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:51:26.026] [INFO ] Serial RX [1 bytes]: 33
+[2026-01-26 23:51:26.027] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:51:26.027] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:51:26.027] [INFO ] Serial RX [1 bytes]: 31
+[2026-01-26 23:51:26.027] [INFO ] Serial RX [1 bytes]: 20
+[2026-01-26 23:51:26.027] [INFO ] Serial RX [1 bytes]: 20
+[2026-01-26 23:51:26.027] [INFO ] Serial RX [1 bytes]: 20
+[2026-01-26 23:51:26.028] [INFO ] Serial RX [1 bytes]: 20
+[2026-01-26 23:51:26.028] [INFO ] Serial RX [1 bytes]: 20
+[2026-01-26 23:51:26.028] [INFO ] Serial RX [1 bytes]: 20
+[2026-01-26 23:51:26.028] [INFO ] Serial RX [1 bytes]: 32
+[2026-01-26 23:51:26.028] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:51:26.028] [INFO ] Serial RX [1 bytes]: 31
+[2026-01-26 23:51:26.029] [INFO ] Serial RX [1 bytes]: 36
+[2026-01-26 23:51:26.029] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:51:26.029] [INFO ] Serial RX [1 bytes]: 35
+[2026-01-26 23:51:26.029] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:51:26.029] [INFO ] Serial RX [1 bytes]: 31
+[2026-01-26 23:51:26.029] [INFO ] Serial RX [1 bytes]: 32
+[2026-01-26 23:51:26.029] [INFO ] Serial RX [1 bytes]: 32
+[2026-01-26 23:51:26.030] [INFO ] Serial RX [1 bytes]: 35
+[2026-01-26 23:51:26.030] [INFO ] Serial RX [1 bytes]: 34
+[2026-01-26 23:51:26.030] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:51:26.030] [INFO ] Serial RX [1 bytes]: 35
+[2026-01-26 23:51:26.030] [INFO ] Serial RX [1 bytes]: 61
+[2026-01-26 23:51:26.030] [INFO ] Serial RX [1 bytes]: 00
+[2026-01-26 23:51:26.030] [INFO ] Serial RX [1 bytes]: 04
+[2026-01-26 23:51:26.030] [INFO ] Serial RX [1 bytes]: 00
+[2026-01-26 23:51:26.031] [INFO ] Serial RX [1 bytes]: 4f
+[2026-01-26 23:51:26.031] [INFO ] Serial RX [1 bytes]: 4f
+[2026-01-26 23:51:26.031] [INFO ] Serial RX [1 bytes]: 58
+[2026-01-26 23:51:26.031] [INFO ] Serial RX [1 bytes]: 4e
+[2026-01-26 23:51:26.031] [INFO ] Serial RX [1 bytes]: 03
+[2026-01-26 23:51:26.031] [INFO ] Serial RX [1 bytes]: 77
+[2026-01-26 23:51:26.052] [DEBUG] Serial buffer flushed
+[2026-01-26 23:51:26.052] [DEBUG] Waiting for ACK...
+[2026-01-26 23:51:29.017] [INFO ] Serial RX [1 bytes]: 02
+[2026-01-26 23:51:29.017] [DEBUG] STX received while waiting for ACK, discarding and continuing...
+[2026-01-26 23:51:29.018] [INFO ] Serial RX [1 bytes]: 37
+[2026-01-26 23:51:29.018] [INFO ] Serial RX [1 bytes]: 33
+[2026-01-26 23:51:29.018] [INFO ] Serial RX [1 bytes]: 31
+[2026-01-26 23:51:29.018] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:51:29.018] [INFO ] Serial RX [1 bytes]: 37
+[2026-01-26 23:51:29.019] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:51:29.019] [INFO ] Serial RX [1 bytes]: 33
+[2026-01-26 23:51:29.019] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:51:29.019] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:51:29.019] [INFO ] Serial RX [1 bytes]: 31
+[2026-01-26 23:51:29.019] [INFO ] Serial RX [1 bytes]: 20
+[2026-01-26 23:51:29.019] [INFO ] Serial RX [1 bytes]: 20
+[2026-01-26 23:51:29.019] [INFO ] Serial RX [1 bytes]: 20
+[2026-01-26 23:51:29.020] [INFO ] Serial RX [1 bytes]: 20
+[2026-01-26 23:51:29.020] [INFO ] Serial RX [1 bytes]: 20
+[2026-01-26 23:51:29.020] [INFO ] Serial RX [1 bytes]: 20
+[2026-01-26 23:51:29.020] [INFO ] Serial RX [1 bytes]: 32
+[2026-01-26 23:51:29.020] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:51:29.020] [INFO ] Serial RX [1 bytes]: 31
+[2026-01-26 23:51:29.021] [INFO ] Serial RX [1 bytes]: 36
+[2026-01-26 23:51:29.021] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:51:29.021] [INFO ] Serial RX [1 bytes]: 35
+[2026-01-26 23:51:29.021] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:51:29.021] [INFO ] Serial RX [1 bytes]: 31
+[2026-01-26 23:51:29.021] [INFO ] Serial RX [1 bytes]: 32
+[2026-01-26 23:51:29.021] [INFO ] Serial RX [1 bytes]: 32
+[2026-01-26 23:51:29.021] [INFO ] Serial RX [1 bytes]: 35
+[2026-01-26 23:51:29.022] [INFO ] Serial RX [1 bytes]: 34
+[2026-01-26 23:51:29.022] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:51:29.022] [INFO ] Serial RX [1 bytes]: 35
+[2026-01-26 23:51:29.023] [INFO ] Serial RX [1 bytes]: 61
+[2026-01-26 23:51:29.023] [INFO ] Serial RX [1 bytes]: 00
+[2026-01-26 23:51:29.023] [INFO ] Serial RX [1 bytes]: 04
+[2026-01-26 23:51:29.023] [INFO ] Serial RX [1 bytes]: 00
+[2026-01-26 23:51:29.033] [INFO ] Serial RX [1 bytes]: 4f
+[2026-01-26 23:51:29.033] [INFO ] Serial RX [1 bytes]: 4f
+[2026-01-26 23:51:29.033] [INFO ] Serial RX [1 bytes]: 58
+[2026-01-26 23:51:29.034] [INFO ] Serial RX [1 bytes]: 4e
+[2026-01-26 23:51:29.034] [INFO ] Serial RX [1 bytes]: 03
+[2026-01-26 23:51:29.034] [INFO ] Serial RX [1 bytes]: 77
+[2026-01-26 23:51:29.053] [WARN ] ACK timeout or NACK received, retrying...
+[2026-01-26 23:51:29.053] [INFO ] Retry attempt 1/3
+[2026-01-26 23:51:29.054] [INFO ] Sending device check request...
+[2026-01-26 23:51:29.054] [INFO ] Serial TX [37 bytes]: 02 44 45 46 41 55 4c 54 5f 54 45 52 4d 00 00 00 00 32 30 32 36 30 31 32 36 32 33 35 31 32 36 41 00 00 00 03 58
+[2026-01-26 23:51:29.054] [DEBUG] Written 37 bytes
+[2026-01-26 23:51:29.069] [DEBUG] Serial buffer flushed
+[2026-01-26 23:51:29.069] [DEBUG] Waiting for ACK...
+[2026-01-26 23:51:32.009] [INFO ] Serial RX [1 bytes]: 02
+[2026-01-26 23:51:32.009] [DEBUG] STX received while waiting for ACK, discarding and continuing...
+[2026-01-26 23:51:32.010] [INFO ] Serial RX [1 bytes]: 37
+[2026-01-26 23:51:32.010] [INFO ] Serial RX [1 bytes]: 33
+[2026-01-26 23:51:32.010] [INFO ] Serial RX [1 bytes]: 31
+[2026-01-26 23:51:32.011] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:51:32.011] [INFO ] Serial RX [1 bytes]: 37
+[2026-01-26 23:51:32.011] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:51:32.011] [INFO ] Serial RX [1 bytes]: 33
+[2026-01-26 23:51:32.011] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:51:32.011] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:51:32.011] [INFO ] Serial RX [1 bytes]: 31
+[2026-01-26 23:51:32.012] [INFO ] Serial RX [1 bytes]: 20
+[2026-01-26 23:51:32.012] [INFO ] Serial RX [1 bytes]: 20
+[2026-01-26 23:51:32.012] [INFO ] Serial RX [1 bytes]: 20
+[2026-01-26 23:51:32.013] [INFO ] Serial RX [1 bytes]: 20
+[2026-01-26 23:51:32.013] [INFO ] Serial RX [1 bytes]: 20
+[2026-01-26 23:51:32.013] [INFO ] Serial RX [1 bytes]: 20
+[2026-01-26 23:51:32.013] [INFO ] Serial RX [1 bytes]: 32
+[2026-01-26 23:51:32.013] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:51:32.013] [INFO ] Serial RX [1 bytes]: 31
+[2026-01-26 23:51:32.014] [INFO ] Serial RX [1 bytes]: 36
+[2026-01-26 23:51:32.014] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:51:32.014] [INFO ] Serial RX [1 bytes]: 35
+[2026-01-26 23:51:32.014] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:51:32.025] [INFO ] Serial RX [1 bytes]: 31
+[2026-01-26 23:51:32.025] [INFO ] Serial RX [1 bytes]: 32
+[2026-01-26 23:51:32.026] [INFO ] Serial RX [1 bytes]: 32
+[2026-01-26 23:51:32.026] [INFO ] Serial RX [1 bytes]: 35
+[2026-01-26 23:51:32.026] [INFO ] Serial RX [1 bytes]: 34
+[2026-01-26 23:51:32.026] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:51:32.027] [INFO ] Serial RX [1 bytes]: 35
+[2026-01-26 23:51:32.027] [INFO ] Serial RX [1 bytes]: 61
+[2026-01-26 23:51:32.027] [INFO ] Serial RX [1 bytes]: 00
+[2026-01-26 23:51:32.027] [INFO ] Serial RX [1 bytes]: 04
+[2026-01-26 23:51:32.027] [INFO ] Serial RX [1 bytes]: 00
+[2026-01-26 23:51:32.028] [INFO ] Serial RX [1 bytes]: 4f
+[2026-01-26 23:51:32.028] [INFO ] Serial RX [1 bytes]: 4f
+[2026-01-26 23:51:32.028] [INFO ] Serial RX [1 bytes]: 58
+[2026-01-26 23:51:32.028] [INFO ] Serial RX [1 bytes]: 4e
+[2026-01-26 23:51:32.028] [INFO ] Serial RX [1 bytes]: 03
+[2026-01-26 23:51:32.029] [INFO ] Serial RX [1 bytes]: 77
+[2026-01-26 23:51:32.045] [WARN ] ACK timeout or NACK received, retrying...
+[2026-01-26 23:51:32.045] [INFO ] Retry attempt 2/3
+[2026-01-26 23:51:32.046] [INFO ] Sending device check request...
+[2026-01-26 23:51:32.046] [INFO ] Serial TX [37 bytes]: 02 44 45 46 41 55 4c 54 5f 54 45 52 4d 00 00 00 00 32 30 32 36 30 31 32 36 32 33 35 31 32 36 41 00 00 00 03 58
+[2026-01-26 23:51:32.047] [DEBUG] Written 37 bytes
+[2026-01-26 23:51:32.061] [DEBUG] Serial buffer flushed
+[2026-01-26 23:51:32.062] [DEBUG] Waiting for ACK...
+[2026-01-26 23:51:35.001] [INFO ] Serial RX [1 bytes]: 06
+[2026-01-26 23:51:35.001] [INFO ] ACK received (0x06)
+[2026-01-26 23:51:35.002] [DEBUG] Receiving response...
+[2026-01-26 23:51:35.002] [INFO ] Serial RX [1 bytes]: 02
+[2026-01-26 23:51:35.002] [DEBUG] STX found, reading packet...
+[2026-01-26 23:51:35.002] [INFO ] Serial RX [1 bytes]: 37
+[2026-01-26 23:51:35.002] [INFO ] Serial RX [1 bytes]: 33
+[2026-01-26 23:51:35.002] [INFO ] Serial RX [1 bytes]: 31
+[2026-01-26 23:51:35.003] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:51:35.003] [INFO ] Serial RX [1 bytes]: 37
+[2026-01-26 23:51:35.003] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:51:35.003] [INFO ] Serial RX [1 bytes]: 33
+[2026-01-26 23:51:35.003] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:51:35.003] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:51:35.004] [INFO ] Serial RX [1 bytes]: 31
+[2026-01-26 23:51:35.004] [INFO ] Serial RX [1 bytes]: 20
+[2026-01-26 23:51:35.017] [INFO ] Serial RX [1 bytes]: 20
+[2026-01-26 23:51:35.017] [INFO ] Serial RX [1 bytes]: 20
+[2026-01-26 23:51:35.018] [INFO ] Serial RX [1 bytes]: 20
+[2026-01-26 23:51:35.018] [INFO ] Serial RX [1 bytes]: 20
+[2026-01-26 23:51:35.018] [INFO ] Serial RX [1 bytes]: 20
+[2026-01-26 23:51:35.018] [INFO ] Serial RX [1 bytes]: 32
+[2026-01-26 23:51:35.018] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:51:35.018] [INFO ] Serial RX [1 bytes]: 31
+[2026-01-26 23:51:35.019] [INFO ] Serial RX [1 bytes]: 36
+[2026-01-26 23:51:35.019] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:51:35.019] [INFO ] Serial RX [1 bytes]: 35
+[2026-01-26 23:51:35.019] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:51:35.019] [INFO ] Serial RX [1 bytes]: 31
+[2026-01-26 23:51:35.019] [INFO ] Serial RX [1 bytes]: 32
+[2026-01-26 23:51:35.019] [INFO ] Serial RX [1 bytes]: 32
+[2026-01-26 23:51:35.020] [INFO ] Serial RX [1 bytes]: 35
+[2026-01-26 23:51:35.020] [INFO ] Serial RX [1 bytes]: 34
+[2026-01-26 23:51:35.020] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:51:35.020] [INFO ] Serial RX [1 bytes]: 35
+[2026-01-26 23:51:35.020] [INFO ] Serial RX [1 bytes]: 61
+[2026-01-26 23:51:35.020] [INFO ] Serial RX [1 bytes]: 00
+[2026-01-26 23:51:35.020] [INFO ] Serial RX [1 bytes]: 04
+[2026-01-26 23:51:35.020] [INFO ] Serial RX [1 bytes]: 00
+[2026-01-26 23:51:35.020] [DEBUG] Response data length: 4
+[2026-01-26 23:51:35.021] [INFO ] Serial RX [1 bytes]: 4f
+[2026-01-26 23:51:35.021] [INFO ] Serial RX [1 bytes]: 4f
+[2026-01-26 23:51:35.021] [INFO ] Serial RX [1 bytes]: 58
+[2026-01-26 23:51:35.021] [INFO ] Serial RX [1 bytes]: 4e
+[2026-01-26 23:51:35.021] [INFO ] Serial RX [1 bytes]: 03
+[2026-01-26 23:51:35.021] [INFO ] Serial RX [1 bytes]: 77
+[2026-01-26 23:51:35.021] [INFO ] Response packet received: 41 bytes
+[2026-01-26 23:51:35.022] [DEBUG] BCC verified (STX included)
+[2026-01-26 23:51:35.022] [DEBUG] Packet parsed successfully. Data length: 4
+[2026-01-26 23:51:35.022] [INFO ] Device check response parsed:
+[2026-01-26 23:51:35.022] [INFO ]   Card Module: O
+[2026-01-26 23:51:35.022] [INFO ]   RF Module: O
+[2026-01-26 23:51:35.022] [INFO ]   VAN Server: X
+[2026-01-26 23:51:35.022] [INFO ]   Integration Server: N
+[2026-01-26 23:51:35.022] [INFO ] Sending ACK (0x06)
+[2026-01-26 23:51:35.022] [INFO ] Serial TX [1 bytes]: 06
+[2026-01-26 23:51:35.023] [DEBUG] Written 1 bytes
+[2026-01-26 23:51:35.023] [INFO ] Device check request completed successfully
+[2026-01-26 23:51:35.023] [INFO ] Device found on port: COM3
+[2026-01-26 23:51:35.023] [INFO ] Closing serial port: COM3
+[2026-01-26 23:51:35.143] [INFO ] Test completed
+[2026-01-26 23:51:35.144] [INFO ] Logger shutting down
+[2026-01-26 23:52:56.330] [INFO ] Logger initialized: device_check_test.log
+[2026-01-26 23:52:56.331] [INFO ] === Device Check Test ===
+[2026-01-26 23:52:56.331] [INFO ] Terminal ID: DEFAULT_TERM
+[2026-01-26 23:52:56.331] [INFO ] Baud Rate: 115200
+[2026-01-26 23:52:56.332] [INFO ] Trying COM port: COM1
+[2026-01-26 23:52:56.332] [INFO ] Opening serial port: \\.\COM1 (Baud: 115200)
+[2026-01-26 23:52:56.333] [DEBUG] Serial port configured: BaudRate=115200
+[2026-01-26 23:52:56.334] [INFO ] Serial port opened successfully: COM1
+[2026-01-26 23:52:56.334] [DEBUG] Created device check request packet: 37 bytes
+[2026-01-26 23:52:56.334] [INFO ] Sending device check request...
+[2026-01-26 23:52:56.334] [INFO ] Serial TX [37 bytes]: 02 44 45 46 41 55 4c 54 5f 54 45 52 4d 00 00 00 00 32 30 32 36 30 31 32 36 32 33 35 32 35 36 41 00 00 00 03 5c
+[2026-01-26 23:52:56.338] [DEBUG] Written 37 bytes
+[2026-01-26 23:52:56.350] [DEBUG] Serial buffer flushed
+[2026-01-26 23:52:56.351] [DEBUG] Waiting for ACK...
+[2026-01-26 23:52:59.358] [ERROR] Timeout waiting for ACK/NACK
+[2026-01-26 23:52:59.358] [WARN ] ACK timeout or NACK received
+[2026-01-26 23:52:59.358] [INFO ] Retry attempt 1/1
+[2026-01-26 23:52:59.359] [INFO ] Sending device check request...
+[2026-01-26 23:52:59.359] [INFO ] Serial TX [37 bytes]: 02 44 45 46 41 55 4c 54 5f 54 45 52 4d 00 00 00 00 32 30 32 36 30 31 32 36 32 33 35 32 35 36 41 00 00 00 03 5c
+[2026-01-26 23:52:59.361] [DEBUG] Written 37 bytes
+[2026-01-26 23:52:59.373] [DEBUG] Serial buffer flushed
+[2026-01-26 23:52:59.374] [DEBUG] Waiting for ACK...
+[2026-01-26 23:53:02.384] [ERROR] Timeout waiting for ACK/NACK
+[2026-01-26 23:53:02.385] [WARN ] ACK timeout or NACK received
+[2026-01-26 23:53:02.385] [ERROR] SmartroComm error: Failed after 2 attempts
+[2026-01-26 23:53:02.385] [WARN ] No response from port: COM1
+[2026-01-26 23:53:02.386] [INFO ] Closing serial port: COM1
+[2026-01-26 23:53:02.401] [INFO ] Trying COM port: COM3
+[2026-01-26 23:53:02.401] [INFO ] Opening serial port: \\.\COM3 (Baud: 115200)
+[2026-01-26 23:53:02.442] [DEBUG] Serial port configured: BaudRate=115200
+[2026-01-26 23:53:02.442] [INFO ] Serial port opened successfully: COM3
+[2026-01-26 23:53:02.442] [DEBUG] Created device check request packet: 37 bytes
+[2026-01-26 23:53:02.443] [INFO ] Sending device check request...
+[2026-01-26 23:53:02.443] [INFO ] Serial TX [37 bytes]: 02 44 45 46 41 55 4c 54 5f 54 45 52 4d 00 00 00 00 32 30 32 36 30 31 32 36 32 33 35 33 30 32 41 00 00 00 03 5c
+[2026-01-26 23:53:02.444] [DEBUG] Written 37 bytes
+[2026-01-26 23:53:02.451] [INFO ] Serial RX [1 bytes]: 06
+[2026-01-26 23:53:02.451] [INFO ] Serial RX [1 bytes]: 02
+[2026-01-26 23:53:02.452] [INFO ] Serial RX [1 bytes]: 37
+[2026-01-26 23:53:02.452] [INFO ] Serial RX [1 bytes]: 33
+[2026-01-26 23:53:02.452] [INFO ] Serial RX [1 bytes]: 31
+[2026-01-26 23:53:02.452] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:53:02.452] [INFO ] Serial RX [1 bytes]: 37
+[2026-01-26 23:53:02.453] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:53:02.453] [INFO ] Serial RX [1 bytes]: 33
+[2026-01-26 23:53:02.453] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:53:02.453] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:53:02.453] [INFO ] Serial RX [1 bytes]: 31
+[2026-01-26 23:53:02.453] [INFO ] Serial RX [1 bytes]: 20
+[2026-01-26 23:53:02.454] [INFO ] Serial RX [1 bytes]: 20
+[2026-01-26 23:53:02.454] [INFO ] Serial RX [1 bytes]: 20
+[2026-01-26 23:53:02.454] [INFO ] Serial RX [1 bytes]: 20
+[2026-01-26 23:53:02.454] [INFO ] Serial RX [1 bytes]: 20
+[2026-01-26 23:53:02.454] [INFO ] Serial RX [1 bytes]: 20
+[2026-01-26 23:53:02.454] [INFO ] Serial RX [1 bytes]: 32
+[2026-01-26 23:53:02.455] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:53:02.455] [INFO ] Serial RX [1 bytes]: 31
+[2026-01-26 23:53:02.455] [INFO ] Serial RX [1 bytes]: 36
+[2026-01-26 23:53:02.455] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:53:02.455] [INFO ] Serial RX [1 bytes]: 35
+[2026-01-26 23:53:02.456] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:53:02.456] [INFO ] Serial RX [1 bytes]: 31
+[2026-01-26 23:53:02.456] [INFO ] Serial RX [1 bytes]: 32
+[2026-01-26 23:53:02.456] [INFO ] Serial RX [1 bytes]: 32
+[2026-01-26 23:53:02.456] [INFO ] Serial RX [1 bytes]: 35
+[2026-01-26 23:53:02.456] [INFO ] Serial RX [1 bytes]: 35
+[2026-01-26 23:53:02.456] [INFO ] Serial RX [1 bytes]: 33
+[2026-01-26 23:53:02.457] [INFO ] Serial RX [1 bytes]: 32
+[2026-01-26 23:53:02.457] [INFO ] Serial RX [1 bytes]: 61
+[2026-01-26 23:53:02.457] [INFO ] Serial RX [1 bytes]: 00
+[2026-01-26 23:53:02.457] [INFO ] Serial RX [1 bytes]: 04
+[2026-01-26 23:53:02.457] [INFO ] Serial RX [1 bytes]: 00
+[2026-01-26 23:53:02.457] [INFO ] Serial RX [1 bytes]: 4f
+[2026-01-26 23:53:02.458] [INFO ] Serial RX [1 bytes]: 4f
+[2026-01-26 23:53:02.458] [INFO ] Serial RX [1 bytes]: 58
+[2026-01-26 23:53:02.458] [INFO ] Serial RX [1 bytes]: 4e
+[2026-01-26 23:53:02.458] [INFO ] Serial RX [1 bytes]: 03
+[2026-01-26 23:53:02.458] [INFO ] Serial RX [1 bytes]: 72
+[2026-01-26 23:53:02.479] [DEBUG] Serial buffer flushed
+[2026-01-26 23:53:02.479] [DEBUG] Waiting for ACK...
+[2026-01-26 23:53:05.443] [INFO ] Serial RX [1 bytes]: 02
+[2026-01-26 23:53:05.443] [DEBUG] STX received while waiting for ACK, discarding and continuing...
+[2026-01-26 23:53:05.444] [INFO ] Serial RX [1 bytes]: 37
+[2026-01-26 23:53:05.444] [INFO ] Serial RX [1 bytes]: 33
+[2026-01-26 23:53:05.444] [INFO ] Serial RX [1 bytes]: 31
+[2026-01-26 23:53:05.444] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:53:05.444] [INFO ] Serial RX [1 bytes]: 37
+[2026-01-26 23:53:05.444] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:53:05.445] [INFO ] Serial RX [1 bytes]: 33
+[2026-01-26 23:53:05.445] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:53:05.445] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:53:05.445] [INFO ] Serial RX [1 bytes]: 31
+[2026-01-26 23:53:05.445] [INFO ] Serial RX [1 bytes]: 20
+[2026-01-26 23:53:05.445] [INFO ] Serial RX [1 bytes]: 20
+[2026-01-26 23:53:05.446] [INFO ] Serial RX [1 bytes]: 20
+[2026-01-26 23:53:05.446] [INFO ] Serial RX [1 bytes]: 20
+[2026-01-26 23:53:05.446] [INFO ] Serial RX [1 bytes]: 20
+[2026-01-26 23:53:05.446] [INFO ] Serial RX [1 bytes]: 20
+[2026-01-26 23:53:05.446] [INFO ] Serial RX [1 bytes]: 32
+[2026-01-26 23:53:05.446] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:53:05.447] [INFO ] Serial RX [1 bytes]: 31
+[2026-01-26 23:53:05.447] [INFO ] Serial RX [1 bytes]: 36
+[2026-01-26 23:53:05.447] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:53:05.447] [INFO ] Serial RX [1 bytes]: 35
+[2026-01-26 23:53:05.447] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:53:05.447] [INFO ] Serial RX [1 bytes]: 31
+[2026-01-26 23:53:05.448] [INFO ] Serial RX [1 bytes]: 32
+[2026-01-26 23:53:05.448] [INFO ] Serial RX [1 bytes]: 32
+[2026-01-26 23:53:05.448] [INFO ] Serial RX [1 bytes]: 35
+[2026-01-26 23:53:05.448] [INFO ] Serial RX [1 bytes]: 35
+[2026-01-26 23:53:05.448] [INFO ] Serial RX [1 bytes]: 33
+[2026-01-26 23:53:05.448] [INFO ] Serial RX [1 bytes]: 32
+[2026-01-26 23:53:05.449] [INFO ] Serial RX [1 bytes]: 61
+[2026-01-26 23:53:05.449] [INFO ] Serial RX [1 bytes]: 00
+[2026-01-26 23:53:05.449] [INFO ] Serial RX [1 bytes]: 04
+[2026-01-26 23:53:05.459] [INFO ] Serial RX [1 bytes]: 00
+[2026-01-26 23:53:05.459] [INFO ] Serial RX [1 bytes]: 4f
+[2026-01-26 23:53:05.459] [INFO ] Serial RX [1 bytes]: 4f
+[2026-01-26 23:53:05.460] [INFO ] Serial RX [1 bytes]: 58
+[2026-01-26 23:53:05.460] [INFO ] Serial RX [1 bytes]: 4e
+[2026-01-26 23:53:05.460] [INFO ] Serial RX [1 bytes]: 03
+[2026-01-26 23:53:05.460] [INFO ] Serial RX [1 bytes]: 72
+[2026-01-26 23:53:05.472] [WARN ] ACK timeout or NACK received
+[2026-01-26 23:53:05.473] [INFO ] Retry attempt 1/1
+[2026-01-26 23:53:05.473] [INFO ] Sending device check request...
+[2026-01-26 23:53:05.473] [INFO ] Serial TX [37 bytes]: 02 44 45 46 41 55 4c 54 5f 54 45 52 4d 00 00 00 00 32 30 32 36 30 31 32 36 32 33 35 33 30 32 41 00 00 00 03 5c
+[2026-01-26 23:53:05.474] [DEBUG] Written 37 bytes
+[2026-01-26 23:53:05.488] [DEBUG] Serial buffer flushed
+[2026-01-26 23:53:05.489] [DEBUG] Waiting for ACK...
+[2026-01-26 23:53:08.435] [INFO ] Serial RX [1 bytes]: 02
+[2026-01-26 23:53:08.436] [DEBUG] STX received while waiting for ACK, discarding and continuing...
+[2026-01-26 23:53:08.436] [INFO ] Serial RX [1 bytes]: 37
+[2026-01-26 23:53:08.436] [INFO ] Serial RX [1 bytes]: 33
+[2026-01-26 23:53:08.436] [INFO ] Serial RX [1 bytes]: 31
+[2026-01-26 23:53:08.436] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:53:08.436] [INFO ] Serial RX [1 bytes]: 37
+[2026-01-26 23:53:08.437] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:53:08.437] [INFO ] Serial RX [1 bytes]: 33
+[2026-01-26 23:53:08.437] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:53:08.437] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:53:08.437] [INFO ] Serial RX [1 bytes]: 31
+[2026-01-26 23:53:08.438] [INFO ] Serial RX [1 bytes]: 20
+[2026-01-26 23:53:08.438] [INFO ] Serial RX [1 bytes]: 20
+[2026-01-26 23:53:08.438] [INFO ] Serial RX [1 bytes]: 20
+[2026-01-26 23:53:08.438] [INFO ] Serial RX [1 bytes]: 20
+[2026-01-26 23:53:08.438] [INFO ] Serial RX [1 bytes]: 20
+[2026-01-26 23:53:08.438] [INFO ] Serial RX [1 bytes]: 20
+[2026-01-26 23:53:08.439] [INFO ] Serial RX [1 bytes]: 32
+[2026-01-26 23:53:08.439] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:53:08.439] [INFO ] Serial RX [1 bytes]: 31
+[2026-01-26 23:53:08.439] [INFO ] Serial RX [1 bytes]: 36
+[2026-01-26 23:53:08.439] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:53:08.439] [INFO ] Serial RX [1 bytes]: 35
+[2026-01-26 23:53:08.451] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:53:08.451] [INFO ] Serial RX [1 bytes]: 31
+[2026-01-26 23:53:08.452] [INFO ] Serial RX [1 bytes]: 32
+[2026-01-26 23:53:08.452] [INFO ] Serial RX [1 bytes]: 32
+[2026-01-26 23:53:08.452] [INFO ] Serial RX [1 bytes]: 35
+[2026-01-26 23:53:08.452] [INFO ] Serial RX [1 bytes]: 35
+[2026-01-26 23:53:08.452] [INFO ] Serial RX [1 bytes]: 33
+[2026-01-26 23:53:08.453] [INFO ] Serial RX [1 bytes]: 32
+[2026-01-26 23:53:08.453] [INFO ] Serial RX [1 bytes]: 61
+[2026-01-26 23:53:08.453] [INFO ] Serial RX [1 bytes]: 00
+[2026-01-26 23:53:08.453] [INFO ] Serial RX [1 bytes]: 04
+[2026-01-26 23:53:08.453] [INFO ] Serial RX [1 bytes]: 00
+[2026-01-26 23:53:08.453] [INFO ] Serial RX [1 bytes]: 4f
+[2026-01-26 23:53:08.454] [INFO ] Serial RX [1 bytes]: 4f
+[2026-01-26 23:53:08.454] [INFO ] Serial RX [1 bytes]: 58
+[2026-01-26 23:53:08.454] [INFO ] Serial RX [1 bytes]: 4e
+[2026-01-26 23:53:08.454] [INFO ] Serial RX [1 bytes]: 03
+[2026-01-26 23:53:08.454] [INFO ] Serial RX [1 bytes]: 72
+[2026-01-26 23:53:08.464] [WARN ] ACK timeout or NACK received
+[2026-01-26 23:53:08.465] [ERROR] SmartroComm error: Failed after 2 attempts
+[2026-01-26 23:53:08.465] [WARN ] No response from port: COM3
+[2026-01-26 23:53:08.465] [INFO ] Closing serial port: COM3
+[2026-01-26 23:53:08.576] [INFO ] Test completed
+[2026-01-26 23:53:08.576] [INFO ] Logger shutting down
+[2026-01-26 23:54:42.556] [INFO ] Logger initialized: device_check_test.log
+[2026-01-26 23:54:42.557] [INFO ] === Device Check Test ===
+[2026-01-26 23:54:42.557] [INFO ] Terminal ID: DEFAULT_TERM
+[2026-01-26 23:54:42.557] [INFO ] Baud Rate: 115200
+[2026-01-26 23:54:42.558] [INFO ] Trying COM port: COM1
+[2026-01-26 23:54:42.558] [INFO ] Opening serial port: \\.\COM1 (Baud: 115200)
+[2026-01-26 23:54:42.559] [DEBUG] Serial port configured: BaudRate=115200
+[2026-01-26 23:54:42.560] [INFO ] Serial port opened successfully: COM1
+[2026-01-26 23:54:42.560] [DEBUG] Created device check request packet: 37 bytes
+[2026-01-26 23:54:42.560] [INFO ] Sending device check request...
+[2026-01-26 23:54:42.560] [INFO ] Serial TX [37 bytes]: 02 44 45 46 41 55 4c 54 5f 54 45 52 4d 00 00 00 00 32 30 32 36 30 31 32 36 32 33 35 34 34 32 41 00 00 00 03 5f
+[2026-01-26 23:54:42.563] [DEBUG] Written 37 bytes
+[2026-01-26 23:54:42.575] [DEBUG] Serial buffer flushed
+[2026-01-26 23:54:42.575] [DEBUG] Waiting for ACK...
+[2026-01-26 23:54:45.584] [ERROR] Timeout waiting for ACK/NACK
+[2026-01-26 23:54:45.585] [WARN ] ACK timeout or NACK received
+[2026-01-26 23:54:45.585] [INFO ] Retry attempt 1/1
+[2026-01-26 23:54:45.585] [INFO ] Sending device check request...
+[2026-01-26 23:54:45.585] [INFO ] Serial TX [37 bytes]: 02 44 45 46 41 55 4c 54 5f 54 45 52 4d 00 00 00 00 32 30 32 36 30 31 32 36 32 33 35 34 34 32 41 00 00 00 03 5f
+[2026-01-26 23:54:45.588] [DEBUG] Written 37 bytes
+[2026-01-26 23:54:45.600] [DEBUG] Serial buffer flushed
+[2026-01-26 23:54:45.601] [DEBUG] Waiting for ACK...
+[2026-01-26 23:54:48.614] [ERROR] Timeout waiting for ACK/NACK
+[2026-01-26 23:54:48.615] [WARN ] ACK timeout or NACK received
+[2026-01-26 23:54:48.615] [ERROR] SmartroComm error: Failed after 2 attempts
+[2026-01-26 23:54:48.615] [WARN ] No response from port: COM1
+[2026-01-26 23:54:48.615] [INFO ] Closing serial port: COM1
+[2026-01-26 23:54:48.631] [INFO ] Trying COM port: COM3
+[2026-01-26 23:54:48.631] [INFO ] Opening serial port: \\.\COM3 (Baud: 115200)
+[2026-01-26 23:54:48.687] [DEBUG] Serial port configured: BaudRate=115200
+[2026-01-26 23:54:48.688] [INFO ] Serial port opened successfully: COM3
+[2026-01-26 23:54:48.688] [DEBUG] Created device check request packet: 37 bytes
+[2026-01-26 23:54:48.688] [INFO ] Sending device check request...
+[2026-01-26 23:54:48.688] [INFO ] Serial TX [37 bytes]: 02 44 45 46 41 55 4c 54 5f 54 45 52 4d 00 00 00 00 32 30 32 36 30 31 32 36 32 33 35 34 34 38 41 00 00 00 03 55
+[2026-01-26 23:54:48.689] [DEBUG] Written 37 bytes
+[2026-01-26 23:54:48.697] [INFO ] Serial RX [1 bytes]: 06
+[2026-01-26 23:54:48.698] [INFO ] Serial RX [1 bytes]: 02
+[2026-01-26 23:54:48.698] [INFO ] Serial RX [1 bytes]: 37
+[2026-01-26 23:54:48.698] [INFO ] Serial RX [1 bytes]: 33
+[2026-01-26 23:54:48.698] [INFO ] Serial RX [1 bytes]: 31
+[2026-01-26 23:54:48.698] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:54:48.698] [INFO ] Serial RX [1 bytes]: 37
+[2026-01-26 23:54:48.699] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:54:48.699] [INFO ] Serial RX [1 bytes]: 33
+[2026-01-26 23:54:48.699] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:54:48.699] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:54:48.699] [INFO ] Serial RX [1 bytes]: 31
+[2026-01-26 23:54:48.699] [INFO ] Serial RX [1 bytes]: 20
+[2026-01-26 23:54:48.700] [INFO ] Serial RX [1 bytes]: 20
+[2026-01-26 23:54:48.700] [INFO ] Serial RX [1 bytes]: 20
+[2026-01-26 23:54:48.700] [INFO ] Serial RX [1 bytes]: 20
+[2026-01-26 23:54:48.700] [INFO ] Serial RX [1 bytes]: 20
+[2026-01-26 23:54:48.700] [INFO ] Serial RX [1 bytes]: 20
+[2026-01-26 23:54:48.700] [INFO ] Serial RX [1 bytes]: 32
+[2026-01-26 23:54:48.700] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:54:48.701] [INFO ] Serial RX [1 bytes]: 31
+[2026-01-26 23:54:48.701] [INFO ] Serial RX [1 bytes]: 36
+[2026-01-26 23:54:48.701] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:54:48.701] [INFO ] Serial RX [1 bytes]: 35
+[2026-01-26 23:54:48.701] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:54:48.701] [INFO ] Serial RX [1 bytes]: 31
+[2026-01-26 23:54:48.701] [INFO ] Serial RX [1 bytes]: 32
+[2026-01-26 23:54:48.702] [INFO ] Serial RX [1 bytes]: 32
+[2026-01-26 23:54:48.702] [INFO ] Serial RX [1 bytes]: 35
+[2026-01-26 23:54:48.702] [INFO ] Serial RX [1 bytes]: 37
+[2026-01-26 23:54:48.702] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:54:48.702] [INFO ] Serial RX [1 bytes]: 31
+[2026-01-26 23:54:48.702] [INFO ] Serial RX [1 bytes]: 61
+[2026-01-26 23:54:48.702] [INFO ] Serial RX [1 bytes]: 00
+[2026-01-26 23:54:48.703] [INFO ] Serial RX [1 bytes]: 04
+[2026-01-26 23:54:48.703] [INFO ] Serial RX [1 bytes]: 00
+[2026-01-26 23:54:48.703] [INFO ] Serial RX [1 bytes]: 4f
+[2026-01-26 23:54:48.703] [INFO ] Serial RX [1 bytes]: 4f
+[2026-01-26 23:54:48.703] [INFO ] Serial RX [1 bytes]: 58
+[2026-01-26 23:54:48.703] [INFO ] Serial RX [1 bytes]: 4e
+[2026-01-26 23:54:48.703] [INFO ] Serial RX [1 bytes]: 03
+[2026-01-26 23:54:48.704] [INFO ] Serial RX [1 bytes]: 70
+[2026-01-26 23:54:48.724] [DEBUG] Serial buffer flushed
+[2026-01-26 23:54:48.725] [DEBUG] Waiting for ACK...
+[2026-01-26 23:54:51.690] [INFO ] Serial RX [1 bytes]: 02
+[2026-01-26 23:54:51.690] [DEBUG] STX received instead of ACK, treating as response start
+[2026-01-26 23:54:51.690] [DEBUG] Receiving response...
+[2026-01-26 23:54:51.690] [DEBUG] STX already in buffer, continuing packet read...
+[2026-01-26 23:54:51.691] [INFO ] Serial RX [1 bytes]: 37
+[2026-01-26 23:54:51.691] [INFO ] Serial RX [1 bytes]: 33
+[2026-01-26 23:54:51.691] [INFO ] Serial RX [1 bytes]: 31
+[2026-01-26 23:54:51.691] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:54:51.691] [INFO ] Serial RX [1 bytes]: 37
+[2026-01-26 23:54:51.691] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:54:51.692] [INFO ] Serial RX [1 bytes]: 33
+[2026-01-26 23:54:51.692] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:54:51.692] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:54:51.692] [INFO ] Serial RX [1 bytes]: 31
+[2026-01-26 23:54:51.692] [INFO ] Serial RX [1 bytes]: 20
+[2026-01-26 23:54:51.692] [INFO ] Serial RX [1 bytes]: 20
+[2026-01-26 23:54:51.693] [INFO ] Serial RX [1 bytes]: 20
+[2026-01-26 23:54:51.693] [INFO ] Serial RX [1 bytes]: 20
+[2026-01-26 23:54:51.693] [INFO ] Serial RX [1 bytes]: 20
+[2026-01-26 23:54:51.693] [INFO ] Serial RX [1 bytes]: 20
+[2026-01-26 23:54:51.693] [INFO ] Serial RX [1 bytes]: 32
+[2026-01-26 23:54:51.693] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:54:51.694] [INFO ] Serial RX [1 bytes]: 31
+[2026-01-26 23:54:51.694] [INFO ] Serial RX [1 bytes]: 36
+[2026-01-26 23:54:51.694] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:54:51.694] [INFO ] Serial RX [1 bytes]: 35
+[2026-01-26 23:54:51.694] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:54:51.694] [INFO ] Serial RX [1 bytes]: 31
+[2026-01-26 23:54:51.694] [INFO ] Serial RX [1 bytes]: 32
+[2026-01-26 23:54:51.695] [INFO ] Serial RX [1 bytes]: 32
+[2026-01-26 23:54:51.695] [INFO ] Serial RX [1 bytes]: 35
+[2026-01-26 23:54:51.695] [INFO ] Serial RX [1 bytes]: 37
+[2026-01-26 23:54:51.695] [INFO ] Serial RX [1 bytes]: 30
+[2026-01-26 23:54:51.695] [INFO ] Serial RX [1 bytes]: 31
+[2026-01-26 23:54:51.695] [INFO ] Serial RX [1 bytes]: 61
+[2026-01-26 23:54:51.695] [INFO ] Serial RX [1 bytes]: 00
+[2026-01-26 23:54:51.696] [INFO ] Serial RX [1 bytes]: 04
+[2026-01-26 23:54:51.696] [INFO ] Serial RX [1 bytes]: 00
+[2026-01-26 23:54:51.696] [DEBUG] Response data length: 4
+[2026-01-26 23:54:51.696] [INFO ] Serial RX [1 bytes]: 4f
+[2026-01-26 23:54:51.696] [INFO ] Serial RX [1 bytes]: 4f
+[2026-01-26 23:54:51.696] [INFO ] Serial RX [1 bytes]: 58
+[2026-01-26 23:54:51.696] [INFO ] Serial RX [1 bytes]: 4e
+[2026-01-26 23:54:51.697] [INFO ] Serial RX [1 bytes]: 03
+[2026-01-26 23:54:51.697] [INFO ] Serial RX [1 bytes]: 70
+[2026-01-26 23:54:51.697] [INFO ] Response packet received: 41 bytes
+[2026-01-26 23:54:51.697] [DEBUG] BCC verified (STX included)
+[2026-01-26 23:54:51.697] [DEBUG] Packet parsed successfully. Data length: 4
+[2026-01-26 23:54:51.697] [INFO ] Device check response parsed:
+[2026-01-26 23:54:51.697] [INFO ]   Card Module: O
+[2026-01-26 23:54:51.698] [INFO ]   RF Module: O
+[2026-01-26 23:54:51.698] [INFO ]   VAN Server: X
+[2026-01-26 23:54:51.698] [INFO ]   Integration Server: N
+[2026-01-26 23:54:51.698] [INFO ] Sending ACK (0x06)
+[2026-01-26 23:54:51.698] [INFO ] Serial TX [1 bytes]: 06
+[2026-01-26 23:54:51.698] [DEBUG] Written 1 bytes
+[2026-01-26 23:54:51.698] [INFO ] Device check request completed successfully
+[2026-01-26 23:54:51.699] [INFO ] Device found on port: COM3
+[2026-01-26 23:54:51.699] [INFO ] Closing serial port: COM3
+[2026-01-26 23:54:51.818] [INFO ] Test completed
+[2026-01-26 23:54:51.819] [INFO ] Logger shutting down
+[2026-01-27 00:00:59.446] [INFO ] Logger initialized: device_check_test.log
+[2026-01-27 00:00:59.447] [INFO ] === Device Check Test ===
+[2026-01-27 00:00:59.448] [INFO ] Terminal ID: DEFAULT_TERM
+[2026-01-27 00:00:59.448] [INFO ] Baud Rate: 115200
+[2026-01-27 00:00:59.448] [DEBUG] Trying COM port: COM1
+[2026-01-27 00:00:59.449] [DEBUG] Opening serial port: \\.\COM1 (Baud: 115200)
+[2026-01-27 00:00:59.450] [DEBUG] Serial port configured: BaudRate=115200
+[2026-01-27 00:00:59.450] [DEBUG] Serial port opened successfully: COM1
+[2026-01-27 00:00:59.450] [DEBUG] Created device check request packet: 37 bytes
+[2026-01-27 00:00:59.450] [DEBUG] Sending device check request...
+[2026-01-27 00:00:59.451] [DEBUG] Serial TX [37 bytes]: 02 44 45 46 41 55 4c 54 5f 54 45 52 4d 00 00 00 00 32 30 32 36 30 31 32 37 30 30 30 30 35 39 41 00 00 00 03 54
+[2026-01-27 00:00:59.453] [DEBUG] Written 37 bytes
+[2026-01-27 00:00:59.471] [DEBUG] Serial buffer flushed
+[2026-01-27 00:00:59.471] [DEBUG] Waiting for ACK...
+[2026-01-27 00:01:04.486] [ERROR] Timeout waiting for ACK/NACK
+[2026-01-27 00:01:04.487] [ERROR] SmartroComm error: ACK timeout or NACK received
+[2026-01-27 00:01:04.487] [WARN ] No response from port: COM1
+[2026-01-27 00:01:04.487] [DEBUG] Closing serial port: COM1
+[2026-01-27 00:01:04.502] [DEBUG] Trying COM port: COM3
+[2026-01-27 00:01:04.502] [DEBUG] Opening serial port: \\.\COM3 (Baud: 115200)
+[2026-01-27 00:01:04.558] [DEBUG] Serial port configured: BaudRate=115200
+[2026-01-27 00:01:04.558] [DEBUG] Serial port opened successfully: COM3
+[2026-01-27 00:01:04.558] [DEBUG] Created device check request packet: 37 bytes
+[2026-01-27 00:01:04.559] [DEBUG] Sending device check request...
+[2026-01-27 00:01:04.559] [DEBUG] Serial TX [37 bytes]: 02 44 45 46 41 55 4c 54 5f 54 45 52 4d 00 00 00 00 32 30 32 36 30 31 32 37 30 30 30 31 30 34 41 00 00 00 03 5d
+[2026-01-27 00:01:04.559] [DEBUG] Written 37 bytes
+[2026-01-27 00:01:04.568] [DEBUG] Serial RX [1 bytes]: 06
+[2026-01-27 00:01:04.568] [DEBUG] Serial RX [1 bytes]: 02
+[2026-01-27 00:01:04.569] [DEBUG] Serial RX [1 bytes]: 37
+[2026-01-27 00:01:04.569] [DEBUG] Serial RX [1 bytes]: 33
+[2026-01-27 00:01:04.569] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:01:04.569] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:01:04.569] [DEBUG] Serial RX [1 bytes]: 37
+[2026-01-27 00:01:04.569] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:01:04.570] [DEBUG] Serial RX [1 bytes]: 33
+[2026-01-27 00:01:04.570] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:01:04.570] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:01:04.570] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:01:04.570] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:01:04.570] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:01:04.571] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:01:04.571] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:01:04.571] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:01:04.571] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:01:04.571] [DEBUG] Serial RX [1 bytes]: 32
+[2026-01-27 00:01:04.571] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:01:04.571] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:01:04.572] [DEBUG] Serial RX [1 bytes]: 36
+[2026-01-27 00:01:04.572] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:01:04.572] [DEBUG] Serial RX [1 bytes]: 35
+[2026-01-27 00:01:04.572] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:01:04.572] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:01:04.572] [DEBUG] Serial RX [1 bytes]: 32
+[2026-01-27 00:01:04.572] [DEBUG] Serial RX [1 bytes]: 33
+[2026-01-27 00:01:04.573] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:01:04.573] [DEBUG] Serial RX [1 bytes]: 34
+[2026-01-27 00:01:04.573] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:01:04.573] [DEBUG] Serial RX [1 bytes]: 37
+[2026-01-27 00:01:04.573] [DEBUG] Serial RX [1 bytes]: 61
+[2026-01-27 00:01:04.573] [DEBUG] Serial RX [1 bytes]: 00
+[2026-01-27 00:01:04.574] [DEBUG] Serial RX [1 bytes]: 04
+[2026-01-27 00:01:04.574] [DEBUG] Serial RX [1 bytes]: 00
+[2026-01-27 00:01:04.574] [DEBUG] Serial RX [1 bytes]: 4f
+[2026-01-27 00:01:04.574] [DEBUG] Serial RX [1 bytes]: 4f
+[2026-01-27 00:01:04.574] [DEBUG] Serial RX [1 bytes]: 58
+[2026-01-27 00:01:04.574] [DEBUG] Serial RX [1 bytes]: 4e
+[2026-01-27 00:01:04.574] [DEBUG] Serial RX [1 bytes]: 03
+[2026-01-27 00:01:04.574] [DEBUG] Serial RX [1 bytes]: 71
+[2026-01-27 00:01:04.595] [DEBUG] Serial buffer flushed
+[2026-01-27 00:01:04.595] [DEBUG] Waiting for ACK...
+[2026-01-27 00:01:07.560] [DEBUG] Serial RX [1 bytes]: 02
+[2026-01-27 00:01:07.561] [DEBUG] STX received instead of ACK, treating as response start
+[2026-01-27 00:01:07.561] [DEBUG] Receiving response...
+[2026-01-27 00:01:07.561] [DEBUG] STX already in buffer, continuing packet read...
+[2026-01-27 00:01:07.561] [DEBUG] Serial RX [1 bytes]: 37
+[2026-01-27 00:01:07.562] [DEBUG] Serial RX [1 bytes]: 33
+[2026-01-27 00:01:07.562] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:01:07.562] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:01:07.562] [DEBUG] Serial RX [1 bytes]: 37
+[2026-01-27 00:01:07.562] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:01:07.562] [DEBUG] Serial RX [1 bytes]: 33
+[2026-01-27 00:01:07.563] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:01:07.563] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:01:07.563] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:01:07.563] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:01:07.563] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:01:07.563] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:01:07.564] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:01:07.564] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:01:07.564] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:01:07.564] [DEBUG] Serial RX [1 bytes]: 32
+[2026-01-27 00:01:07.564] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:01:07.564] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:01:07.565] [DEBUG] Serial RX [1 bytes]: 36
+[2026-01-27 00:01:07.565] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:01:07.565] [DEBUG] Serial RX [1 bytes]: 35
+[2026-01-27 00:01:07.565] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:01:07.565] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:01:07.566] [DEBUG] Serial RX [1 bytes]: 32
+[2026-01-27 00:01:07.566] [DEBUG] Serial RX [1 bytes]: 33
+[2026-01-27 00:01:07.566] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:01:07.566] [DEBUG] Serial RX [1 bytes]: 34
+[2026-01-27 00:01:07.566] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:01:07.567] [DEBUG] Serial RX [1 bytes]: 37
+[2026-01-27 00:01:07.567] [DEBUG] Serial RX [1 bytes]: 61
+[2026-01-27 00:01:07.567] [DEBUG] Serial RX [1 bytes]: 00
+[2026-01-27 00:01:07.567] [DEBUG] Serial RX [1 bytes]: 04
+[2026-01-27 00:01:07.567] [DEBUG] Serial RX [1 bytes]: 00
+[2026-01-27 00:01:07.567] [DEBUG] Response data length: 4
+[2026-01-27 00:01:07.568] [DEBUG] Serial RX [1 bytes]: 4f
+[2026-01-27 00:01:07.568] [DEBUG] Serial RX [1 bytes]: 4f
+[2026-01-27 00:01:07.568] [DEBUG] Serial RX [1 bytes]: 58
+[2026-01-27 00:01:07.568] [DEBUG] Serial RX [1 bytes]: 4e
+[2026-01-27 00:01:07.568] [DEBUG] Serial RX [1 bytes]: 03
+[2026-01-27 00:01:07.568] [DEBUG] Serial RX [1 bytes]: 71
+[2026-01-27 00:01:07.568] [DEBUG] Response packet received: 41 bytes
+[2026-01-27 00:01:07.569] [WARN ] BCC mismatch. Calculated: 0x115, Received: 0x113
+[2026-01-27 00:01:07.569] [ERROR] BCC verification failed
+[2026-01-27 00:01:07.569] [ERROR] SmartroComm error: Failed to parse response
+[2026-01-27 00:01:07.569] [DEBUG] Sending NACK (0x15)
+[2026-01-27 00:01:07.569] [DEBUG] Serial TX [1 bytes]: 15
+[2026-01-27 00:01:07.570] [DEBUG] Written 1 bytes
+[2026-01-27 00:01:07.570] [WARN ] No response from port: COM3
+[2026-01-27 00:01:07.570] [DEBUG] Closing serial port: COM3
+[2026-01-27 00:01:07.690] [INFO ] Test completed
+[2026-01-27 00:01:07.690] [INFO ] Logger shutting down
+[2026-01-27 00:01:24.139] [INFO ] Logger initialized: device_check_test.log
+[2026-01-27 00:01:24.141] [INFO ] === Device Check Test ===
+[2026-01-27 00:01:24.141] [INFO ] Terminal ID: DEFAULT_TERM
+[2026-01-27 00:01:24.141] [INFO ] Baud Rate: 115200
+[2026-01-27 00:01:24.142] [DEBUG] Trying COM port: COM1
+[2026-01-27 00:01:24.142] [DEBUG] Opening serial port: \\.\COM1 (Baud: 115200)
+[2026-01-27 00:01:24.143] [DEBUG] Serial port configured: BaudRate=115200
+[2026-01-27 00:01:24.143] [DEBUG] Serial port opened successfully: COM1
+[2026-01-27 00:01:24.143] [DEBUG] Created device check request packet: 37 bytes
+[2026-01-27 00:01:24.144] [DEBUG] Sending device check request...
+[2026-01-27 00:01:24.144] [DEBUG] Serial TX [37 bytes]: 02 44 45 46 41 55 4c 54 5f 54 45 52 4d 00 00 00 00 32 30 32 36 30 31 32 37 30 30 30 31 32 34 41 00 00 00 03 5f
+[2026-01-27 00:01:24.147] [DEBUG] Written 37 bytes
+[2026-01-27 00:01:24.167] [DEBUG] Serial buffer flushed
+[2026-01-27 00:01:24.167] [DEBUG] Waiting for ACK...
+[2026-01-27 00:01:29.170] [ERROR] Timeout waiting for ACK/NACK
+[2026-01-27 00:01:29.170] [ERROR] SmartroComm error: ACK timeout or NACK received
+[2026-01-27 00:01:29.170] [WARN ] No response from port: COM1
+[2026-01-27 00:01:29.170] [DEBUG] Closing serial port: COM1
+[2026-01-27 00:01:29.185] [DEBUG] Trying COM port: COM3
+[2026-01-27 00:01:29.186] [DEBUG] Opening serial port: \\.\COM3 (Baud: 115200)
+[2026-01-27 00:01:29.241] [DEBUG] Serial port configured: BaudRate=115200
+[2026-01-27 00:01:29.242] [DEBUG] Serial port opened successfully: COM3
+[2026-01-27 00:01:29.242] [DEBUG] Created device check request packet: 37 bytes
+[2026-01-27 00:01:29.242] [DEBUG] Sending device check request...
+[2026-01-27 00:01:29.242] [DEBUG] Serial TX [37 bytes]: 02 44 45 46 41 55 4c 54 5f 54 45 52 4d 00 00 00 00 32 30 32 36 30 31 32 37 30 30 30 31 32 39 41 00 00 00 03 52
+[2026-01-27 00:01:29.243] [DEBUG] Written 37 bytes
+[2026-01-27 00:01:29.252] [DEBUG] Serial RX [1 bytes]: 06
+[2026-01-27 00:01:29.252] [DEBUG] Serial RX [1 bytes]: 02
+[2026-01-27 00:01:29.252] [DEBUG] Serial RX [1 bytes]: 37
+[2026-01-27 00:01:29.252] [DEBUG] Serial RX [1 bytes]: 33
+[2026-01-27 00:01:29.252] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:01:29.253] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:01:29.253] [DEBUG] Serial RX [1 bytes]: 37
+[2026-01-27 00:01:29.253] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:01:29.253] [DEBUG] Serial RX [1 bytes]: 33
+[2026-01-27 00:01:29.253] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:01:29.253] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:01:29.254] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:01:29.254] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:01:29.254] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:01:29.254] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:01:29.254] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:01:29.254] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:01:29.255] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:01:29.255] [DEBUG] Serial RX [1 bytes]: 32
+[2026-01-27 00:01:29.255] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:01:29.255] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:01:29.255] [DEBUG] Serial RX [1 bytes]: 36
+[2026-01-27 00:01:29.255] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:01:29.255] [DEBUG] Serial RX [1 bytes]: 35
+[2026-01-27 00:01:29.256] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:01:29.256] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:01:29.256] [DEBUG] Serial RX [1 bytes]: 32
+[2026-01-27 00:01:29.256] [DEBUG] Serial RX [1 bytes]: 33
+[2026-01-27 00:01:29.256] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:01:29.256] [DEBUG] Serial RX [1 bytes]: 34
+[2026-01-27 00:01:29.256] [DEBUG] Serial RX [1 bytes]: 32
+[2026-01-27 00:01:29.257] [DEBUG] Serial RX [1 bytes]: 33
+[2026-01-27 00:01:29.257] [DEBUG] Serial RX [1 bytes]: 61
+[2026-01-27 00:01:29.257] [DEBUG] Serial RX [1 bytes]: 00
+[2026-01-27 00:01:29.257] [DEBUG] Serial RX [1 bytes]: 04
+[2026-01-27 00:01:29.257] [DEBUG] Serial RX [1 bytes]: 00
+[2026-01-27 00:01:29.257] [DEBUG] Serial RX [1 bytes]: 4f
+[2026-01-27 00:01:29.257] [DEBUG] Serial RX [1 bytes]: 4f
+[2026-01-27 00:01:29.257] [DEBUG] Serial RX [1 bytes]: 58
+[2026-01-27 00:01:29.258] [DEBUG] Serial RX [1 bytes]: 4e
+[2026-01-27 00:01:29.258] [DEBUG] Serial RX [1 bytes]: 03
+[2026-01-27 00:01:29.258] [DEBUG] Serial RX [1 bytes]: 77
+[2026-01-27 00:01:29.279] [DEBUG] Serial buffer flushed
+[2026-01-27 00:01:29.280] [DEBUG] Waiting for ACK...
+[2026-01-27 00:01:32.244] [DEBUG] Serial RX [1 bytes]: 02
+[2026-01-27 00:01:32.244] [DEBUG] STX received instead of ACK, treating as response start
+[2026-01-27 00:01:32.244] [DEBUG] Receiving response...
+[2026-01-27 00:01:32.244] [DEBUG] STX already in buffer, continuing packet read...
+[2026-01-27 00:01:32.245] [DEBUG] Serial RX [1 bytes]: 37
+[2026-01-27 00:01:32.245] [DEBUG] Serial RX [1 bytes]: 33
+[2026-01-27 00:01:32.245] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:01:32.245] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:01:32.245] [DEBUG] Serial RX [1 bytes]: 37
+[2026-01-27 00:01:32.245] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:01:32.245] [DEBUG] Serial RX [1 bytes]: 33
+[2026-01-27 00:01:32.246] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:01:32.246] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:01:32.246] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:01:32.246] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:01:32.246] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:01:32.246] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:01:32.246] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:01:32.247] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:01:32.247] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:01:32.247] [DEBUG] Serial RX [1 bytes]: 32
+[2026-01-27 00:01:32.247] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:01:32.247] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:01:32.247] [DEBUG] Serial RX [1 bytes]: 36
+[2026-01-27 00:01:32.248] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:01:32.248] [DEBUG] Serial RX [1 bytes]: 35
+[2026-01-27 00:01:32.248] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:01:32.248] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:01:32.248] [DEBUG] Serial RX [1 bytes]: 32
+[2026-01-27 00:01:32.248] [DEBUG] Serial RX [1 bytes]: 33
+[2026-01-27 00:01:32.249] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:01:32.249] [DEBUG] Serial RX [1 bytes]: 34
+[2026-01-27 00:01:32.249] [DEBUG] Serial RX [1 bytes]: 32
+[2026-01-27 00:01:32.249] [DEBUG] Serial RX [1 bytes]: 33
+[2026-01-27 00:01:32.249] [DEBUG] Serial RX [1 bytes]: 61
+[2026-01-27 00:01:32.249] [DEBUG] Serial RX [1 bytes]: 00
+[2026-01-27 00:01:32.249] [DEBUG] Serial RX [1 bytes]: 04
+[2026-01-27 00:01:32.250] [DEBUG] Serial RX [1 bytes]: 00
+[2026-01-27 00:01:32.250] [DEBUG] Response data length: 4
+[2026-01-27 00:01:32.250] [DEBUG] Serial RX [1 bytes]: 4f
+[2026-01-27 00:01:32.250] [DEBUG] Serial RX [1 bytes]: 4f
+[2026-01-27 00:01:32.250] [DEBUG] Serial RX [1 bytes]: 58
+[2026-01-27 00:01:32.250] [DEBUG] Serial RX [1 bytes]: 4e
+[2026-01-27 00:01:32.250] [DEBUG] Serial RX [1 bytes]: 03
+[2026-01-27 00:01:32.251] [DEBUG] Serial RX [1 bytes]: 77
+[2026-01-27 00:01:32.251] [DEBUG] Response packet received: 41 bytes
+[2026-01-27 00:01:32.251] [WARN ] BCC mismatch. Calculated: 0x117, Received: 0x119
+[2026-01-27 00:01:32.251] [ERROR] BCC verification failed
+[2026-01-27 00:01:32.251] [ERROR] SmartroComm error: Failed to parse response
+[2026-01-27 00:01:32.251] [DEBUG] Sending NACK (0x15)
+[2026-01-27 00:01:32.251] [DEBUG] Serial TX [1 bytes]: 15
+[2026-01-27 00:01:32.252] [DEBUG] Written 1 bytes
+[2026-01-27 00:01:32.252] [WARN ] No response from port: COM3
+[2026-01-27 00:01:32.253] [DEBUG] Closing serial port: COM3
+[2026-01-27 00:01:32.364] [INFO ] Test completed
+[2026-01-27 00:01:32.364] [INFO ] Logger shutting down
+[2026-01-27 00:02:06.156] [INFO ] Logger initialized: device_check_test.log
+[2026-01-27 00:02:06.157] [INFO ] === Device Check Test ===
+[2026-01-27 00:02:06.158] [INFO ] Terminal ID: DEFAULT_TERM
+[2026-01-27 00:02:06.158] [INFO ] Baud Rate: 115200
+[2026-01-27 00:02:06.159] [DEBUG] Trying COM port: COM1
+[2026-01-27 00:02:06.159] [DEBUG] Opening serial port: \\.\COM1 (Baud: 115200)
+[2026-01-27 00:02:06.160] [DEBUG] Serial port configured: BaudRate=115200
+[2026-01-27 00:02:06.160] [DEBUG] Serial port opened successfully: COM1
+[2026-01-27 00:02:06.160] [DEBUG] Created device check request packet: 37 bytes
+[2026-01-27 00:02:06.161] [DEBUG] Sending device check request...
+[2026-01-27 00:02:06.161] [DEBUG] Serial TX [37 bytes]: 02 44 45 46 41 55 4c 54 5f 54 45 52 4d 00 00 00 00 32 30 32 36 30 31 32 37 30 30 30 32 30 36 41 00 00 00 03 5c
+[2026-01-27 00:02:06.163] [DEBUG] Written 37 bytes
+[2026-01-27 00:02:06.180] [DEBUG] Serial buffer flushed
+[2026-01-27 00:02:06.180] [DEBUG] Waiting for ACK...
+[2026-01-27 00:02:11.186] [ERROR] Timeout waiting for ACK/NACK
+[2026-01-27 00:02:11.186] [ERROR] SmartroComm error: ACK timeout or NACK received
+[2026-01-27 00:02:11.186] [WARN ] No response from port: COM1
+[2026-01-27 00:02:11.187] [DEBUG] Closing serial port: COM1
+[2026-01-27 00:02:11.202] [DEBUG] Trying COM port: COM3
+[2026-01-27 00:02:11.202] [DEBUG] Opening serial port: \\.\COM3 (Baud: 115200)
+[2026-01-27 00:02:11.258] [DEBUG] Serial port configured: BaudRate=115200
+[2026-01-27 00:02:11.259] [DEBUG] Serial port opened successfully: COM3
+[2026-01-27 00:02:11.259] [DEBUG] Created device check request packet: 37 bytes
+[2026-01-27 00:02:11.259] [DEBUG] Sending device check request...
+[2026-01-27 00:02:11.259] [DEBUG] Serial TX [37 bytes]: 02 44 45 46 41 55 4c 54 5f 54 45 52 4d 00 00 00 00 32 30 32 36 30 31 32 37 30 30 30 32 31 31 41 00 00 00 03 5a
+[2026-01-27 00:02:11.259] [DEBUG] Written 37 bytes
+[2026-01-27 00:02:11.269] [DEBUG] Serial RX [1 bytes]: 06
+[2026-01-27 00:02:11.269] [DEBUG] Serial RX [1 bytes]: 02
+[2026-01-27 00:02:11.269] [DEBUG] Serial RX [1 bytes]: 37
+[2026-01-27 00:02:11.269] [DEBUG] Serial RX [1 bytes]: 33
+[2026-01-27 00:02:11.269] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:02:11.270] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:02:11.270] [DEBUG] Serial RX [1 bytes]: 37
+[2026-01-27 00:02:11.270] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:02:11.270] [DEBUG] Serial RX [1 bytes]: 33
+[2026-01-27 00:02:11.270] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:02:11.270] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:02:11.271] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:02:11.271] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:02:11.271] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:02:11.271] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:02:11.271] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:02:11.271] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:02:11.271] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:02:11.272] [DEBUG] Serial RX [1 bytes]: 32
+[2026-01-27 00:02:11.272] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:02:11.272] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:02:11.272] [DEBUG] Serial RX [1 bytes]: 36
+[2026-01-27 00:02:11.272] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:02:11.272] [DEBUG] Serial RX [1 bytes]: 35
+[2026-01-27 00:02:11.272] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:02:11.273] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:02:11.273] [DEBUG] Serial RX [1 bytes]: 32
+[2026-01-27 00:02:11.273] [DEBUG] Serial RX [1 bytes]: 33
+[2026-01-27 00:02:11.273] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:02:11.273] [DEBUG] Serial RX [1 bytes]: 34
+[2026-01-27 00:02:11.273] [DEBUG] Serial RX [1 bytes]: 35
+[2026-01-27 00:02:11.273] [DEBUG] Serial RX [1 bytes]: 36
+[2026-01-27 00:02:11.274] [DEBUG] Serial RX [1 bytes]: 61
+[2026-01-27 00:02:11.274] [DEBUG] Serial RX [1 bytes]: 00
+[2026-01-27 00:02:11.274] [DEBUG] Serial RX [1 bytes]: 04
+[2026-01-27 00:02:11.274] [DEBUG] Serial RX [1 bytes]: 00
+[2026-01-27 00:02:11.274] [DEBUG] Serial RX [1 bytes]: 4f
+[2026-01-27 00:02:11.274] [DEBUG] Serial RX [1 bytes]: 4f
+[2026-01-27 00:02:11.274] [DEBUG] Serial RX [1 bytes]: 58
+[2026-01-27 00:02:11.275] [DEBUG] Serial RX [1 bytes]: 4e
+[2026-01-27 00:02:11.275] [DEBUG] Serial RX [1 bytes]: 03
+[2026-01-27 00:02:11.275] [DEBUG] Serial RX [1 bytes]: 75
+[2026-01-27 00:02:11.295] [DEBUG] Serial buffer flushed
+[2026-01-27 00:02:11.295] [DEBUG] Waiting for ACK...
+[2026-01-27 00:02:14.261] [DEBUG] Serial RX [1 bytes]: 02
+[2026-01-27 00:02:14.261] [DEBUG] STX received instead of ACK, treating as response start
+[2026-01-27 00:02:14.261] [DEBUG] Receiving response...
+[2026-01-27 00:02:14.261] [DEBUG] STX already in buffer, continuing packet read...
+[2026-01-27 00:02:14.262] [DEBUG] Serial RX [1 bytes]: 37
+[2026-01-27 00:02:14.262] [DEBUG] Serial RX [1 bytes]: 33
+[2026-01-27 00:02:14.262] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:02:14.262] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:02:14.262] [DEBUG] Serial RX [1 bytes]: 37
+[2026-01-27 00:02:14.262] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:02:14.263] [DEBUG] Serial RX [1 bytes]: 33
+[2026-01-27 00:02:14.263] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:02:14.263] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:02:14.263] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:02:14.263] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:02:14.263] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:02:14.263] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:02:14.264] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:02:14.264] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:02:14.264] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:02:14.264] [DEBUG] Serial RX [1 bytes]: 32
+[2026-01-27 00:02:14.264] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:02:14.264] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:02:14.265] [DEBUG] Serial RX [1 bytes]: 36
+[2026-01-27 00:02:14.265] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:02:14.265] [DEBUG] Serial RX [1 bytes]: 35
+[2026-01-27 00:02:14.265] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:02:14.265] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:02:14.265] [DEBUG] Serial RX [1 bytes]: 32
+[2026-01-27 00:02:14.265] [DEBUG] Serial RX [1 bytes]: 33
+[2026-01-27 00:02:14.266] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:02:14.266] [DEBUG] Serial RX [1 bytes]: 34
+[2026-01-27 00:02:14.266] [DEBUG] Serial RX [1 bytes]: 35
+[2026-01-27 00:02:14.266] [DEBUG] Serial RX [1 bytes]: 36
+[2026-01-27 00:02:14.266] [DEBUG] Serial RX [1 bytes]: 61
+[2026-01-27 00:02:14.266] [DEBUG] Serial RX [1 bytes]: 00
+[2026-01-27 00:02:14.266] [DEBUG] Serial RX [1 bytes]: 04
+[2026-01-27 00:02:14.267] [DEBUG] Serial RX [1 bytes]: 00
+[2026-01-27 00:02:14.267] [DEBUG] Response data length: 4
+[2026-01-27 00:02:14.267] [DEBUG] Serial RX [1 bytes]: 4f
+[2026-01-27 00:02:14.267] [DEBUG] Serial RX [1 bytes]: 4f
+[2026-01-27 00:02:14.267] [DEBUG] Serial RX [1 bytes]: 58
+[2026-01-27 00:02:14.268] [DEBUG] Serial RX [1 bytes]: 4e
+[2026-01-27 00:02:14.268] [DEBUG] Serial RX [1 bytes]: 03
+[2026-01-27 00:02:14.268] [DEBUG] Serial RX [1 bytes]: 75
+[2026-01-27 00:02:14.268] [DEBUG] Response packet received: 41 bytes
+[2026-01-27 00:02:14.268] [DEBUG] BCC verified (STX included)
+[2026-01-27 00:02:14.268] [DEBUG] Packet parsed successfully. Data length: 4
+[2026-01-27 00:02:14.268] [INFO ] Device check response: O/O/X/N
+[2026-01-27 00:02:14.269] [DEBUG] Sending ACK (0x06)
+[2026-01-27 00:02:14.269] [DEBUG] Serial TX [1 bytes]: 06
+[2026-01-27 00:02:14.269] [DEBUG] Written 1 bytes
+[2026-01-27 00:02:14.269] [DEBUG] Device check request completed successfully
+[2026-01-27 00:02:14.270] [INFO ] Saved working port: COM3
+[2026-01-27 00:02:14.270] [INFO ] Device found on port: COM3
+[2026-01-27 00:02:14.270] [DEBUG] Closing serial port: COM3
+[2026-01-27 00:02:14.383] [INFO ] Test completed
+[2026-01-27 00:02:14.383] [INFO ] Logger shutting down
+[2026-01-27 00:03:00.662] [INFO ] Logger initialized: device_check_test.log
+[2026-01-27 00:03:00.663] [INFO ] === Device Check Test ===
+[2026-01-27 00:03:00.663] [INFO ] Terminal ID: DEFAULT_TERM
+[2026-01-27 00:03:00.663] [INFO ] Baud Rate: 115200
+[2026-01-27 00:03:00.664] [INFO ] Loaded saved port: COM3
+[2026-01-27 00:03:00.664] [INFO ] Using saved COM Port: COM3
+[2026-01-27 00:03:00.664] [DEBUG] Trying COM port: COM3
+[2026-01-27 00:03:00.664] [DEBUG] Opening serial port: \\.\COM3 (Baud: 115200)
+[2026-01-27 00:03:00.720] [DEBUG] Serial port configured: BaudRate=115200
+[2026-01-27 00:03:00.721] [DEBUG] Serial port opened successfully: COM3
+[2026-01-27 00:03:00.721] [DEBUG] Created device check request packet: 37 bytes
+[2026-01-27 00:03:00.721] [DEBUG] Sending device check request...
+[2026-01-27 00:03:00.721] [DEBUG] Serial TX [37 bytes]: 02 44 45 46 41 55 4c 54 5f 54 45 52 4d 00 00 00 00 32 30 32 36 30 31 32 37 30 30 30 33 30 30 41 00 00 00 03 5b
+[2026-01-27 00:03:00.722] [DEBUG] Written 37 bytes
+[2026-01-27 00:03:00.731] [DEBUG] Serial RX [1 bytes]: 06
+[2026-01-27 00:03:00.731] [DEBUG] Serial RX [1 bytes]: 02
+[2026-01-27 00:03:00.731] [DEBUG] Serial RX [1 bytes]: 37
+[2026-01-27 00:03:00.731] [DEBUG] Serial RX [1 bytes]: 33
+[2026-01-27 00:03:00.732] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:03:00.732] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:03:00.732] [DEBUG] Serial RX [1 bytes]: 37
+[2026-01-27 00:03:00.732] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:03:00.732] [DEBUG] Serial RX [1 bytes]: 33
+[2026-01-27 00:03:00.732] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:03:00.733] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:03:00.733] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:03:00.733] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:03:00.733] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:03:00.733] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:03:00.734] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:03:00.734] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:03:00.734] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:03:00.734] [DEBUG] Serial RX [1 bytes]: 32
+[2026-01-27 00:03:00.734] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:03:00.735] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:03:00.735] [DEBUG] Serial RX [1 bytes]: 36
+[2026-01-27 00:03:00.735] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:03:00.735] [DEBUG] Serial RX [1 bytes]: 35
+[2026-01-27 00:03:00.735] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:03:00.736] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:03:00.736] [DEBUG] Serial RX [1 bytes]: 32
+[2026-01-27 00:03:00.736] [DEBUG] Serial RX [1 bytes]: 33
+[2026-01-27 00:03:00.736] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:03:00.736] [DEBUG] Serial RX [1 bytes]: 35
+[2026-01-27 00:03:00.737] [DEBUG] Serial RX [1 bytes]: 34
+[2026-01-27 00:03:00.737] [DEBUG] Serial RX [1 bytes]: 33
+[2026-01-27 00:03:00.737] [DEBUG] Serial RX [1 bytes]: 61
+[2026-01-27 00:03:00.737] [DEBUG] Serial RX [1 bytes]: 00
+[2026-01-27 00:03:00.737] [DEBUG] Serial RX [1 bytes]: 04
+[2026-01-27 00:03:00.737] [DEBUG] Serial RX [1 bytes]: 00
+[2026-01-27 00:03:00.738] [DEBUG] Serial RX [1 bytes]: 4f
+[2026-01-27 00:03:00.738] [DEBUG] Serial RX [1 bytes]: 4f
+[2026-01-27 00:03:00.738] [DEBUG] Serial RX [1 bytes]: 58
+[2026-01-27 00:03:00.738] [DEBUG] Serial RX [1 bytes]: 4e
+[2026-01-27 00:03:00.739] [DEBUG] Serial RX [1 bytes]: 03
+[2026-01-27 00:03:00.739] [DEBUG] Serial RX [1 bytes]: 70
+[2026-01-27 00:03:00.754] [DEBUG] Serial buffer flushed
+[2026-01-27 00:03:00.755] [DEBUG] Waiting for ACK...
+[2026-01-27 00:03:03.724] [DEBUG] Serial RX [1 bytes]: 02
+[2026-01-27 00:03:03.724] [DEBUG] STX received instead of ACK, treating as response start
+[2026-01-27 00:03:03.724] [DEBUG] Receiving response...
+[2026-01-27 00:03:03.724] [DEBUG] STX already in buffer, continuing packet read...
+[2026-01-27 00:03:03.725] [DEBUG] Serial RX [1 bytes]: 37
+[2026-01-27 00:03:03.725] [DEBUG] Serial RX [1 bytes]: 33
+[2026-01-27 00:03:03.725] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:03:03.725] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:03:03.725] [DEBUG] Serial RX [1 bytes]: 37
+[2026-01-27 00:03:03.726] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:03:03.726] [DEBUG] Serial RX [1 bytes]: 33
+[2026-01-27 00:03:03.726] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:03:03.726] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:03:03.727] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:03:03.727] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:03:03.727] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:03:03.727] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:03:03.728] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:03:03.728] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:03:03.728] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:03:03.728] [DEBUG] Serial RX [1 bytes]: 32
+[2026-01-27 00:03:03.729] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:03:03.729] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:03:03.729] [DEBUG] Serial RX [1 bytes]: 36
+[2026-01-27 00:03:03.729] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:03:03.729] [DEBUG] Serial RX [1 bytes]: 35
+[2026-01-27 00:03:03.729] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:03:03.730] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:03:03.730] [DEBUG] Serial RX [1 bytes]: 32
+[2026-01-27 00:03:03.730] [DEBUG] Serial RX [1 bytes]: 33
+[2026-01-27 00:03:03.730] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:03:03.730] [DEBUG] Serial RX [1 bytes]: 35
+[2026-01-27 00:03:03.730] [DEBUG] Serial RX [1 bytes]: 34
+[2026-01-27 00:03:03.730] [DEBUG] Serial RX [1 bytes]: 33
+[2026-01-27 00:03:03.731] [DEBUG] Serial RX [1 bytes]: 61
+[2026-01-27 00:03:03.731] [DEBUG] Serial RX [1 bytes]: 00
+[2026-01-27 00:03:03.731] [DEBUG] Serial RX [1 bytes]: 04
+[2026-01-27 00:03:03.731] [DEBUG] Serial RX [1 bytes]: 00
+[2026-01-27 00:03:03.731] [DEBUG] Response data length: 4
+[2026-01-27 00:03:03.731] [DEBUG] Serial RX [1 bytes]: 4f
+[2026-01-27 00:03:03.731] [DEBUG] Serial RX [1 bytes]: 4f
+[2026-01-27 00:03:03.732] [DEBUG] Serial RX [1 bytes]: 58
+[2026-01-27 00:03:03.732] [DEBUG] Serial RX [1 bytes]: 4e
+[2026-01-27 00:03:03.732] [DEBUG] Serial RX [1 bytes]: 03
+[2026-01-27 00:03:03.732] [DEBUG] Serial RX [1 bytes]: 70
+[2026-01-27 00:03:03.732] [DEBUG] Response packet received: 41 bytes
+[2026-01-27 00:03:03.732] [DEBUG] BCC verified (STX included)
+[2026-01-27 00:03:03.732] [DEBUG] Packet parsed successfully. Data length: 4
+[2026-01-27 00:03:03.733] [INFO ] Device check response: O/O/X/N
+[2026-01-27 00:03:03.733] [DEBUG] Sending ACK (0x06)
+[2026-01-27 00:03:03.733] [DEBUG] Serial TX [1 bytes]: 06
+[2026-01-27 00:03:03.734] [DEBUG] Written 1 bytes
+[2026-01-27 00:03:03.734] [DEBUG] Device check request completed successfully
+[2026-01-27 00:03:03.734] [INFO ] Saved working port: COM3
+[2026-01-27 00:03:03.735] [INFO ] Device found on port: COM3
+[2026-01-27 00:03:03.735] [DEBUG] Closing serial port: COM3
+[2026-01-27 00:03:03.849] [INFO ] Test completed
+[2026-01-27 00:03:03.849] [INFO ] Logger shutting down
+[2026-01-27 00:08:26.583] [INFO ] Logger initialized: device_check_test.log
+[2026-01-27 00:08:26.584] [INFO ] === Device Check Test ===
+[2026-01-27 00:08:26.584] [INFO ] Terminal ID: DEFAULT_TERM
+[2026-01-27 00:08:26.585] [INFO ] Baud Rate: 115200
+[2026-01-27 00:08:26.585] [INFO ] Loaded saved port: COM3
+[2026-01-27 00:08:26.585] [INFO ] Using saved COM Port: COM3
+[2026-01-27 00:08:26.585] [DEBUG] Trying COM port: COM3
+[2026-01-27 00:08:26.585] [DEBUG] Opening serial port: \\.\COM3 (Baud: 115200)
+[2026-01-27 00:08:26.642] [DEBUG] Serial port configured: BaudRate=115200
+[2026-01-27 00:08:26.642] [DEBUG] Serial port opened successfully: COM3
+[2026-01-27 00:08:26.643] [DEBUG] Created device check request packet: 37 bytes
+[2026-01-27 00:08:26.643] [DEBUG] Sending device check request...
+[2026-01-27 00:08:26.643] [DEBUG] Serial TX [37 bytes]: 02 44 45 46 41 55 4c 54 5f 54 45 52 4d 00 00 00 00 32 30 32 36 30 31 32 37 30 30 30 38 32 36 41 00 00 00 03 54
+[2026-01-27 00:08:26.643] [DEBUG] Written 37 bytes
+[2026-01-27 00:08:26.652] [DEBUG] Serial RX [1 bytes]: 06
+[2026-01-27 00:08:26.652] [DEBUG] Serial RX [1 bytes]: 02
+[2026-01-27 00:08:26.652] [DEBUG] Serial RX [1 bytes]: 37
+[2026-01-27 00:08:26.653] [DEBUG] Serial RX [1 bytes]: 33
+[2026-01-27 00:08:26.653] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:08:26.653] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:08:26.653] [DEBUG] Serial RX [1 bytes]: 37
+[2026-01-27 00:08:26.653] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:08:26.653] [DEBUG] Serial RX [1 bytes]: 33
+[2026-01-27 00:08:26.654] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:08:26.654] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:08:26.654] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:08:26.654] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:08:26.654] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:08:26.654] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:08:26.655] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:08:26.655] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:08:26.655] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:08:26.655] [DEBUG] Serial RX [1 bytes]: 32
+[2026-01-27 00:08:26.655] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:08:26.656] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:08:26.656] [DEBUG] Serial RX [1 bytes]: 36
+[2026-01-27 00:08:26.656] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:08:26.656] [DEBUG] Serial RX [1 bytes]: 35
+[2026-01-27 00:08:26.656] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:08:26.656] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:08:26.657] [DEBUG] Serial RX [1 bytes]: 32
+[2026-01-27 00:08:26.657] [DEBUG] Serial RX [1 bytes]: 33
+[2026-01-27 00:08:26.657] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:08:26.657] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:08:26.657] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:08:26.658] [DEBUG] Serial RX [1 bytes]: 37
+[2026-01-27 00:08:26.658] [DEBUG] Serial RX [1 bytes]: 61
+[2026-01-27 00:08:26.658] [DEBUG] Serial RX [1 bytes]: 00
+[2026-01-27 00:08:26.658] [DEBUG] Serial RX [1 bytes]: 04
+[2026-01-27 00:08:26.658] [DEBUG] Serial RX [1 bytes]: 00
+[2026-01-27 00:08:26.659] [DEBUG] Serial RX [1 bytes]: 4f
+[2026-01-27 00:08:26.659] [DEBUG] Serial RX [1 bytes]: 4f
+[2026-01-27 00:08:26.659] [DEBUG] Serial RX [1 bytes]: 58
+[2026-01-27 00:08:26.659] [DEBUG] Serial RX [1 bytes]: 4e
+[2026-01-27 00:08:26.659] [DEBUG] Serial RX [1 bytes]: 03
+[2026-01-27 00:08:26.660] [DEBUG] Serial RX [1 bytes]: 75
+[2026-01-27 00:08:26.675] [DEBUG] Serial buffer flushed
+[2026-01-27 00:08:26.675] [DEBUG] Waiting for ACK...
+[2026-01-27 00:08:29.645] [DEBUG] Serial RX [1 bytes]: 02
+[2026-01-27 00:08:29.645] [DEBUG] STX received while waiting for ACK, discarding and continuing...
+[2026-01-27 00:08:29.646] [DEBUG] Serial RX [1 bytes]: 37
+[2026-01-27 00:08:29.646] [DEBUG] Serial RX [1 bytes]: 33
+[2026-01-27 00:08:29.646] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:08:29.646] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:08:29.647] [DEBUG] Serial RX [1 bytes]: 37
+[2026-01-27 00:08:29.647] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:08:29.647] [DEBUG] Serial RX [1 bytes]: 33
+[2026-01-27 00:08:29.647] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:08:29.647] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:08:29.648] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:08:29.648] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:08:29.648] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:08:29.648] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:08:29.648] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:08:29.649] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:08:29.649] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:08:29.649] [DEBUG] Serial RX [1 bytes]: 32
+[2026-01-27 00:08:29.649] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:08:29.649] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:08:29.649] [DEBUG] Serial RX [1 bytes]: 36
+[2026-01-27 00:08:29.650] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:08:29.650] [DEBUG] Serial RX [1 bytes]: 35
+[2026-01-27 00:08:29.650] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:08:29.650] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:08:29.650] [DEBUG] Serial RX [1 bytes]: 32
+[2026-01-27 00:08:29.651] [DEBUG] Serial RX [1 bytes]: 33
+[2026-01-27 00:08:29.651] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:08:29.651] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:08:29.651] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:08:29.651] [DEBUG] Serial RX [1 bytes]: 37
+[2026-01-27 00:08:29.651] [DEBUG] Serial RX [1 bytes]: 61
+[2026-01-27 00:08:29.652] [DEBUG] Serial RX [1 bytes]: 00
+[2026-01-27 00:08:29.652] [DEBUG] Serial RX [1 bytes]: 04
+[2026-01-27 00:08:29.652] [DEBUG] Serial RX [1 bytes]: 00
+[2026-01-27 00:08:29.652] [DEBUG] Serial RX [1 bytes]: 4f
+[2026-01-27 00:08:29.652] [DEBUG] Serial RX [1 bytes]: 4f
+[2026-01-27 00:08:29.652] [DEBUG] Serial RX [1 bytes]: 58
+[2026-01-27 00:08:29.652] [DEBUG] Serial RX [1 bytes]: 4e
+[2026-01-27 00:08:29.653] [DEBUG] Serial RX [1 bytes]: 03
+[2026-01-27 00:08:29.653] [DEBUG] Serial RX [1 bytes]: 75
+[2026-01-27 00:08:29.677] [ERROR] SmartroComm error: ACK timeout or NACK received
+[2026-01-27 00:08:29.678] [WARN ] No response from port: COM3
+[2026-01-27 00:08:29.678] [DEBUG] Closing serial port: COM3
+[2026-01-27 00:08:29.805] [INFO ] Test completed
+[2026-01-27 00:08:29.805] [INFO ] Logger shutting down
+[2026-01-27 00:08:41.051] [INFO ] Logger initialized: device_check_test.log
+[2026-01-27 00:08:41.052] [INFO ] === Device Check Test ===
+[2026-01-27 00:08:41.052] [INFO ] Terminal ID: DEFAULT_TERM
+[2026-01-27 00:08:41.052] [INFO ] Baud Rate: 115200
+[2026-01-27 00:08:41.052] [INFO ] Loaded saved port: COM3
+[2026-01-27 00:08:41.053] [INFO ] Using saved COM Port: COM3
+[2026-01-27 00:08:41.053] [DEBUG] Trying COM port: COM3
+[2026-01-27 00:08:41.053] [DEBUG] Opening serial port: \\.\COM3 (Baud: 115200)
+[2026-01-27 00:08:41.109] [DEBUG] Serial port configured: BaudRate=115200
+[2026-01-27 00:08:41.109] [DEBUG] Serial port opened successfully: COM3
+[2026-01-27 00:08:41.110] [DEBUG] Created device check request packet: 37 bytes
+[2026-01-27 00:08:41.110] [DEBUG] Sending device check request...
+[2026-01-27 00:08:41.110] [DEBUG] Serial TX [37 bytes]: 02 44 45 46 41 55 4c 54 5f 54 45 52 4d 00 00 00 00 32 30 32 36 30 31 32 37 30 30 30 38 34 31 41 00 00 00 03 55
+[2026-01-27 00:08:41.111] [DEBUG] Written 37 bytes
+[2026-01-27 00:08:41.119] [DEBUG] Serial RX [1 bytes]: 06
+[2026-01-27 00:08:41.120] [DEBUG] Serial RX [1 bytes]: 02
+[2026-01-27 00:08:41.120] [DEBUG] Serial RX [1 bytes]: 37
+[2026-01-27 00:08:41.120] [DEBUG] Serial RX [1 bytes]: 33
+[2026-01-27 00:08:41.121] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:08:41.121] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:08:41.121] [DEBUG] Serial RX [1 bytes]: 37
+[2026-01-27 00:08:41.121] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:08:41.122] [DEBUG] Serial RX [1 bytes]: 33
+[2026-01-27 00:08:41.122] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:08:41.122] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:08:41.122] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:08:41.122] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:08:41.123] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:08:41.123] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:08:41.123] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:08:41.123] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:08:41.124] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:08:41.124] [DEBUG] Serial RX [1 bytes]: 32
+[2026-01-27 00:08:41.124] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:08:41.124] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:08:41.124] [DEBUG] Serial RX [1 bytes]: 36
+[2026-01-27 00:08:41.125] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:08:41.125] [DEBUG] Serial RX [1 bytes]: 35
+[2026-01-27 00:08:41.125] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:08:41.126] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:08:41.126] [DEBUG] Serial RX [1 bytes]: 32
+[2026-01-27 00:08:41.126] [DEBUG] Serial RX [1 bytes]: 33
+[2026-01-27 00:08:41.126] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:08:41.126] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:08:41.127] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:08:41.127] [DEBUG] Serial RX [1 bytes]: 33
+[2026-01-27 00:08:41.127] [DEBUG] Serial RX [1 bytes]: 61
+[2026-01-27 00:08:41.127] [DEBUG] Serial RX [1 bytes]: 00
+[2026-01-27 00:08:41.127] [DEBUG] Serial RX [1 bytes]: 04
+[2026-01-27 00:08:41.128] [DEBUG] Serial RX [1 bytes]: 00
+[2026-01-27 00:08:41.128] [DEBUG] Serial RX [1 bytes]: 4f
+[2026-01-27 00:08:41.128] [DEBUG] Serial RX [1 bytes]: 4f
+[2026-01-27 00:08:41.128] [DEBUG] Serial RX [1 bytes]: 58
+[2026-01-27 00:08:41.128] [DEBUG] Serial RX [1 bytes]: 4e
+[2026-01-27 00:08:41.128] [DEBUG] Serial RX [1 bytes]: 03
+[2026-01-27 00:08:41.129] [DEBUG] Serial RX [1 bytes]: 70
+[2026-01-27 00:08:41.151] [DEBUG] Serial buffer flushed
+[2026-01-27 00:08:41.152] [DEBUG] Waiting for ACK...
+[2026-01-27 00:08:44.118] [DEBUG] Serial RX [1 bytes]: 02
+[2026-01-27 00:08:44.119] [DEBUG] STX received while waiting for ACK, discarding and continuing...
+[2026-01-27 00:08:44.119] [DEBUG] Serial RX [1 bytes]: 37
+[2026-01-27 00:08:44.119] [DEBUG] Serial RX [1 bytes]: 33
+[2026-01-27 00:08:44.120] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:08:44.120] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:08:44.120] [DEBUG] Serial RX [1 bytes]: 37
+[2026-01-27 00:08:44.120] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:08:44.121] [DEBUG] Serial RX [1 bytes]: 33
+[2026-01-27 00:08:44.121] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:08:44.121] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:08:44.121] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:08:44.121] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:08:44.121] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:08:44.122] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:08:44.122] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:08:44.122] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:08:44.122] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:08:44.122] [DEBUG] Serial RX [1 bytes]: 32
+[2026-01-27 00:08:44.122] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:08:44.123] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:08:44.123] [DEBUG] Serial RX [1 bytes]: 36
+[2026-01-27 00:08:44.123] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:08:44.123] [DEBUG] Serial RX [1 bytes]: 35
+[2026-01-27 00:08:44.123] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:08:44.124] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:08:44.124] [DEBUG] Serial RX [1 bytes]: 32
+[2026-01-27 00:08:44.124] [DEBUG] Serial RX [1 bytes]: 33
+[2026-01-27 00:08:44.124] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:08:44.124] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:08:44.124] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:08:44.125] [DEBUG] Serial RX [1 bytes]: 33
+[2026-01-27 00:08:44.125] [DEBUG] Serial RX [1 bytes]: 61
+[2026-01-27 00:08:44.125] [DEBUG] Serial RX [1 bytes]: 00
+[2026-01-27 00:08:44.125] [DEBUG] Serial RX [1 bytes]: 04
+[2026-01-27 00:08:44.125] [DEBUG] Serial RX [1 bytes]: 00
+[2026-01-27 00:08:44.125] [DEBUG] Serial RX [1 bytes]: 4f
+[2026-01-27 00:08:44.126] [DEBUG] Serial RX [1 bytes]: 4f
+[2026-01-27 00:08:44.126] [DEBUG] Serial RX [1 bytes]: 58
+[2026-01-27 00:08:44.126] [DEBUG] Serial RX [1 bytes]: 4e
+[2026-01-27 00:08:44.126] [DEBUG] Serial RX [1 bytes]: 03
+[2026-01-27 00:08:44.126] [DEBUG] Serial RX [1 bytes]: 70
+[2026-01-27 00:08:44.150] [ERROR] SmartroComm error: ACK timeout or NACK received
+[2026-01-27 00:08:44.151] [WARN ] No response from port: COM3
+[2026-01-27 00:08:44.151] [DEBUG] Closing serial port: COM3
+[2026-01-27 00:08:44.275] [INFO ] Test completed
+[2026-01-27 00:08:44.275] [INFO ] Logger shutting down
+[2026-01-27 00:11:49.270] [INFO ] Logger initialized: device_check_test.log
+[2026-01-27 00:11:49.271] [INFO ] === Device Check Test ===
+[2026-01-27 00:11:49.272] [INFO ] Terminal ID: DEFAULT_TERM
+[2026-01-27 00:11:49.272] [INFO ] Baud Rate: 115200
+[2026-01-27 00:11:49.272] [INFO ] Loaded saved port: COM3
+[2026-01-27 00:11:49.272] [INFO ] Using saved COM Port: COM3
+[2026-01-27 00:11:49.272] [DEBUG] Trying COM port: COM3
+[2026-01-27 00:11:49.273] [DEBUG] Opening serial port: \\.\COM3 (Baud: 115200)
+[2026-01-27 00:11:49.328] [DEBUG] Serial port configured: BaudRate=115200
+[2026-01-27 00:11:49.329] [DEBUG] Serial port opened successfully: COM3
+[2026-01-27 00:11:49.329] [DEBUG] Created device check request packet: 37 bytes
+[2026-01-27 00:11:49.329] [DEBUG] Sending device check request...
+[2026-01-27 00:11:49.349] [DEBUG] Serial buffer flushed
+[2026-01-27 00:11:49.350] [DEBUG] Serial TX [37 bytes]: 02 44 45 46 41 55 4c 54 5f 54 45 52 4d 00 00 00 00 32 30 32 36 30 31 32 37 30 30 31 31 34 39 41 00 00 00 03 55
+[2026-01-27 00:11:49.350] [DEBUG] Written 37 bytes
+[2026-01-27 00:11:49.351] [DEBUG] Waiting for ACK...
+[2026-01-27 00:11:49.354] [DEBUG] Serial RX [1 bytes]: 06
+[2026-01-27 00:11:49.355] [DEBUG] ACK received (0x06)
+[2026-01-27 00:11:49.355] [DEBUG] Serial RX [1 bytes]: 02
+[2026-01-27 00:11:49.355] [DEBUG] STX received immediately after ACK
+[2026-01-27 00:11:49.355] [DEBUG] Receiving response...
+[2026-01-27 00:11:49.355] [DEBUG] STX already received, continuing packet read...
+[2026-01-27 00:11:49.356] [DEBUG] Serial RX [1 bytes]: 37
+[2026-01-27 00:11:49.356] [DEBUG] Serial RX [1 bytes]: 33
+[2026-01-27 00:11:49.356] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:11:49.356] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:11:49.356] [DEBUG] Serial RX [1 bytes]: 37
+[2026-01-27 00:11:49.356] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:11:49.371] [DEBUG] Serial RX [1 bytes]: 33
+[2026-01-27 00:11:49.371] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:11:49.371] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:11:49.371] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:11:49.371] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:11:49.372] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:11:49.372] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:11:49.372] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:11:49.372] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:11:49.372] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:11:49.372] [DEBUG] Serial RX [1 bytes]: 32
+[2026-01-27 00:11:49.373] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:11:49.373] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:11:49.373] [DEBUG] Serial RX [1 bytes]: 36
+[2026-01-27 00:11:49.373] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:11:49.373] [DEBUG] Serial RX [1 bytes]: 35
+[2026-01-27 00:11:49.373] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:11:49.374] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:11:49.374] [DEBUG] Serial RX [1 bytes]: 32
+[2026-01-27 00:11:49.374] [DEBUG] Serial RX [1 bytes]: 33
+[2026-01-27 00:11:49.374] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:11:49.374] [DEBUG] Serial RX [1 bytes]: 34
+[2026-01-27 00:11:49.375] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:11:49.375] [DEBUG] Serial RX [1 bytes]: 32
+[2026-01-27 00:11:49.375] [DEBUG] Serial RX [1 bytes]: 61
+[2026-01-27 00:11:49.375] [DEBUG] Serial RX [1 bytes]: 00
+[2026-01-27 00:11:49.375] [DEBUG] Serial RX [1 bytes]: 04
+[2026-01-27 00:11:49.375] [DEBUG] Serial RX [1 bytes]: 00
+[2026-01-27 00:11:49.376] [DEBUG] Response data length: 4
+[2026-01-27 00:11:49.376] [DEBUG] Serial RX [1 bytes]: 4f
+[2026-01-27 00:11:49.376] [DEBUG] Serial RX [1 bytes]: 4f
+[2026-01-27 00:11:49.376] [DEBUG] Serial RX [1 bytes]: 58
+[2026-01-27 00:11:49.376] [DEBUG] Serial RX [1 bytes]: 4e
+[2026-01-27 00:11:49.376] [DEBUG] Serial RX [1 bytes]: 03
+[2026-01-27 00:11:49.377] [DEBUG] Serial RX [1 bytes]: 74
+[2026-01-27 00:11:49.377] [DEBUG] Response packet received: 41 bytes
+[2026-01-27 00:11:49.377] [DEBUG] BCC verified (STX included)
+[2026-01-27 00:11:49.377] [DEBUG] Packet parsed successfully. Data length: 4
+[2026-01-27 00:11:49.377] [INFO ] Device check response: O/O/X/N
+[2026-01-27 00:11:49.377] [DEBUG] Sending ACK (0x06)
+[2026-01-27 00:11:49.377] [DEBUG] Serial TX [1 bytes]: 06
+[2026-01-27 00:11:49.378] [DEBUG] Written 1 bytes
+[2026-01-27 00:11:49.378] [DEBUG] Device check request completed successfully
+[2026-01-27 00:11:49.379] [INFO ] Saved working port: COM3
+[2026-01-27 00:11:49.379] [INFO ] Device found on port: COM3
+[2026-01-27 00:11:49.379] [DEBUG] Closing serial port: COM3
+[2026-01-27 00:11:49.493] [INFO ] Test completed
+[2026-01-27 00:11:49.493] [INFO ] Logger shutting down
+[2026-01-27 00:11:55.356] [INFO ] Logger initialized: device_check_test.log
+[2026-01-27 00:11:55.358] [INFO ] === Device Check Test ===
+[2026-01-27 00:11:55.358] [INFO ] Terminal ID: DEFAULT_TERM
+[2026-01-27 00:11:55.358] [INFO ] Baud Rate: 115200
+[2026-01-27 00:11:55.359] [INFO ] Loaded saved port: COM3
+[2026-01-27 00:11:55.359] [INFO ] Using saved COM Port: COM3
+[2026-01-27 00:11:55.359] [DEBUG] Trying COM port: COM3
+[2026-01-27 00:11:55.359] [DEBUG] Opening serial port: \\.\COM3 (Baud: 115200)
+[2026-01-27 00:11:55.401] [DEBUG] Serial port configured: BaudRate=115200
+[2026-01-27 00:11:55.401] [DEBUG] Serial port opened successfully: COM3
+[2026-01-27 00:11:55.401] [DEBUG] Created device check request packet: 37 bytes
+[2026-01-27 00:11:55.401] [DEBUG] Sending device check request...
+[2026-01-27 00:11:55.420] [DEBUG] Serial buffer flushed
+[2026-01-27 00:11:55.420] [DEBUG] Serial TX [37 bytes]: 02 44 45 46 41 55 4c 54 5f 54 45 52 4d 00 00 00 00 32 30 32 36 30 31 32 37 30 30 31 31 35 35 41 00 00 00 03 58
+[2026-01-27 00:11:55.421] [DEBUG] Written 37 bytes
+[2026-01-27 00:11:55.421] [DEBUG] Waiting for ACK...
+[2026-01-27 00:11:55.426] [DEBUG] Serial RX [1 bytes]: 06
+[2026-01-27 00:11:55.426] [DEBUG] ACK received (0x06)
+[2026-01-27 00:11:55.426] [DEBUG] Serial RX [1 bytes]: 02
+[2026-01-27 00:11:55.427] [DEBUG] STX received immediately after ACK
+[2026-01-27 00:11:55.427] [DEBUG] Receiving response...
+[2026-01-27 00:11:55.427] [DEBUG] STX already received, continuing packet read...
+[2026-01-27 00:11:55.427] [DEBUG] Serial RX [1 bytes]: 37
+[2026-01-27 00:11:55.427] [DEBUG] Serial RX [1 bytes]: 33
+[2026-01-27 00:11:55.428] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:11:55.428] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:11:55.428] [DEBUG] Serial RX [1 bytes]: 37
+[2026-01-27 00:11:55.428] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:11:55.428] [DEBUG] Serial RX [1 bytes]: 33
+[2026-01-27 00:11:55.429] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:11:55.429] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:11:55.429] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:11:55.429] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:11:55.430] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:11:55.430] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:11:55.430] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:11:55.430] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:11:55.430] [DEBUG] Serial RX [1 bytes]: 20
+[2026-01-27 00:11:55.431] [DEBUG] Serial RX [1 bytes]: 32
+[2026-01-27 00:11:55.442] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:11:55.442] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:11:55.442] [DEBUG] Serial RX [1 bytes]: 36
+[2026-01-27 00:11:55.442] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:11:55.443] [DEBUG] Serial RX [1 bytes]: 35
+[2026-01-27 00:11:55.443] [DEBUG] Serial RX [1 bytes]: 30
+[2026-01-27 00:11:55.443] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:11:55.443] [DEBUG] Serial RX [1 bytes]: 32
+[2026-01-27 00:11:55.443] [DEBUG] Serial RX [1 bytes]: 33
+[2026-01-27 00:11:55.443] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:11:55.444] [DEBUG] Serial RX [1 bytes]: 34
+[2026-01-27 00:11:55.444] [DEBUG] Serial RX [1 bytes]: 31
+[2026-01-27 00:11:55.444] [DEBUG] Serial RX [1 bytes]: 38
+[2026-01-27 00:11:55.444] [DEBUG] Serial RX [1 bytes]: 61
+[2026-01-27 00:11:55.445] [DEBUG] Serial RX [1 bytes]: 00
+[2026-01-27 00:11:55.445] [DEBUG] Serial RX [1 bytes]: 04
+[2026-01-27 00:11:55.445] [DEBUG] Serial RX [1 bytes]: 00
+[2026-01-27 00:11:55.446] [DEBUG] Response data length: 4
+[2026-01-27 00:11:55.446] [DEBUG] Serial RX [1 bytes]: 4f
+[2026-01-27 00:11:55.446] [DEBUG] Serial RX [1 bytes]: 4f
+[2026-01-27 00:11:55.446] [DEBUG] Serial RX [1 bytes]: 58
+[2026-01-27 00:11:55.446] [DEBUG] Serial RX [1 bytes]: 4e
+[2026-01-27 00:11:55.447] [DEBUG] Serial RX [1 bytes]: 03
+[2026-01-27 00:11:55.447] [DEBUG] Serial RX [1 bytes]: 7e
+[2026-01-27 00:11:55.447] [DEBUG] Response packet received: 41 bytes
+[2026-01-27 00:11:55.447] [DEBUG] BCC verified (STX included)
+[2026-01-27 00:11:55.448] [DEBUG] Packet parsed successfully. Data length: 4
+[2026-01-27 00:11:55.448] [INFO ] Device check response: O/O/X/N
+[2026-01-27 00:11:55.448] [DEBUG] Sending ACK (0x06)
+[2026-01-27 00:11:55.448] [DEBUG] Serial TX [1 bytes]: 06
+[2026-01-27 00:11:55.449] [DEBUG] Written 1 bytes
+[2026-01-27 00:11:55.449] [DEBUG] Device check request completed successfully
+[2026-01-27 00:11:55.450] [INFO ] Saved working port: COM3
+[2026-01-27 00:11:55.450] [INFO ] Device found on port: COM3
+[2026-01-27 00:11:55.450] [DEBUG] Closing serial port: COM3
+[2026-01-27 00:11:55.563] [INFO ] Test completed
+[2026-01-27 00:11:55.563] [INFO ] Logger shutting down

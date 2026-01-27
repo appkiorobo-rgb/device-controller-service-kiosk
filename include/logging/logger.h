@@ -3,47 +3,49 @@
 
 #include <string>
 #include <fstream>
-#include <mutex>
 #include <memory>
-#include <chrono>
+#include <mutex>
 
-namespace device_controller::logging {
+namespace logging {
 
 enum class LogLevel {
     DEBUG,
     INFO,
-    WARNING,
-    ERR  // ERROR conflicts with Windows.h macro
+    WARN,
+    ERROR
 };
 
-// Logger - file-based logging with rotation
-// Logs are for operators and developers, not for clients
 class Logger {
 public:
-    Logger(const std::string& logDirectory, const std::string& logFileName);
-    ~Logger();
-
+    static Logger& getInstance();
+    
+    void initialize(const std::string& logFilePath);
+    void shutdown();
+    
     void log(LogLevel level, const std::string& message);
-    void debug(const std::string& message) { log(LogLevel::DEBUG, message); }
-    void info(const std::string& message) { log(LogLevel::INFO, message); }
-    void warning(const std::string& message) { log(LogLevel::WARNING, message); }
-    void error(const std::string& message) { log(LogLevel::ERR, message); }
-
-    // Rotate log file (called by LogRotator)
-    void rotate();
-
+    void logHex(LogLevel level, const std::string& label, const uint8_t* data, size_t length);
+    
+    void debug(const std::string& message);
+    void info(const std::string& message);
+    void warn(const std::string& message);
+    void error(const std::string& message);
+    
+    void debugHex(const std::string& label, const uint8_t* data, size_t length);
+    void infoHex(const std::string& label, const uint8_t* data, size_t length);
+    
 private:
-    std::string logDirectory_;
-    std::string logFileName_;
-    std::ofstream logFile_;
-    std::mutex mutex_;
-    size_t currentFileSize_{0};
-    static constexpr size_t MAX_FILE_SIZE = 10 * 1024 * 1024;  // 10MB
-
-    std::string getLogFilePath() const;
-    std::string formatLogMessage(LogLevel level, const std::string& message) const;
-    void openLogFile();
-    void closeLogFile();
+    Logger() = default;
+    ~Logger();
+    Logger(const Logger&) = delete;
+    Logger& operator=(const Logger&) = delete;
+    
+    std::string levelToString(LogLevel level);
+    std::string getCurrentTimestamp();
+    void writeLog(LogLevel level, const std::string& message);
+    
+    std::unique_ptr<std::ofstream> logFile_;
+    std::mutex logMutex_;
+    bool initialized_ = false;
 };
 
-} // namespace device_controller::logging
+} // namespace logging

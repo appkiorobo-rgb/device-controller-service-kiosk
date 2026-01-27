@@ -1,0 +1,12 @@
+{
+  "version": "0.2.1",
+  "defaults": {},
+  "configurations": [
+    {
+      "type": "default",
+      "project": "CMakeLists.txt",
+      "projectTarget": "test_device_check.exe (bin\\test_device_check.exe)",
+      "name": "test_device_check.exe (bin\\test_device_check.exe)"
+    }
+  ]
+}

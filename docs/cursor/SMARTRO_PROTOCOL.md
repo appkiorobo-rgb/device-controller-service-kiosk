@@ -33,7 +33,7 @@
 ## 3. Packet 기본 구조
 
 ### 3.1 전체 구조
-STX(1) + HEADER(35) + DATA(N) + ETX(1) + BCC(1)
+ HEADER(35) + DATA(N) + ETX(1) + BCC(1)
 - Header / Tail은 고정 길이
 - Data는 Job Code에 따라 가변
 - BCC: STX부터 ETX까지 XOR
@@ -157,7 +157,7 @@ STX(1) + HEADER(35) + DATA(N) + ETX(1) + BCC(1)
 
 #### 요청 (A)
 - **Data 없음** (Data Length = 0)
-- **패킷 구조**: STX(1) + HEADER(35) + ETX(1) + BCC(1) = 총 38 bytes
+- **패킷 구조**:  HEADER(35) + ETX(1) + BCC(1) = 총 38 bytes
   - STX: 0x02
   - Terminal ID: 16 bytes (좌측 정렬, 나머지 0x00)
   - DateTime: 14 bytes (YYYYMMDDhhmmss)

@@ -1,0 +1,152 @@
+[
+{
+  "directory": "C:/Users/sam98/Desktop/device-controller-service-kiosk/build",
+  "command": "C:\\PROGRA~1\\MICROS~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP -IC:\\Users\\sam98\\Desktop\\device-controller-service-kiosk\\include /DWIN32 /D_WINDOWS /GR /EHsc /Zi /Ob0 /Od /RTC1 -std:c++17 -MDd /W4 /permissive- /Zc:__cplusplus /Zi /FoCMakeFiles\\test_device_check.dir\\tests\\test_device_check.cpp.obj /FdCMakeFiles\\test_device_check.dir\\ /FS -c C:\\Users\\sam98\\Desktop\\device-controller-service-kiosk\\tests\\test_device_check.cpp",
+  "file": "C:/Users/sam98/Desktop/device-controller-service-kiosk/tests/test_device_check.cpp",
+  "output": "C:/Users/sam98/Desktop/device-controller-service-kiosk/build/CMakeFiles/test_device_check.dir/tests/test_device_check.cpp.obj"
+},
+{
+  "directory": "C:/Users/sam98/Desktop/device-controller-service-kiosk/build",
+  "command": "C:\\PROGRA~1\\MICROS~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP -IC:\\Users\\sam98\\Desktop\\device-controller-service-kiosk\\include /DWIN32 /D_WINDOWS /GR /EHsc /Zi /Ob0 /Od /RTC1 -std:c++17 -MDd /W4 /permissive- /Zc:__cplusplus /Zi /FoCMakeFiles\\test_device_check.dir\\src\\logging\\logger.cpp.obj /FdCMakeFiles\\test_device_check.dir\\ /FS -c C:\\Users\\sam98\\Desktop\\device-controller-service-kiosk\\src\\logging\\logger.cpp",
+  "file": "C:/Users/sam98/Desktop/device-controller-service-kiosk/src/logging/logger.cpp",
+  "output": "C:/Users/sam98/Desktop/device-controller-service-kiosk/build/CMakeFiles/test_device_check.dir/src/logging/logger.cpp.obj"
+},
+{
+  "directory": "C:/Users/sam98/Desktop/device-controller-service-kiosk/build",
+  "command": "C:\\PROGRA~1\\MICROS~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP -IC:\\Users\\sam98\\Desktop\\device-controller-service-kiosk\\include /DWIN32 /D_WINDOWS /GR /EHsc /Zi /Ob0 /Od /RTC1 -std:c++17 -MDd /W4 /permissive- /Zc:__cplusplus /Zi /FoCMakeFiles\\test_device_check.dir\\src\\vendor_adapters\\smartro\\serial_port.cpp.obj /FdCMakeFiles\\test_device_check.dir\\ /FS -c C:\\Users\\sam98\\Desktop\\device-controller-service-kiosk\\src\\vendor_adapters\\smartro\\serial_port.cpp",
+  "file": "C:/Users/sam98/Desktop/device-controller-service-kiosk/src/vendor_adapters/smartro/serial_port.cpp",
+  "output": "C:/Users/sam98/Desktop/device-controller-service-kiosk/build/CMakeFiles/test_device_check.dir/src/vendor_adapters/smartro/serial_port.cpp.obj"
+},
+{
+  "directory": "C:/Users/sam98/Desktop/device-controller-service-kiosk/build",
+  "command": "C:\\PROGRA~1\\MICROS~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP -IC:\\Users\\sam98\\Desktop\\device-controller-service-kiosk\\include /DWIN32 /D_WINDOWS /GR /EHsc /Zi /Ob0 /Od /RTC1 -std:c++17 -MDd /W4 /permissive- /Zc:__cplusplus /Zi /FoCMakeFiles\\test_device_check.dir\\src\\vendor_adapters\\smartro\\smartro_protocol.cpp.obj /FdCMakeFiles\\test_device_check.dir\\ /FS -c C:\\Users\\sam98\\Desktop\\device-controller-service-kiosk\\src\\vendor_adapters\\smartro\\smartro_protocol.cpp",
+  "file": "C:/Users/sam98/Desktop/device-controller-service-kiosk/src/vendor_adapters/smartro/smartro_protocol.cpp",
+  "output": "C:/Users/sam98/Desktop/device-controller-service-kiosk/build/CMakeFiles/test_device_check.dir/src/vendor_adapters/smartro/smartro_protocol.cpp.obj"
+},
+{
+  "directory": "C:/Users/sam98/Desktop/device-controller-service-kiosk/build",
+  "command": "C:\\PROGRA~1\\MICROS~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP -IC:\\Users\\sam98\\Desktop\\device-controller-service-kiosk\\include /DWIN32 /D_WINDOWS /GR /EHsc /Zi /Ob0 /Od /RTC1 -std:c++17 -MDd /W4 /permissive- /Zc:__cplusplus /Zi /FoCMakeFiles\\test_device_check.dir\\src\\vendor_adapters\\smartro\\smartro_comm.cpp.obj /FdCMakeFiles\\test_device_check.dir\\ /FS -c C:\\Users\\sam98\\Desktop\\device-controller-service-kiosk\\src\\vendor_adapters\\smartro\\smartro_comm.cpp",
+  "file": "C:/Users/sam98/Desktop/device-controller-service-kiosk/src/vendor_adapters/smartro/smartro_comm.cpp",
+  "output": "C:/Users/sam98/Desktop/device-controller-service-kiosk/build/CMakeFiles/test_device_check.dir/src/vendor_adapters/smartro/smartro_comm.cpp.obj"
+},
+{
+  "directory": "C:/Users/sam98/Desktop/device-controller-service-kiosk/build",
+  "command": "C:\\PROGRA~1\\MICROS~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP -IC:\\Users\\sam98\\Desktop\\device-controller-service-kiosk\\include /DWIN32 /D_WINDOWS /GR /EHsc /Zi /Ob0 /Od /RTC1 -std:c++17 -MDd /W4 /permissive- /Zc:__cplusplus /Zi /FoCMakeFiles\\test_payment_wait.dir\\tests\\test_payment_wait.cpp.obj /FdCMakeFiles\\test_payment_wait.dir\\ /FS -c C:\\Users\\sam98\\Desktop\\device-controller-service-kiosk\\tests\\test_payment_wait.cpp",
+  "file": "C:/Users/sam98/Desktop/device-controller-service-kiosk/tests/test_payment_wait.cpp",
+  "output": "C:/Users/sam98/Desktop/device-controller-service-kiosk/build/CMakeFiles/test_payment_wait.dir/tests/test_payment_wait.cpp.obj"
+},
+{
+  "directory": "C:/Users/sam98/Desktop/device-controller-service-kiosk/build",
+  "command": "C:\\PROGRA~1\\MICROS~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP -IC:\\Users\\sam98\\Desktop\\device-controller-service-kiosk\\include /DWIN32 /D_WINDOWS /GR /EHsc /Zi /Ob0 /Od /RTC1 -std:c++17 -MDd /W4 /permissive- /Zc:__cplusplus /Zi /FoCMakeFiles\\test_payment_wait.dir\\src\\logging\\logger.cpp.obj /FdCMakeFiles\\test_payment_wait.dir\\ /FS -c C:\\Users\\sam98\\Desktop\\device-controller-service-kiosk\\src\\logging\\logger.cpp",
+  "file": "C:/Users/sam98/Desktop/device-controller-service-kiosk/src/logging/logger.cpp",
+  "output": "C:/Users/sam98/Desktop/device-controller-service-kiosk/build/CMakeFiles/test_payment_wait.dir/src/logging/logger.cpp.obj"
+},
+{
+  "directory": "C:/Users/sam98/Desktop/device-controller-service-kiosk/build",
+  "command": "C:\\PROGRA~1\\MICROS~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP -IC:\\Users\\sam98\\Desktop\\device-controller-service-kiosk\\include /DWIN32 /D_WINDOWS /GR /EHsc /Zi /Ob0 /Od /RTC1 -std:c++17 -MDd /W4 /permissive- /Zc:__cplusplus /Zi /FoCMakeFiles\\test_payment_wait.dir\\src\\vendor_adapters\\smartro\\serial_port.cpp.obj /FdCMakeFiles\\test_payment_wait.dir\\ /FS -c C:\\Users\\sam98\\Desktop\\device-controller-service-kiosk\\src\\vendor_adapters\\smartro\\serial_port.cpp",
+  "file": "C:/Users/sam98/Desktop/device-controller-service-kiosk/src/vendor_adapters/smartro/serial_port.cpp",
+  "output": "C:/Users/sam98/Desktop/device-controller-service-kiosk/build/CMakeFiles/test_payment_wait.dir/src/vendor_adapters/smartro/serial_port.cpp.obj"
+},
+{
+  "directory": "C:/Users/sam98/Desktop/device-controller-service-kiosk/build",
+  "command": "C:\\PROGRA~1\\MICROS~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP -IC:\\Users\\sam98\\Desktop\\device-controller-service-kiosk\\include /DWIN32 /D_WINDOWS /GR /EHsc /Zi /Ob0 /Od /RTC1 -std:c++17 -MDd /W4 /permissive- /Zc:__cplusplus /Zi /FoCMakeFiles\\test_payment_wait.dir\\src\\vendor_adapters\\smartro\\smartro_protocol.cpp.obj /FdCMakeFiles\\test_payment_wait.dir\\ /FS -c C:\\Users\\sam98\\Desktop\\device-controller-service-kiosk\\src\\vendor_adapters\\smartro\\smartro_protocol.cpp",
+  "file": "C:/Users/sam98/Desktop/device-controller-service-kiosk/src/vendor_adapters/smartro/smartro_protocol.cpp",
+  "output": "C:/Users/sam98/Desktop/device-controller-service-kiosk/build/CMakeFiles/test_payment_wait.dir/src/vendor_adapters/smartro/smartro_protocol.cpp.obj"
+},
+{
+  "directory": "C:/Users/sam98/Desktop/device-controller-service-kiosk/build",
+  "command": "C:\\PROGRA~1\\MICROS~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP -IC:\\Users\\sam98\\Desktop\\device-controller-service-kiosk\\include /DWIN32 /D_WINDOWS /GR /EHsc /Zi /Ob0 /Od /RTC1 -std:c++17 -MDd /W4 /permissive- /Zc:__cplusplus /Zi /FoCMakeFiles\\test_payment_wait.dir\\src\\vendor_adapters\\smartro\\smartro_comm.cpp.obj /FdCMakeFiles\\test_payment_wait.dir\\ /FS -c C:\\Users\\sam98\\Desktop\\device-controller-service-kiosk\\src\\vendor_adapters\\smartro\\smartro_comm.cpp",
+  "file": "C:/Users/sam98/Desktop/device-controller-service-kiosk/src/vendor_adapters/smartro/smartro_comm.cpp",
+  "output": "C:/Users/sam98/Desktop/device-controller-service-kiosk/build/CMakeFiles/test_payment_wait.dir/src/vendor_adapters/smartro/smartro_comm.cpp.obj"
+},
+{
+  "directory": "C:/Users/sam98/Desktop/device-controller-service-kiosk/build",
+  "command": "C:\\PROGRA~1\\MICROS~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP -IC:\\Users\\sam98\\Desktop\\device-controller-service-kiosk\\include /DWIN32 /D_WINDOWS /GR /EHsc /Zi /Ob0 /Od /RTC1 -std:c++17 -MDd /W4 /permissive- /Zc:__cplusplus /Zi /FoCMakeFiles\\test_card_uid_read.dir\\tests\\test_card_uid_read.cpp.obj /FdCMakeFiles\\test_card_uid_read.dir\\ /FS -c C:\\Users\\sam98\\Desktop\\device-controller-service-kiosk\\tests\\test_card_uid_read.cpp",
+  "file": "C:/Users/sam98/Desktop/device-controller-service-kiosk/tests/test_card_uid_read.cpp",
+  "output": "C:/Users/sam98/Desktop/device-controller-service-kiosk/build/CMakeFiles/test_card_uid_read.dir/tests/test_card_uid_read.cpp.obj"
+},
+{
+  "directory": "C:/Users/sam98/Desktop/device-controller-service-kiosk/build",
+  "command": "C:\\PROGRA~1\\MICROS~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP -IC:\\Users\\sam98\\Desktop\\device-controller-service-kiosk\\include /DWIN32 /D_WINDOWS /GR /EHsc /Zi /Ob0 /Od /RTC1 -std:c++17 -MDd /W4 /permissive- /Zc:__cplusplus /Zi /FoCMakeFiles\\test_card_uid_read.dir\\src\\logging\\logger.cpp.obj /FdCMakeFiles\\test_card_uid_read.dir\\ /FS -c C:\\Users\\sam98\\Desktop\\device-controller-service-kiosk\\src\\logging\\logger.cpp",
+  "file": "C:/Users/sam98/Desktop/device-controller-service-kiosk/src/logging/logger.cpp",
+  "output": "C:/Users/sam98/Desktop/device-controller-service-kiosk/build/CMakeFiles/test_card_uid_read.dir/src/logging/logger.cpp.obj"
+},
+{
+  "directory": "C:/Users/sam98/Desktop/device-controller-service-kiosk/build",
+  "command": "C:\\PROGRA~1\\MICROS~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP -IC:\\Users\\sam98\\Desktop\\device-controller-service-kiosk\\include /DWIN32 /D_WINDOWS /GR /EHsc /Zi /Ob0 /Od /RTC1 -std:c++17 -MDd /W4 /permissive- /Zc:__cplusplus /Zi /FoCMakeFiles\\test_card_uid_read.dir\\src\\vendor_adapters\\smartro\\serial_port.cpp.obj /FdCMakeFiles\\test_card_uid_read.dir\\ /FS -c C:\\Users\\sam98\\Desktop\\device-controller-service-kiosk\\src\\vendor_adapters\\smartro\\serial_port.cpp",
+  "file": "C:/Users/sam98/Desktop/device-controller-service-kiosk/src/vendor_adapters/smartro/serial_port.cpp",
+  "output": "C:/Users/sam98/Desktop/device-controller-service-kiosk/build/CMakeFiles/test_card_uid_read.dir/src/vendor_adapters/smartro/serial_port.cpp.obj"
+},
+{
+  "directory": "C:/Users/sam98/Desktop/device-controller-service-kiosk/build",
+  "command": "C:\\PROGRA~1\\MICROS~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP -IC:\\Users\\sam98\\Desktop\\device-controller-service-kiosk\\include /DWIN32 /D_WINDOWS /GR /EHsc /Zi /Ob0 /Od /RTC1 -std:c++17 -MDd /W4 /permissive- /Zc:__cplusplus /Zi /FoCMakeFiles\\test_card_uid_read.dir\\src\\vendor_adapters\\smartro\\smartro_protocol.cpp.obj /FdCMakeFiles\\test_card_uid_read.dir\\ /FS -c C:\\Users\\sam98\\Desktop\\device-controller-service-kiosk\\src\\vendor_adapters\\smartro\\smartro_protocol.cpp",
+  "file": "C:/Users/sam98/Desktop/device-controller-service-kiosk/src/vendor_adapters/smartro/smartro_protocol.cpp",
+  "output": "C:/Users/sam98/Desktop/device-controller-service-kiosk/build/CMakeFiles/test_card_uid_read.dir/src/vendor_adapters/smartro/smartro_protocol.cpp.obj"
+},
+{
+  "directory": "C:/Users/sam98/Desktop/device-controller-service-kiosk/build",
+  "command": "C:\\PROGRA~1\\MICROS~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP -IC:\\Users\\sam98\\Desktop\\device-controller-service-kiosk\\include /DWIN32 /D_WINDOWS /GR /EHsc /Zi /Ob0 /Od /RTC1 -std:c++17 -MDd /W4 /permissive- /Zc:__cplusplus /Zi /FoCMakeFiles\\test_card_uid_read.dir\\src\\vendor_adapters\\smartro\\smartro_comm.cpp.obj /FdCMakeFiles\\test_card_uid_read.dir\\ /FS -c C:\\Users\\sam98\\Desktop\\device-controller-service-kiosk\\src\\vendor_adapters\\smartro\\smartro_comm.cpp",
+  "file": "C:/Users/sam98/Desktop/device-controller-service-kiosk/src/vendor_adapters/smartro/smartro_comm.cpp",
+  "output": "C:/Users/sam98/Desktop/device-controller-service-kiosk/build/CMakeFiles/test_card_uid_read.dir/src/vendor_adapters/smartro/smartro_comm.cpp.obj"
+},
+{
+  "directory": "C:/Users/sam98/Desktop/device-controller-service-kiosk/build",
+  "command": "C:\\PROGRA~1\\MICROS~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP -IC:\\Users\\sam98\\Desktop\\device-controller-service-kiosk\\include /DWIN32 /D_WINDOWS /GR /EHsc /Zi /Ob0 /Od /RTC1 -std:c++17 -MDd /W4 /permissive- /Zc:__cplusplus /Zi /FoCMakeFiles\\test_event_wait.dir\\tests\\test_event_wait.cpp.obj /FdCMakeFiles\\test_event_wait.dir\\ /FS -c C:\\Users\\sam98\\Desktop\\device-controller-service-kiosk\\tests\\test_event_wait.cpp",
+  "file": "C:/Users/sam98/Desktop/device-controller-service-kiosk/tests/test_event_wait.cpp",
+  "output": "C:/Users/sam98/Desktop/device-controller-service-kiosk/build/CMakeFiles/test_event_wait.dir/tests/test_event_wait.cpp.obj"
+},
+{
+  "directory": "C:/Users/sam98/Desktop/device-controller-service-kiosk/build",
+  "command": "C:\\PROGRA~1\\MICROS~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP -IC:\\Users\\sam98\\Desktop\\device-controller-service-kiosk\\include /DWIN32 /D_WINDOWS /GR /EHsc /Zi /Ob0 /Od /RTC1 -std:c++17 -MDd /W4 /permissive- /Zc:__cplusplus /Zi /FoCMakeFiles\\test_event_wait.dir\\src\\logging\\logger.cpp.obj /FdCMakeFiles\\test_event_wait.dir\\ /FS -c C:\\Users\\sam98\\Desktop\\device-controller-service-kiosk\\src\\logging\\logger.cpp",
+  "file": "C:/Users/sam98/Desktop/device-controller-service-kiosk/src/logging/logger.cpp",
+  "output": "C:/Users/sam98/Desktop/device-controller-service-kiosk/build/CMakeFiles/test_event_wait.dir/src/logging/logger.cpp.obj"
+},
+{
+  "directory": "C:/Users/sam98/Desktop/device-controller-service-kiosk/build",
+  "command": "C:\\PROGRA~1\\MICROS~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP -IC:\\Users\\sam98\\Desktop\\device-controller-service-kiosk\\include /DWIN32 /D_WINDOWS /GR /EHsc /Zi /Ob0 /Od /RTC1 -std:c++17 -MDd /W4 /permissive- /Zc:__cplusplus /Zi /FoCMakeFiles\\test_event_wait.dir\\src\\vendor_adapters\\smartro\\serial_port.cpp.obj /FdCMakeFiles\\test_event_wait.dir\\ /FS -c C:\\Users\\sam98\\Desktop\\device-controller-service-kiosk\\src\\vendor_adapters\\smartro\\serial_port.cpp",
+  "file": "C:/Users/sam98/Desktop/device-controller-service-kiosk/src/vendor_adapters/smartro/serial_port.cpp",
+  "output": "C:/Users/sam98/Desktop/device-controller-service-kiosk/build/CMakeFiles/test_event_wait.dir/src/vendor_adapters/smartro/serial_port.cpp.obj"
+},
+{
+  "directory": "C:/Users/sam98/Desktop/device-controller-service-kiosk/build",
+  "command": "C:\\PROGRA~1\\MICROS~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP -IC:\\Users\\sam98\\Desktop\\device-controller-service-kiosk\\include /DWIN32 /D_WINDOWS /GR /EHsc /Zi /Ob0 /Od /RTC1 -std:c++17 -MDd /W4 /permissive- /Zc:__cplusplus /Zi /FoCMakeFiles\\test_event_wait.dir\\src\\vendor_adapters\\smartro\\smartro_protocol.cpp.obj /FdCMakeFiles\\test_event_wait.dir\\ /FS -c C:\\Users\\sam98\\Desktop\\device-controller-service-kiosk\\src\\vendor_adapters\\smartro\\smartro_protocol.cpp",
+  "file": "C:/Users/sam98/Desktop/device-controller-service-kiosk/src/vendor_adapters/smartro/smartro_protocol.cpp",
+  "output": "C:/Users/sam98/Desktop/device-controller-service-kiosk/build/CMakeFiles/test_event_wait.dir/src/vendor_adapters/smartro/smartro_protocol.cpp.obj"
+},
+{
+  "directory": "C:/Users/sam98/Desktop/device-controller-service-kiosk/build",
+  "command": "C:\\PROGRA~1\\MICROS~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP -IC:\\Users\\sam98\\Desktop\\device-controller-service-kiosk\\include /DWIN32 /D_WINDOWS /GR /EHsc /Zi /Ob0 /Od /RTC1 -std:c++17 -MDd /W4 /permissive- /Zc:__cplusplus /Zi /FoCMakeFiles\\test_event_wait.dir\\src\\vendor_adapters\\smartro\\smartro_comm.cpp.obj /FdCMakeFiles\\test_event_wait.dir\\ /FS -c C:\\Users\\sam98\\Desktop\\device-controller-service-kiosk\\src\\vendor_adapters\\smartro\\smartro_comm.cpp",
+  "file": "C:/Users/sam98/Desktop/device-controller-service-kiosk/src/vendor_adapters/smartro/smartro_comm.cpp",
+  "output": "C:/Users/sam98/Desktop/device-controller-service-kiosk/build/CMakeFiles/test_event_wait.dir/src/vendor_adapters/smartro/smartro_comm.cpp.obj"
+},
+{
+  "directory": "C:/Users/sam98/Desktop/device-controller-service-kiosk/build",
+  "command": "C:\\PROGRA~1\\MICROS~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP -IC:\\Users\\sam98\\Desktop\\device-controller-service-kiosk\\include /DWIN32 /D_WINDOWS /GR /EHsc /Zi /Ob0 /Od /RTC1 -std:c++17 -MDd /W4 /permissive- /Zc:__cplusplus /Zi /FoCMakeFiles\\test_integrated.dir\\tests\\test_integrated.cpp.obj /FdCMakeFiles\\test_integrated.dir\\ /FS -c C:\\Users\\sam98\\Desktop\\device-controller-service-kiosk\\tests\\test_integrated.cpp",
+  "file": "C:/Users/sam98/Desktop/device-controller-service-kiosk/tests/test_integrated.cpp",
+  "output": "C:/Users/sam98/Desktop/device-controller-service-kiosk/build/CMakeFiles/test_integrated.dir/tests/test_integrated.cpp.obj"
+},
+{
+  "directory": "C:/Users/sam98/Desktop/device-controller-service-kiosk/build",
+  "command": "C:\\PROGRA~1\\MICROS~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP -IC:\\Users\\sam98\\Desktop\\device-controller-service-kiosk\\include /DWIN32 /D_WINDOWS /GR /EHsc /Zi /Ob0 /Od /RTC1 -std:c++17 -MDd /W4 /permissive- /Zc:__cplusplus /Zi /FoCMakeFiles\\test_integrated.dir\\src\\logging\\logger.cpp.obj /FdCMakeFiles\\test_integrated.dir\\ /FS -c C:\\Users\\sam98\\Desktop\\device-controller-service-kiosk\\src\\logging\\logger.cpp",
+  "file": "C:/Users/sam98/Desktop/device-controller-service-kiosk/src/logging/logger.cpp",
+  "output": "C:/Users/sam98/Desktop/device-controller-service-kiosk/build/CMakeFiles/test_integrated.dir/src/logging/logger.cpp.obj"
+},
+{
+  "directory": "C:/Users/sam98/Desktop/device-controller-service-kiosk/build",
+  "command": "C:\\PROGRA~1\\MICROS~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP -IC:\\Users\\sam98\\Desktop\\device-controller-service-kiosk\\include /DWIN32 /D_WINDOWS /GR /EHsc /Zi /Ob0 /Od /RTC1 -std:c++17 -MDd /W4 /permissive- /Zc:__cplusplus /Zi /FoCMakeFiles\\test_integrated.dir\\src\\vendor_adapters\\smartro\\serial_port.cpp.obj /FdCMakeFiles\\test_integrated.dir\\ /FS -c C:\\Users\\sam98\\Desktop\\device-controller-service-kiosk\\src\\vendor_adapters\\smartro\\serial_port.cpp",
+  "file": "C:/Users/sam98/Desktop/device-controller-service-kiosk/src/vendor_adapters/smartro/serial_port.cpp",
+  "output": "C:/Users/sam98/Desktop/device-controller-service-kiosk/build/CMakeFiles/test_integrated.dir/src/vendor_adapters/smartro/serial_port.cpp.obj"
+},
+{
+  "directory": "C:/Users/sam98/Desktop/device-controller-service-kiosk/build",
+  "command": "C:\\PROGRA~1\\MICROS~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP -IC:\\Users\\sam98\\Desktop\\device-controller-service-kiosk\\include /DWIN32 /D_WINDOWS /GR /EHsc /Zi /Ob0 /Od /RTC1 -std:c++17 -MDd /W4 /permissive- /Zc:__cplusplus /Zi /FoCMakeFiles\\test_integrated.dir\\src\\vendor_adapters\\smartro\\smartro_protocol.cpp.obj /FdCMakeFiles\\test_integrated.dir\\ /FS -c C:\\Users\\sam98\\Desktop\\device-controller-service-kiosk\\src\\vendor_adapters\\smartro\\smartro_protocol.cpp",
+  "file": "C:/Users/sam98/Desktop/device-controller-service-kiosk/src/vendor_adapters/smartro/smartro_protocol.cpp",
+  "output": "C:/Users/sam98/Desktop/device-controller-service-kiosk/build/CMakeFiles/test_integrated.dir/src/vendor_adapters/smartro/smartro_protocol.cpp.obj"
+},
+{
+  "directory": "C:/Users/sam98/Desktop/device-controller-service-kiosk/build",
+  "command": "C:\\PROGRA~1\\MICROS~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP -IC:\\Users\\sam98\\Desktop\\device-controller-service-kiosk\\include /DWIN32 /D_WINDOWS /GR /EHsc /Zi /Ob0 /Od /RTC1 -std:c++17 -MDd /W4 /permissive- /Zc:__cplusplus /Zi /FoCMakeFiles\\test_integrated.dir\\src\\vendor_adapters\\smartro\\smartro_comm.cpp.obj /FdCMakeFiles\\test_integrated.dir\\ /FS -c C:\\Users\\sam98\\Desktop\\device-controller-service-kiosk\\src\\vendor_adapters\\smartro\\smartro_comm.cpp",
+  "file": "C:/Users/sam98/Desktop/device-controller-service-kiosk/src/vendor_adapters/smartro/smartro_comm.cpp",
+  "output": "C:/Users/sam98/Desktop/device-controller-service-kiosk/build/CMakeFiles/test_integrated.dir/src/vendor_adapters/smartro/smartro_comm.cpp.obj"
+}
+]

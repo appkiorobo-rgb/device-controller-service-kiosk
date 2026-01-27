@@ -3,50 +3,62 @@
 
 #include <string>
 #include <vector>
-#include <windows.h>
-#include <memory>
+#include <cstdint>
 
-namespace device_controller::vendor::smartro {
+// Windows HANDLE 타입 (헤더 의존성 최소화)
+#ifdef _WIN32
+    #ifndef INVALID_HANDLE_VALUE
+        #define INVALID_HANDLE_VALUE ((void*)(-1))
+    #endif
+#endif
 
-// SerialPort - Windows COM port communication wrapper
+namespace smartro {
+
 class SerialPort {
 public:
     SerialPort();
     ~SerialPort();
-
-    // Open COM port
-    // portName: "COM1", "COM2", etc.
-    // baudRate: typically 9600 for SMARTRO
-    // Returns true if opened successfully
-    bool open(const std::string& portName, DWORD baudRate = 115200);
-
-    // Close COM port
+    
+    // 복사 및 이동 방지
+    SerialPort(const SerialPort&) = delete;
+    SerialPort& operator=(const SerialPort&) = delete;
+    SerialPort(SerialPort&&) = delete;
+    SerialPort& operator=(SerialPort&&) = delete;
+    
+    // 포트 열기/닫기
+    bool open(const std::string& portName, uint32_t baudRate = 115200);
     void close();
-
-    // Check if port is open
     bool isOpen() const { return handle_ != INVALID_HANDLE_VALUE; }
-
-    // Read data with timeout
-    // Returns number of bytes read, or -1 on error
-    int read(std::vector<uint8_t>& buffer, size_t maxBytes, DWORD timeoutMs = 1000);
-
-    // Write data
-    // Returns number of bytes written, or -1 on error
-    int write(const std::vector<uint8_t>& data);
-
-    // Get available COM ports
-    static std::vector<std::string> enumeratePorts();
-
-    // Try to detect SMARTRO terminal by sending device check
-    // Returns port name if found, empty string otherwise
-    static std::string detectTerminal();
-
+    
+    // 데이터 읽기/쓰기
+    bool write(const uint8_t* data, size_t length);
+    bool read(uint8_t* buffer, size_t bufferSize, size_t& bytesRead, uint32_t timeoutMs = 1000);
+    
+    // 설정
+    bool setBaudRate(uint32_t baudRate);
+    bool setDataBits(uint8_t dataBits);
+    bool setStopBits(uint8_t stopBits);
+    bool setParity(uint8_t parity);
+    
+    // 포트 이름 반환
+    std::string getPortName() const { return portName_; }
+    
+    // 사용 가능한 COM 포트 목록 가져오기
+    static std::vector<std::string> getAvailablePorts();
+    
+    // 성공한 COM 포트 저장
+    static bool saveWorkingPort(const std::string& portName);
+    
+    // 저장된 COM 포트 읽기
+    static std::string loadWorkingPort();
+    
 private:
-    HANDLE handle_;
+    void* handle_;  // HANDLE (void*로 선언하여 windows.h 의존성 최소화)
     std::string portName_;
-    DWORD baudRate_;
-
-    bool configurePort(DWORD baudRate);
+    uint32_t baudRate_;
+    
+    bool configurePort();
+    void logError(const std::string& operation);
 };
 
-} // namespace device_controller::vendor::smartro
+} // namespace smartro

@@ -1,115 +1,158 @@
 // src/logging/logger.cpp
 #include "logging/logger.h"
-#include <filesystem>
+#include <iostream>
 #include <iomanip>
 #include <sstream>
 #include <chrono>
 #include <ctime>
 
-namespace device_controller::logging {
+namespace logging {
 
-Logger::Logger(const std::string& logDirectory, const std::string& logFileName)
-    : logDirectory_(logDirectory)
-    , logFileName_(logFileName)
-{
-    // Create log directory if it doesn't exist
-    try {
-        std::filesystem::create_directories(logDirectory_);
-    } catch (const std::exception&) {
-        // Ignore directory creation errors - will try to open file anyway
-    }
-    openLogFile();
+Logger& Logger::getInstance() {
+    static Logger instance;
+    return instance;
 }
 
-Logger::~Logger() {
-    closeLogFile();
+void Logger::initialize(const std::string& logFilePath) {
+    std::lock_guard<std::mutex> lock(logMutex_);
+    
+    if (initialized_) {
+        return;
+    }
+    
+    logFile_ = std::make_unique<std::ofstream>(logFilePath, std::ios::app);
+    if (!logFile_->is_open()) {
+        std::cerr << "Failed to open log file: " << logFilePath << std::endl;
+        return;
+    }
+    
+    initialized_ = true;
+    
+    // mutex가 이미 잠겨있으므로 직접 쓰기 (재귀 호출 방지)
+    if (logFile_ && logFile_->is_open()) {
+        *logFile_ << "[" << getCurrentTimestamp() << "] "
+                  << "[INFO ] Logger initialized: " << logFilePath << std::endl;
+        logFile_->flush();
+    }
+    std::cout << "[INFO ] Logger initialized: " << logFilePath << std::endl;
+}
+
+void Logger::shutdown() {
+    std::lock_guard<std::mutex> lock(logMutex_);
+    
+    if (logFile_ && logFile_->is_open()) {
+        // mutex가 이미 잠겨있으므로 직접 쓰기 (재귀 호출 방지)
+        *logFile_ << "[" << getCurrentTimestamp() << "] "
+                  << "[INFO ] Logger shutting down" << std::endl;
+        logFile_->flush();
+        std::cout << "[INFO ] Logger shutting down" << std::endl;
+        logFile_->close();
+    }
+    
+    initialized_ = false;
 }
 
 void Logger::log(LogLevel level, const std::string& message) {
-    std::lock_guard<std::mutex> lock(mutex_);
-
-    if (!logFile_.is_open()) {
-        openLogFile();
-    }
-
-    // Check if rotation is needed
-    if (currentFileSize_ > MAX_FILE_SIZE) {
-        rotate();
-    }
-
-    std::string formatted = formatLogMessage(level, message);
-    logFile_ << formatted << std::endl;
-    logFile_.flush();
-    currentFileSize_ += formatted.length() + 1;
+    writeLog(level, message);
 }
 
-void Logger::rotate() {
-    closeLogFile();
-
-    try {
-        // Generate rotated filename with timestamp
-        auto now = std::chrono::system_clock::now();
-        auto time_t = std::chrono::system_clock::to_time_t(now);
-        std::stringstream ss;
-        ss << std::put_time(std::localtime(&time_t), "%Y%m%d_%H%M%S");
-        std::string rotatedName = logFileName_ + "." + ss.str();
-
-        std::string currentPath = getLogFilePath();
-        std::string rotatedPath = logDirectory_ + "/" + rotatedName;
-
-        if (std::filesystem::exists(currentPath)) {
-            std::filesystem::rename(currentPath, rotatedPath);
+void Logger::logHex(LogLevel level, const std::string& label, const uint8_t* data, size_t length) {
+    if (!data || length == 0) {
+        writeLog(level, label + ": (empty)");
+        return;
+    }
+    
+    std::ostringstream oss;
+    oss << label << " [" << length << " bytes]: ";
+    
+    for (size_t i = 0; i < length; ++i) {
+        oss << std::hex << std::setw(2) << std::setfill('0') 
+            << static_cast<int>(data[i]);
+        if (i < length - 1) {
+            oss << " ";
         }
-    } catch (const std::exception&) {
-        // Ignore rotation errors - continue with new file
     }
-
-    openLogFile();
+    
+    writeLog(level, oss.str());
 }
 
-std::string Logger::getLogFilePath() const {
-    return logDirectory_ + "/" + logFileName_;
+void Logger::debug(const std::string& message) {
+    log(LogLevel::DEBUG, message);
 }
 
-std::string Logger::formatLogMessage(LogLevel level, const std::string& message) const {
+void Logger::info(const std::string& message) {
+    log(LogLevel::INFO, message);
+}
+
+void Logger::warn(const std::string& message) {
+    log(LogLevel::WARN, message);
+}
+
+void Logger::error(const std::string& message) {
+    log(LogLevel::ERROR, message);
+}
+
+void Logger::debugHex(const std::string& label, const uint8_t* data, size_t length) {
+    logHex(LogLevel::DEBUG, label, data, length);
+}
+
+void Logger::infoHex(const std::string& label, const uint8_t* data, size_t length) {
+    logHex(LogLevel::INFO, label, data, length);
+}
+
+Logger::~Logger() {
+    // 소멸자에서는 mutex를 잠그지 않고 직접 종료
+    // shutdown()을 호출하면 mutex deadlock이 발생할 수 있음
+    if (logFile_ && logFile_->is_open()) {
+        logFile_->close();
+    }
+    initialized_ = false;
+}
+
+std::string Logger::levelToString(LogLevel level) {
+    switch (level) {
+        case LogLevel::DEBUG: return "DEBUG";
+        case LogLevel::INFO:  return "INFO ";
+        case LogLevel::WARN:  return "WARN ";
+        case LogLevel::ERROR: return "ERROR";
+        default: return "UNKNOWN";
+    }
+}
+
+std::string Logger::getCurrentTimestamp() {
     auto now = std::chrono::system_clock::now();
-    auto time_t = std::chrono::system_clock::to_time_t(now);
+    auto time = std::chrono::system_clock::to_time_t(now);
     auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
         now.time_since_epoch()) % 1000;
-
-    std::stringstream ss;
-    ss << std::put_time(std::localtime(&time_t), "%Y-%m-%d %H:%M:%S");
-    ss << "." << std::setfill('0') << std::setw(3) << ms.count();
-
-    std::string levelStr;
-    switch (level) {
-        case LogLevel::DEBUG: levelStr = "DEBUG"; break;
-        case LogLevel::INFO: levelStr = "INFO"; break;
-        case LogLevel::WARNING: levelStr = "WARN"; break;
-        case LogLevel::ERR: levelStr = "ERROR"; break;
-    }
-
-    ss << " [" << levelStr << "] " << message;
-    return ss.str();
+    
+    std::tm tm_buf;
+    localtime_s(&tm_buf, &time);
+    
+    std::ostringstream oss;
+    oss << std::put_time(&tm_buf, "%Y-%m-%d %H:%M:%S");
+    oss << "." << std::setfill('0') << std::setw(3) << ms.count();
+    
+    return oss.str();
 }
 
-void Logger::openLogFile() {
-    std::string path = getLogFilePath();
-    logFile_.open(path, std::ios::app);
-    if (logFile_.is_open()) {
-        try {
-            currentFileSize_ = std::filesystem::exists(path) ? 
-                              std::filesystem::file_size(path) : 0;
-        } catch (const std::exception&) {
-            currentFileSize_ = 0;
-        }
+void Logger::writeLog(LogLevel level, const std::string& message) {
+    if (!initialized_) {
+        // Fallback to console if not initialized
+        std::cout << "[" << levelToString(level) << "] " << message << std::endl;
+        return;
     }
+    
+    std::lock_guard<std::mutex> lock(logMutex_);
+    
+    if (logFile_ && logFile_->is_open()) {
+        *logFile_ << "[" << getCurrentTimestamp() << "] "
+                  << "[" << levelToString(level) << "] "
+                  << message << std::endl;
+        logFile_->flush();
+    }
+    
+    // Also output to console for debugging
+    std::cout << "[" << levelToString(level) << "] " << message << std::endl;
 }
 
-void Logger::closeLogFile() {
-    if (logFile_.is_open()) {
-        logFile_.close();
-    }
-}
-
-} // namespace device_controller::logging
+} // namespace logging
