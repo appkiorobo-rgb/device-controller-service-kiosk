@@ -3,9 +3,15 @@ alwaysApply: true
 ---
 # SERVICE IPC RULES
 
+## Transport
+- Use HTTP + WebSocket for IPC communication
+- HTTP Server: `http://localhost:8080`
+- HTTP API Endpoint: `POST /api/command` for Commands/Responses
+- WebSocket Endpoint: `/ws` for Events (server → client, one-way)
+
 ## Dual channels
-- Commands/Responses (request/response)
-- Events (async, state changes)
+- Commands/Responses: HTTP POST requests
+- Events: WebSocket broadcast (async, state changes)
 
 ## Idempotency
 - Every command MUST include commandId.
@@ -16,6 +22,7 @@ alwaysApply: true
 - Events may be duplicated or reordered.
 - Client must rely on State Snapshot as source of truth.
 - Service MUST provide state snapshot query.
+- Events are broadcast to all connected WebSocket clients.
 
 ## Versioning
 - Include protocolVersion in every message.

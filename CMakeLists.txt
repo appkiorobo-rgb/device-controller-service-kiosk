@@ -1,34 +1,47 @@
 cmake_minimum_required(VERSION 3.15)
+
 project(DeviceControllerService VERSION 1.0.0 LANGUAGES CXX)
 
-# C++ 표준 설정
+# =========================
+# 기본 설정
+# =========================
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# 64비트 빌드 강제
+# 64-bit 강제
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
     message(STATUS "Building for 64-bit")
 else()
     message(FATAL_ERROR "This project requires 64-bit build")
 endif()
 
-# 빌드 타입 설정
+# Build type 기본값
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
 
-# 출력 디렉토리 설정
+# Output directories
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
-# Include 디렉토리
-include_directories(${CMAKE_SOURCE_DIR}/include)
+# =========================
+# 공통 include (프로젝트 헤더)
+# =========================
+set(PROJECT_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/include)
 
-# 소스 파일들
+# =========================
+# Dependencies
+# =========================
+# No external dependencies required (HTTP/WebSocket removed)
+
+# =========================
+# 소스 파일
+# =========================
+
+# Logger is header-only
 set(LOGGING_SOURCES
-    src/logging/logger.cpp
 )
 
 set(SMARTRO_SOURCES
@@ -37,29 +50,32 @@ set(SMARTRO_SOURCES
     src/vendor_adapters/smartro/smartro_comm.cpp
 )
 
-# 테스트 프로그램
-add_executable(test_device_check
-    tests/test_device_check.cpp
-    ${LOGGING_SOURCES}
-    ${SMARTRO_SOURCES}
+set(IPC_SOURCES
+    src/ipc/named_pipe_server.cpp
+    src/ipc/ipc_server.cpp
+    src/ipc/message_parser.cpp
 )
 
-add_executable(test_payment_wait
-    tests/test_payment_wait.cpp
-    ${LOGGING_SOURCES}
-    ${SMARTRO_SOURCES}
+set(CORE_SOURCES
+    src/core/device_manager.cpp
+    src/core/service_core.cpp
 )
 
-add_executable(test_card_uid_read
-    tests/test_card_uid_read.cpp
-    ${LOGGING_SOURCES}
-    ${SMARTRO_SOURCES}
+set(VENDOR_ADAPTER_SOURCES
+    src/vendor_adapters/smartro/smartro_payment_adapter.cpp
 )
 
-add_executable(test_event_wait
-    tests/test_event_wait.cpp
+# =========================
+# Executables
+# =========================
+
+add_executable(device_controller_service
+    src/main.cpp
     ${LOGGING_SOURCES}
     ${SMARTRO_SOURCES}
+    ${IPC_SOURCES}
+    ${CORE_SOURCES}
+    ${VENDOR_ADAPTER_SOURCES}
 )
 
 add_executable(test_integrated
@@ -68,154 +84,88 @@ add_executable(test_integrated
     ${SMARTRO_SOURCES}
 )
 
-# Windows 관련 링크 라이브러리
-target_link_libraries(test_device_check
-    PRIVATE
+add_executable(test_pipe_client
+    tests/test_pipe_client.cpp
 )
 
-target_link_libraries(test_payment_wait
-    PRIVATE
+# =========================
+# Target include / link
+# =========================
+
+# 프로젝트 include는 target 단위로 지정 (전역 include_directories 지양)
+target_include_directories(device_controller_service PRIVATE
+    ${PROJECT_INCLUDE_DIR}
 )
 
-target_link_libraries(test_card_uid_read
-    PRIVATE
+target_include_directories(test_integrated PRIVATE
+    ${PROJECT_INCLUDE_DIR}
 )
 
-target_link_libraries(test_event_wait
-    PRIVATE
+target_include_directories(test_pipe_client PRIVATE
+    ${PROJECT_INCLUDE_DIR}
 )
 
-target_link_libraries(test_integrated
-    PRIVATE
-)
+# No external libraries required
 
-# Visual Studio 디버그 인자 설정 (예: COM3)
-# 실제 사용할 COM 포트로 변경하세요
-set_target_properties(test_device_check PROPERTIES
-    VS_DEBUGGER_COMMAND_ARGUMENTS "COM3 DEFAULT_TERM 115200"
-)
+# =========================
+# Windows 설정
+# =========================
+if(WIN32)
+    # Windows API 레벨 고정 (Windows 10 기준)
+    target_compile_definitions(device_controller_service PRIVATE _WIN32_WINNT=0x0A00)
+    target_compile_definitions(test_integrated          PRIVATE _WIN32_WINNT=0x0A00)
+    target_compile_definitions(test_pipe_client        PRIVATE _WIN32_WINNT=0x0A00)
+endif()
 
-set_target_properties(test_payment_wait PROPERTIES
-    VS_DEBUGGER_COMMAND_ARGUMENTS "COM3 DEFAULT_TERM 115200"
-)
-
-set_target_properties(test_card_uid_read PROPERTIES
-    VS_DEBUGGER_COMMAND_ARGUMENTS "COM3 DEFAULT_TERM 115200"
-)
-
-set_target_properties(test_event_wait PROPERTIES
-    VS_DEBUGGER_COMMAND_ARGUMENTS "COM3 DEFAULT_TERM 115200 0"
-)
-
+# =========================
+# Visual Studio 디버그 인자
+# =========================
 set_target_properties(test_integrated PROPERTIES
     VS_DEBUGGER_COMMAND_ARGUMENTS "COM3 DEFAULT_TERM 115200"
 )
 
-# 컴파일러 플래그
+# =========================
+# 컴파일러 옵션
+# =========================
 if(MSVC)
-    # MSVC 특정 설정
-    target_compile_options(test_device_check PRIVATE
+    target_compile_options(device_controller_service PRIVATE
         /W4
         /permissive-
         /Zc:__cplusplus
     )
-    
-    target_compile_options(test_payment_wait PRIVATE
-        /W4
-        /permissive-
-        /Zc:__cplusplus
-    )
-    
-    target_compile_options(test_card_uid_read PRIVATE
-        /W4
-        /permissive-
-        /Zc:__cplusplus
-    )
-    
-    target_compile_options(test_event_wait PRIVATE
-        /W4
-        /permissive-
-        /Zc:__cplusplus
-    )
-    
     target_compile_options(test_integrated PRIVATE
         /W4
         /permissive-
         /Zc:__cplusplus
     )
-    
-    # 64비트 명시적 설정
-    set_target_properties(test_device_check PROPERTIES
-        VS_PLATFORM_TOOLSET_HOST_ARCHITECTURE x64
-    )
-    
-    set_target_properties(test_payment_wait PROPERTIES
-        VS_PLATFORM_TOOLSET_HOST_ARCHITECTURE x64
-    )
-    
-    set_target_properties(test_card_uid_read PROPERTIES
-        VS_PLATFORM_TOOLSET_HOST_ARCHITECTURE x64
-    )
-    
-    set_target_properties(test_event_wait PROPERTIES
-        VS_PLATFORM_TOOLSET_HOST_ARCHITECTURE x64
-    )
-    
-    set_target_properties(test_integrated PROPERTIES
-        VS_PLATFORM_TOOLSET_HOST_ARCHITECTURE x64
+    target_compile_options(test_pipe_client PRIVATE
+        /W4
+        /permissive-
+        /Zc:__cplusplus
     )
 else()
-    # GCC/Clang 설정
-    target_compile_options(test_device_check PRIVATE
-        -Wall
-        -Wextra
-        -Wpedantic
-    )
-    
-    target_compile_options(test_payment_wait PRIVATE
-        -Wall
-        -Wextra
-        -Wpedantic
-    )
-    
-    target_compile_options(test_card_uid_read PRIVATE
-        -Wall
-        -Wextra
-        -Wpedantic
-    )
-    
-    target_compile_options(test_event_wait PRIVATE
-        -Wall
-        -Wextra
-        -Wpedantic
-    )
-    
-    target_compile_options(test_integrated PRIVATE
-        -Wall
-        -Wextra
-        -Wpedantic
-    )
+        target_compile_options(device_controller_service PRIVATE -Wall -Wextra -Wpedantic)
+        target_compile_options(test_integrated          PRIVATE -Wall -Wextra -Wpedantic)
+        target_compile_options(test_pipe_client         PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
-# 디버그 정보 포함
+# =========================
+# Debug info
+# =========================
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     if(MSVC)
-        target_compile_options(test_device_check PRIVATE /Zi)
-        target_compile_options(test_payment_wait PRIVATE /Zi)
-        target_compile_options(test_card_uid_read PRIVATE /Zi)
-        target_compile_options(test_event_wait PRIVATE /Zi)
-        target_compile_options(test_integrated PRIVATE /Zi)
+        target_compile_options(device_controller_service PRIVATE /Zi)
+        target_compile_options(test_integrated          PRIVATE /Zi)
     else()
-        target_compile_options(test_device_check PRIVATE -g)
-        target_compile_options(test_payment_wait PRIVATE -g)
-        target_compile_options(test_card_uid_read PRIVATE -g)
-        target_compile_options(test_event_wait PRIVATE -g)
-        target_compile_options(test_integrated PRIVATE -g)
+        target_compile_options(device_controller_service PRIVATE -g)
+        target_compile_options(test_integrated          PRIVATE -g)
     endif()
 endif()
 
-# 설치 설정 (선택사항)
-install(TARGETS test_device_check test_payment_wait test_card_uid_read test_event_wait test_integrated
+# =========================
+# Install
+# =========================
+install(TARGETS device_controller_service test_integrated test_pipe_client
     RUNTIME DESTINATION bin
 )
 

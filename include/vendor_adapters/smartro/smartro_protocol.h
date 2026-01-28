@@ -1,6 +1,16 @@
 // include/vendor_adapters/smartro/smartro_protocol.h
 #pragma once
 
+// Windows macro protection
+#ifdef _WIN32
+    #ifndef WIN32_LEAN_AND_MEAN
+        #define WIN32_LEAN_AND_MEAN
+    #endif
+    #ifndef NOMINMAX
+        #define NOMINMAX
+    #endif
+#endif
+
 #include <string>
 #include <vector>
 #include <cstdint>
@@ -8,16 +18,16 @@
 
 namespace smartro {
 
-// 패킷 상수
+// Packet constants
 constexpr uint8_t STX = 0x02;
 constexpr uint8_t ETX = 0x03;
 constexpr uint8_t ACK = 0x06;
 constexpr uint8_t NACK = 0x15;
 
-// Header 구조 크기
+// Header structure size
 constexpr size_t HEADER_SIZE = 35;
 constexpr size_t TAIL_SIZE = 2;
-constexpr size_t MIN_PACKET_SIZE = HEADER_SIZE + TAIL_SIZE;  // Data 없을 때
+constexpr size_t MIN_PACKET_SIZE = HEADER_SIZE + TAIL_SIZE;  // When no data
 
 // Job Codes
 constexpr char JOB_CODE_DEVICE_CHECK = 'A';
@@ -26,11 +36,13 @@ constexpr char JOB_CODE_PAYMENT_WAIT = 'E';
 constexpr char JOB_CODE_PAYMENT_WAIT_RESPONSE = 'e';
 constexpr char JOB_CODE_CARD_UID_READ = 'F';
 constexpr char JOB_CODE_CARD_UID_READ_RESPONSE = 'f';
-constexpr char JOB_CODE_EVENT = '@';  // 이벤트 전문
+constexpr char JOB_CODE_EVENT = '@';  // Event message
 constexpr char JOB_CODE_RESET = 'R';
 constexpr char JOB_CODE_RESET_RESPONSE = 'r';
 constexpr char JOB_CODE_PAYMENT_APPROVAL = 'B';
 constexpr char JOB_CODE_PAYMENT_APPROVAL_RESPONSE = 'b';
+constexpr char JOB_CODE_TRANSACTION_CANCEL = 'C';
+constexpr char JOB_CODE_TRANSACTION_CANCEL_RESPONSE = 'c';
 constexpr char JOB_CODE_LAST_APPROVAL_RESPONSE = 'L';
 constexpr char JOB_CODE_LAST_APPROVAL_RESPONSE_RESPONSE = 'l';
 constexpr char JOB_CODE_SCREEN_SOUND_SETTING = 'S';
@@ -38,7 +50,7 @@ constexpr char JOB_CODE_SCREEN_SOUND_SETTING_RESPONSE = 's';
 constexpr char JOB_CODE_IC_CARD_CHECK = 'M';
 constexpr char JOB_CODE_IC_CARD_CHECK_RESPONSE = 'm';
 
-// 장치체크 응답 구조
+// Device check response structure
 struct DeviceCheckResponse {
     char cardModuleStatus;      // N/O/X
     char rfModuleStatus;         // O/X
@@ -46,158 +58,230 @@ struct DeviceCheckResponse {
     char integrationServerStatus; // N/O/X/F
 };
 
-// 결제대기 응답 구조 (문서에 명시되지 않음, 기본 구조)
+// Payment wait response structure (format not specified in docs)
 struct PaymentWaitResponse {
-    std::vector<uint8_t> data;  // 응답 데이터 (형식 미확정)
+    std::vector<uint8_t> data;  // Response data (format unspecified)
 };
 
-// 카드 UID 읽기 응답 구조 (문서에 명시되지 않음, 기본 구조)
+// Card UID read response structure (format not specified in docs)
 struct CardUidReadResponse {
-    std::vector<uint8_t> uid;  // 카드 UID (일반적으로 4-8 bytes)
+    std::vector<uint8_t> uid;  // Card UID (typically 4-8 bytes)
 };
 
-// 이벤트 타입
+// Event type
 enum class EventType {
-    MS_CARD_DETECTED,      // @M - MS 카드 인식
-    RF_CARD_DETECTED,      // @R - RF 카드 인식
-    IC_CARD_DETECTED,      // @I - IC 카드 인식
-    IC_CARD_REMOVED,       // @O - IC 카드 제거
-    IC_CARD_FALLBACK,      // @F - IC 카드 Fallback
-    UNKNOWN                // 알 수 없는 이벤트
+    MS_CARD_DETECTED,      // @M - MS card detected
+    RF_CARD_DETECTED,      // @R - RF card detected
+    IC_CARD_DETECTED,      // @I - IC card detected
+    IC_CARD_REMOVED,       // @O - IC card removed
+    IC_CARD_FALLBACK,      // @F - IC card fallback
+    UNKNOWN                // Unknown event
 };
 
-// 이벤트 응답 구조
+// Event response structure
 struct EventResponse {
-    EventType type;              // 이벤트 타입
-    std::vector<uint8_t> data;  // 이벤트 데이터 (문서에 명시되지 않음)
+    EventType type;              // Event type
+    std::vector<uint8_t> data;  // Event data (format not specified in docs)
 };
 
-// 거래승인 요청 구조
+// Payment approval request structure
 struct PaymentApprovalRequest {
-    uint8_t transactionType;    // 1: 승인, 2: 마지막 거래 취소
-    uint32_t amount;            // 승인금액 (원)
-    uint32_t tax;               // 세금 (원)
-    uint32_t service;           // 봉사료 (원)
-    uint8_t installments;       // 할부개월 (00: 일시불)
-    uint8_t signatureRequired;  // 1: 비서명, 2: 서명
+    uint8_t transactionType;    // 1: Approval, 2: Last transaction cancellation
+    uint32_t amount;            // Approval amount (KRW)
+    uint32_t tax;               // Tax (KRW)
+    uint32_t service;           // Service charge (KRW)
+    uint8_t installments;       // Installment months (00: lump sum)
+    uint8_t signatureRequired;  // 1: No signature, 2: Signature required
 };
 
-// 거래승인 응답 구조 (문서에 명시되지 않음, 기본 구조)
+// Payment approval response structure (157 bytes)
 struct PaymentApprovalResponse {
-    std::vector<uint8_t> data;  // 응답 데이터 (157 bytes)
+    char transactionType;        // Transaction type: 1=Credit, 2=Cash Receipt, 3=Prepaid, 4=Zero Pay, 5=Kakao Mini, 6=Kakao Credit, X=Rejected
+    char transactionMedium;      // Transaction medium: 1=IC, 2=MS, 3=RF, 4=QR, 5=KEYIN
+    std::string cardNumber;      // Card number (20 bytes, masked)
+    std::string approvalAmount;  // Approval/Cancellation amount (10 bytes)
+    std::string tax;             // Tax (8 bytes)
+    std::string serviceCharge;   // Service charge (8 bytes)
+    std::string installments;    // Installment months (2 bytes)
+    std::string approvalNumber;  // Approval number/Prepaid card info (12 bytes)
+    std::string salesDate;       // Sales date (8 bytes, YYYYMMDD)
+    std::string salesTime;       // Sales time (6 bytes, hhmmss)
+    std::string transactionId;   // Transaction unique number (12 bytes)
+    std::string merchantNumber; // Merchant number (15 bytes)
+    std::string terminalNumber;  // Terminal number (14 bytes)
+    std::string issuer;          // Issuer (20 bytes)
+    std::string rejectionInfo;   // Rejection info (20 bytes, if rejected)
+    std::string acquirer;        // Acquirer (20 bytes)
+    
+    // Original data (backup)
+    std::vector<uint8_t> data;
+    
+    // Convenience functions
+    bool isRejected() const { return transactionType == 'X' || transactionType == 'x'; }
+    bool isSuccess() const { return !isRejected(); }
 };
 
-// 마지막 승인 응답 구조 (B 응답과 동일)
+// Last approval response structure (same as PaymentApprovalResponse)
 struct LastApprovalResponse {
-    std::vector<uint8_t> data;  // 응답 데이터 (157 bytes, same as PaymentApprovalResponse)
+    std::vector<uint8_t> data;  // Response data (157 bytes, same as PaymentApprovalResponse)
 };
 
-// 화면/음성 설정 요청 구조
+// Screen/sound setting request structure
 struct ScreenSoundSettingRequest {
     uint8_t screenBrightness;   // 0-9
     uint8_t soundVolume;        // 0-9
     uint8_t touchSoundVolume;   // 0-9
 };
 
-// 화면/음성 설정 응답 구조
+// Screen/sound setting response structure
 struct ScreenSoundSettingResponse {
-    uint8_t screenBrightness;   // 설정된 화면밝기
-    uint8_t soundVolume;        // 설정된 음성볼륨
-    uint8_t touchSoundVolume;   // 설정된 터치음볼륨
+    uint8_t screenBrightness;   // Set screen brightness
+    uint8_t soundVolume;        // Set sound volume
+    uint8_t touchSoundVolume;   // Set touch sound volume
 };
 
-// IC 카드 체크 응답 구조
+// IC card check response structure
 struct IcCardCheckResponse {
-    char cardStatus;  // 'O': IC 카드 삽입, 'X': IC 카드 없음
+    char cardStatus;  // 'O': IC card inserted, 'X': No IC card
+};
+
+// Transaction cancellation request structure
+struct TransactionCancelRequest {
+    char cancelType;              // '1': Request message cancellation, '2': Last transaction cancellation
+    uint8_t transactionType;      // Transaction type (same as PaymentApprovalRequest)
+    uint32_t amount;              // Cancellation amount (KRW)
+    uint32_t tax;                 // Tax (KRW)
+    uint32_t service;             // Service charge (KRW)
+    uint8_t installments;          // Installment months (00: lump sum)
+    std::string approvalNumber;   // Approval number from original transaction (12 bytes)
+    std::string originalDate;     // Original transaction date YYYYMMDD (8 bytes)
+    std::string originalTime;     // Original transaction time hhmmss (6 bytes)
+    std::string additionalInfo;    // Additional info (for PG cancellation, 30 digits)
+};
+
+// Transaction cancellation response structure (same as PaymentApprovalResponse)
+struct TransactionCancelResponse {
+    // Same structure as PaymentApprovalResponse
+    char transactionType;        // Transaction type
+    char transactionMedium;      // Transaction medium
+    std::string cardNumber;      // Card number (20 bytes, masked)
+    std::string approvalAmount;  // Approval/Cancellation amount (10 bytes)
+    std::string tax;             // Tax (8 bytes)
+    std::string serviceCharge;   // Service charge (8 bytes)
+    std::string installments;    // Installment months (2 bytes)
+    std::string approvalNumber;  // Approval number/Prepaid card info (12 bytes)
+    std::string salesDate;       // Sales date (8 bytes, YYYYMMDD)
+    std::string salesTime;       // Sales time (6 bytes, hhmmss)
+    std::string transactionId;   // Transaction unique number (12 bytes)
+    std::string merchantNumber; // Merchant number (15 bytes)
+    std::string terminalNumber;  // Terminal number (14 bytes)
+    std::string issuer;          // Issuer (20 bytes)
+    std::string rejectionInfo;   // Rejection info (20 bytes, if rejected)
+    std::string acquirer;        // Acquirer (20 bytes)
+    
+    // Original data (backup)
+    std::vector<uint8_t> data;
+    
+    // Convenience functions
+    bool isRejected() const { return transactionType == 'X' || transactionType == 'x'; }
+    bool isSuccess() const { return !isRejected(); }
 };
 
 class SmartroProtocol {
 public:
-    // 장치체크 요청 패킷 생성
+    // Create device check request packet
     static std::vector<uint8_t> createDeviceCheckRequest(const std::string& terminalId);
     
-    // 결제대기 요청 패킷 생성
+    // Create payment wait request packet
     static std::vector<uint8_t> createPaymentWaitRequest(const std::string& terminalId);
     
-    // 카드 UID 읽기 요청 패킷 생성
+    // Create card UID read request packet
     static std::vector<uint8_t> createCardUidReadRequest(const std::string& terminalId);
     
-    // 단말기 리셋 요청 패킷 생성
+    // Create reset request packet
     static std::vector<uint8_t> createResetRequest(const std::string& terminalId);
     
-    // 거래승인 요청 패킷 생성
+    // Create payment approval request packet
     static std::vector<uint8_t> createPaymentApprovalRequest(const std::string& terminalId,
                                                               const PaymentApprovalRequest& request);
     
-    // 마지막 승인 응답 요청 패킷 생성
+    // Create transaction cancellation request packet
+    static std::vector<uint8_t> createTransactionCancelRequest(const std::string& terminalId,
+                                                                const TransactionCancelRequest& request);
+    
+    // Create last approval response request packet
     static std::vector<uint8_t> createLastApprovalResponseRequest(const std::string& terminalId);
     
-    // 화면/음성 설정 요청 패킷 생성
+    // Create screen/sound setting request packet
     static std::vector<uint8_t> createScreenSoundSettingRequest(const std::string& terminalId,
                                                                 const ScreenSoundSettingRequest& request);
     
-    // IC 카드 체크 요청 패킷 생성
+    // Create IC card check request packet
     static std::vector<uint8_t> createIcCardCheckRequest(const std::string& terminalId);
     
-    // 패킷 파싱
+    // Parse packet
     static bool parsePacket(const uint8_t* data, size_t length, 
                            std::vector<uint8_t>& header, 
                            std::vector<uint8_t>& payload);
     
-    // BCC 계산 (STX부터 ETX까지 XOR)
+    // Calculate BCC (XOR from STX to ETX)
     static uint8_t calculateBCC(const uint8_t* data, size_t length);
     
-    // BCC 검증
+    // Verify BCC
     static bool verifyBCC(const uint8_t* packet, size_t packetLength);
     
-    // 장치체크 응답 파싱
+    // Parse device check response
     static bool parseDeviceCheckResponse(const uint8_t* data, size_t length, 
                                         DeviceCheckResponse& response);
     
-    // 결제대기 응답 파싱
+    // Parse payment wait response
     static bool parsePaymentWaitResponse(const uint8_t* data, size_t length, 
                                          PaymentWaitResponse& response);
     
-    // 카드 UID 읽기 응답 파싱
+    // Parse card UID read response
     static bool parseCardUidReadResponse(const uint8_t* data, size_t length, 
                                          CardUidReadResponse& response);
     
-    // 이벤트 응답 파싱
+    // Parse event response
     static bool parseEventResponse(const uint8_t* data, size_t length, 
                                   EventResponse& response);
     
-    // 거래승인 응답 파싱
+    // Parse payment approval response
     static bool parsePaymentApprovalResponse(const uint8_t* data, size_t length, 
                                             PaymentApprovalResponse& response);
     
-    // 마지막 승인 응답 파싱 (B 응답과 동일)
+    // Parse transaction cancellation response (same as payment approval response)
+    static bool parseTransactionCancelResponse(const uint8_t* data, size_t length, 
+                                              TransactionCancelResponse& response);
+    
+    // Parse last approval response (same as payment approval response)
     static bool parseLastApprovalResponse(const uint8_t* data, size_t length, 
                                          LastApprovalResponse& response);
     
-    // 화면/음성 설정 응답 파싱
+    // Parse screen/sound setting response
     static bool parseScreenSoundSettingResponse(const uint8_t* data, size_t length, 
                                                ScreenSoundSettingResponse& response);
     
-    // IC 카드 체크 응답 파싱
+    // Parse IC card check response
     static bool parseIcCardCheckResponse(const uint8_t* data, size_t length, 
                                         IcCardCheckResponse& response);
     
-    // DateTime 생성 (YYYYMMDDhhmmss)
+    // Generate DateTime (YYYYMMDDhhmmss)
     static std::string getCurrentDateTime();
     
-    // Terminal ID 포맷팅 (16 bytes, 좌측 정렬, 나머지 0x00)
+    // Format Terminal ID (16 bytes, left-aligned, rest 0x00)
     static std::vector<uint8_t> formatTerminalId(const std::string& terminalId);
     
-    // USHORT를 Little Endian으로 변환
+    // Convert USHORT to Little Endian
     static void writeUshortLE(uint16_t value, uint8_t* buffer);
     
-    // Little Endian USHORT 읽기
+    // Read Little Endian USHORT
     static uint16_t readUshortLE(const uint8_t* buffer);
     
-    // 패킷에서 Data Length 추출
+    // Extract Data Length from packet
     static uint16_t extractDataLength(const uint8_t* header);
     
-    // Job Code 추출
+    // Extract Job Code
     static char extractJobCode(const uint8_t* header);
 };
 

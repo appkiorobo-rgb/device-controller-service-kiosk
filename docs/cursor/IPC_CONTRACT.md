@@ -17,12 +17,21 @@
 - No external network exposure is allowed
 
 ### Transport
-- Windows Named Pipes
+- HTTP + WebSocket (표준 프로토콜)
+- **HTTP Server**: `http://localhost:8080`
+- **HTTP API Endpoint**: `POST http://localhost:8080/api/command` (Command/Response)
+- **WebSocket Endpoint**: `ws://localhost:8080/ws` (Event Stream)
 
 ### Encoding
 - JSON (initial implementation)
 - Protobuf may be adopted later
 - Field names and semantics MUST remain identical regardless of encoding
+
+### HTTP + WebSocket 구조
+- **HTTP POST**: 클라이언트 → 서버 (명령어 전송), 서버 → 클라이언트 (응답 수신)
+- **WebSocket**: 서버 → 클라이언트 (이벤트 브로드캐스트, 단방향)
+- 클라이언트는 HTTP 클라이언트와 WebSocket 클라이언트 모두 연결해야 함
+- WebSocket은 읽기 전용 (클라이언트는 메시지를 보내지 않음)
 
 ---
 
@@ -143,7 +152,310 @@ The protocol consists of three logical flows:
 
 ---
 
-## 7. Change Rules
+## 7. Command Types
+
+### 공통 명령어
+
+#### get_state_snapshot
+전체 디바이스 상태 스냅샷 조회
+- **payload**: `{}`
+- **result**: `{ "deviceId": "{state_data}", ... }`
+
+#### get_device_list
+등록된 디바이스 목록 조회
+- **payload**: `{}`
+- **result**: `{ "payment": "device_id1,device_id2", "printer": "...", "camera": "..." }`
+
+### 결제 단말기 명령어
+
+#### payment_start
+결제 시작
+- **payload**: `{ "amount": "10000" }` (원 단위 문자열)
+- **result**: `{ "deviceId": "...", "state": "3" }` (PROCESSING)
+- **이벤트**: `payment_complete` 또는 `payment_failed` 발생
+
+#### payment_cancel
+결제 취소
+- **payload**: `{}`
+- **result**: `{ "deviceId": "...", "state": "2" }` (READY)
+- **이벤트**: `payment_cancelled` 발생
+
+#### payment_status_check
+결제 단말기 상태 확인
+- **payload**: `{}`
+- **result**: `{ "deviceId": "...", "state": "2", "stateString": "READY", "deviceName": "..." }`
+
+#### payment_reset
+결제 단말기 리셋
+- **payload**: `{}`
+- **result**: `{ "deviceId": "...", "state": "2" }` (READY)
+
+#### payment_device_check
+하드웨어 상태 확인
+- **payload**: `{}`
+- **result**: `{ "deviceId": "...", "state": "2" }`
+
+### 프린터 명령어 (향후)
+
+#### printer_print
+인쇄 요청
+- **payload**: `{ "jobId": "uuid", "data": "base64_encoded_data" }`
+- **이벤트**: `printer_job_complete` 발생
+
+#### printer_status_check
+프린터 상태 확인
+- **payload**: `{}`
+- **result**: `{ "deviceId": "...", "state": "2" }`
+
+#### printer_reset
+프린터 리셋
+- **payload**: `{}`
+- **result**: `{ "deviceId": "...", "state": "2" }`
+
+#### printer_get_capabilities
+프린터 기능 조회
+- **payload**: `{}`
+- **result**: `{ "supportsColor": "true", "supportsDuplex": "false", ... }`
+
+### 카메라 명령어 (향후)
+
+#### camera_capture
+사진 촬영
+- **payload**: `{ "captureId": "uuid" }`
+- **이벤트**: `camera_capture_complete` 발생
+
+#### camera_status_check
+카메라 상태 확인
+- **payload**: `{}`
+- **result**: `{ "deviceId": "...", "state": "2" }`
+
+#### camera_preview_start
+미리보기 시작
+- **payload**: `{}`
+- **result**: `{ "deviceId": "...", "state": "3" }`
+
+#### camera_preview_stop
+미리보기 중지
+- **payload**: `{}`
+- **result**: `{ "deviceId": "...", "state": "2" }`
+
+#### camera_set_settings
+카메라 설정 변경
+- **payload**: `{ "resolutionWidth": "1920", "resolutionHeight": "1080", "imageFormat": "jpeg", "quality": "90" }`
+- **result**: `{ "deviceId": "..." }`
+
+---
+
+## 8. Event Types
+
+### 공통 이벤트
+
+#### device_state_changed
+디바이스 상태 변경
+- **deviceType**: `"payment" | "printer" | "camera"`
+- **data**: `{ "state": "3", "stateString": "PROCESSING" }`
+
+### 결제 단말기 이벤트
+
+#### payment_complete
+결제 완료
+- **deviceType**: `"payment"`
+- **data**: `{ "transactionId": "...", "amount": "10000", "cardNumber": "...", "approvalNumber": "...", "salesDate": "YYYYMMDD", "salesTime": "hhmmss", "transactionMedium": "1", "state": "2" }`
+
+#### payment_failed
+결제 실패
+- **deviceType**: `"payment"`
+- **data**: `{ "errorCode": "VAN_REJECTED", "errorMessage": "...", "amount": "10000", "state": "2" }`
+
+#### payment_cancelled
+결제 취소
+- **deviceType**: `"payment"`
+- **data**: `{ "state": "2" }`
+
+### 프린터 이벤트 (향후)
+
+#### printer_job_complete
+인쇄 작업 완료
+- **deviceType**: `"printer"`
+- **data**: `{ "jobId": "uuid", "success": "true", "errorMessage": "", "state": "2" }`
+
+### 카메라 이벤트 (향후)
+
+#### camera_capture_complete
+촬영 완료
+- **deviceType**: `"camera"`
+- **data**: `{ "captureId": "uuid", "imageData": "base64_encoded", "imageFormat": "jpeg", "width": "1920", "height": "1080", "success": "true", "state": "2" }`
+
+---
+
+## 9. Device States
+
+### 공통 상태 값
+
+- `0`: **DISCONNECTED** - 디바이스가 연결되지 않음
+- `1`: **CONNECTING** - 연결 중
+- `2`: **READY** - 준비 완료 (명령어 실행 가능)
+- `3`: **PROCESSING** - 처리 중 (다른 명령어 실행 불가)
+- `4`: **ERROR** - 오류 발생
+- `5`: **HUNG** - 응답 없음 (타임아웃)
+
+---
+
+## 10. Error Codes
+
+### 공통 에러 코드
+
+- `DEVICE_NOT_FOUND`: 디바이스가 등록되지 않음
+- `DEVICE_NOT_READY`: 디바이스가 준비되지 않음 (다른 상태)
+- `INVALID_PAYLOAD`: 잘못된 요청 데이터
+- `COMMAND_REJECTED`: 명령어가 거부됨
+- `PROCESSING_ERROR`: 처리 중 오류 발생
+- `PARSE_ERROR`: 메시지 파싱 오류
+
+### 결제 단말기 에러 코드
+
+- `PAYMENT_START_FAILED`: 결제 시작 실패
+- `PAYMENT_CANCEL_FAILED`: 결제 취소 실패
+- `PAYMENT_RESET_FAILED`: 단말기 리셋 실패
+- `DEVICE_CHECK_FAILED`: 하드웨어 체크 실패
+- `VAN_REJECTED`: VAN 서버에서 거부됨
+
+---
+
+## 11. Message Format Details
+
+### Command 메시지 형식
+
+```json
+{
+  "protocolVersion": "1.0",
+  "kind": "command",
+  "commandId": "550e8400-e29b-41d4-a716-446655440000",
+  "type": "payment_start",
+  "timestampMs": 1706234567890,
+  "payload": {
+    "amount": "10000"
+  }
+}
+```
+
+### Response 메시지 형식
+
+```json
+{
+  "protocolVersion": "1.0",
+  "kind": "response",
+  "commandId": "550e8400-e29b-41d4-a716-446655440000",
+  "status": "OK",
+  "timestampMs": 1706234567891,
+  "error": null,
+  "result": {
+    "deviceId": "smartro_terminal_001",
+    "state": "3"
+  }
+}
+```
+
+에러 응답 예시:
+```json
+{
+  "protocolVersion": "1.0",
+  "kind": "response",
+  "commandId": "550e8400-e29b-41d4-a716-446655440000",
+  "status": "FAILED",
+  "timestampMs": 1706234567891,
+  "error": {
+    "code": "DEVICE_NOT_READY",
+    "message": "Payment terminal is not in ready state",
+    "details": {}
+  },
+  "result": {}
+}
+```
+
+### Event 메시지 형식
+
+```json
+{
+  "protocolVersion": "1.0",
+  "kind": "event",
+  "eventId": "660e8400-e29b-41d4-a716-446655440001",
+  "eventType": "payment_complete",
+  "timestampMs": 1706234568000,
+  "deviceType": "payment",
+  "data": {
+    "transactionId": "202401261234567890",
+    "amount": "10000",
+    "cardNumber": "1234-****-****-5678",
+    "approvalNumber": "12345678",
+    "salesDate": "20240126",
+    "salesTime": "123456",
+    "transactionMedium": "1",
+    "state": "2"
+  }
+}
+```
+
+---
+
+## 12. Idempotency Implementation
+
+- 서버는 `commandId`를 키로 응답을 캐시합니다
+- 캐시 TTL: 1시간 (기본값)
+- 동일한 `commandId`로 재요청 시 캐시된 응답을 반환합니다
+- 에러 응답은 캐시되지 않습니다
+
+---
+
+## 13. Event Broadcasting
+
+- 이벤트는 모든 연결된 클라이언트에게 브로드캐스트됩니다
+- 이벤트는 중복되거나 순서가 바뀔 수 있습니다
+- 클라이언트는 상태 스냅샷을 사용하여 실제 상태를 확인해야 합니다
+- 이벤트 큐 크기 제한: 1000개 (초과 시 오래된 이벤트 제거)
+
+---
+
+## 14. State Snapshot
+
+### Snapshot Request
+
+```json
+{
+  "protocolVersion": "1.0",
+  "kind": "snapshot_request",
+  "requestId": "770e8400-e29b-41d4-a716-446655440002",
+  "timestampMs": 1706234567890,
+  "deviceTypes": []  // 빈 배열이면 모든 디바이스
+}
+```
+
+### Snapshot Response
+
+```json
+{
+  "protocolVersion": "1.0",
+  "kind": "snapshot_response",
+  "requestId": "770e8400-e29b-41d4-a716-446655440002",
+  "timestampMs": 1706234567891,
+  "snapshot": {
+    "smartro_terminal_001": {
+      "deviceId": "smartro_terminal_001",
+      "deviceType": "payment",
+      "deviceName": "SMARTRO Payment Terminal",
+      "state": "2",
+      "stateString": "READY",
+      "lastError": ""
+    }
+  }
+}
+```
+
+---
+
+## 15. Change Rules
 
 - This file is immutable per version
 - Any change requires protocolVersion update
+- MINOR 버전 업데이트: 선택적 필드 추가만 허용
+- MAJOR 버전 업데이트: 호환성 깨는 변경 허용

@@ -20,6 +20,7 @@ void printMenu() {
     std::cout << "  A - Device Check" << std::endl;
     std::cout << "  B - Payment Approval (Sync)" << std::endl;
     std::cout << "  C - Payment Approval (Async) + Cancel Test" << std::endl;
+    std::cout << "  D - Transaction Cancel (거래 취소) - L + C Test" << std::endl;
     std::cout << "  E - Payment Wait" << std::endl;
     std::cout << "  F - Card UID Read" << std::endl;
     std::cout << "  L - Last Approval Response" << std::endl;
@@ -397,6 +398,139 @@ int main(int argc, char* argv[]) {
                     break;
                 }
                 
+                case 'D': {
+                    std::cout << std::endl << ">>> Transaction Cancel Test (L + C)..." << std::endl;
+                    std::cout << "Step 1: Getting last approval response (L)..." << std::endl;
+                    
+                    // Step 1: Get last approval response
+                    LastApprovalResponse lastApproval;
+                    if (!comm.sendLastApprovalResponseRequest(terminalId, lastApproval)) {
+                        std::cerr << std::endl << "Failed to get last approval: " << comm.getLastError() << std::endl;
+                        break;
+                    }
+                    
+                    if (lastApproval.data.empty() || lastApproval.data.size() < 157) {
+                        std::cerr << std::endl << "Last approval data is empty or invalid (expected 157 bytes, got " 
+                                  << lastApproval.data.size() << " bytes)" << std::endl;
+                        break;
+                    }
+                    
+                    std::cout << "Last approval response received: " << lastApproval.data.size() << " bytes" << std::endl;
+                    
+                    // Parse the last approval response to extract cancellation info
+                    PaymentApprovalResponse parsedApproval;
+                    if (!SmartroProtocol::parsePaymentApprovalResponse(lastApproval.data.data(), lastApproval.data.size(), parsedApproval)) {
+                        std::cerr << std::endl << "Failed to parse last approval response" << std::endl;
+                        break;
+                    }
+                    
+                    std::cout << std::endl << "=== Parsed Last Approval Info ===" << std::endl;
+                    std::cout << "Transaction Type: " << parsedApproval.transactionType << std::endl;
+                    std::cout << "Transaction Medium: " << parsedApproval.transactionMedium << std::endl;
+                    std::cout << "Card Number: " << parsedApproval.cardNumber << std::endl;
+                    std::cout << "Approval Amount: " << parsedApproval.approvalAmount << std::endl;
+                    std::cout << "Approval Number: " << parsedApproval.approvalNumber << std::endl;
+                    std::cout << "Sales Date: " << parsedApproval.salesDate << std::endl;
+                    std::cout << "Sales Time: " << parsedApproval.salesTime << std::endl;
+                    std::cout << "Transaction ID: " << parsedApproval.transactionId << std::endl;
+                    std::cout << "=====================================" << std::endl;
+                    
+                    // Step 2: Ask user for cancellation type
+                    std::cout << std::endl << "Step 2: Transaction Cancel Request (C)" << std::endl;
+                    std::cout << "Cancel Type:" << std::endl;
+                    std::cout << "  1 - Request message cancellation (요청전문 취소)" << std::endl;
+                    std::cout << "  2 - Last transaction cancellation (마지막 거래 취소)" << std::endl;
+                    std::cout << "Select cancel type (1 or 2, default: 2): ";
+                    std::string cancelTypeInput;
+                    std::getline(std::cin, cancelTypeInput);
+                    char cancelType = (cancelTypeInput.empty() || cancelTypeInput[0] != '1') ? '2' : '1';
+                    
+                    // Ask for amount (default: same as approval amount)
+                    std::cout << "Cancellation amount (default: " << parsedApproval.approvalAmount << "): ";
+                    std::string amountInput;
+                    std::getline(std::cin, amountInput);
+                    uint32_t cancelAmount = 0;
+                    if (amountInput.empty()) {
+                        try {
+                            cancelAmount = std::stoul(parsedApproval.approvalAmount);
+                        } catch (...) {
+                            cancelAmount = 0;
+                        }
+                    } else {
+                        try {
+                            cancelAmount = std::stoul(amountInput);
+                        } catch (...) {
+                            std::cerr << "Invalid amount, using approval amount" << std::endl;
+                            try {
+                                cancelAmount = std::stoul(parsedApproval.approvalAmount);
+                            } catch (...) {
+                                cancelAmount = 0;
+                            }
+                        }
+                    }
+                    
+                    // Build cancellation request
+                    TransactionCancelRequest cancelRequest;
+                    cancelRequest.cancelType = cancelType;
+                    cancelRequest.transactionType = static_cast<uint8_t>(parsedApproval.transactionType - '0');  // Convert char to uint8_t
+                    if (cancelRequest.transactionType == 0 || cancelRequest.transactionType > 9) {
+                        cancelRequest.transactionType = 1;  // Default to credit approval
+                    }
+                    cancelRequest.amount = cancelAmount;
+                    cancelRequest.tax = 0;
+                    try {
+                        cancelRequest.tax = std::stoul(parsedApproval.tax);
+                    } catch (...) {
+                        cancelRequest.tax = 0;
+                    }
+                    cancelRequest.service = 0;
+                    try {
+                        cancelRequest.service = std::stoul(parsedApproval.serviceCharge);
+                    } catch (...) {
+                        cancelRequest.service = 0;
+                    }
+                    cancelRequest.installments = 0;
+                    try {
+                        cancelRequest.installments = static_cast<uint8_t>(std::stoi(parsedApproval.installments));
+                    } catch (...) {
+                        cancelRequest.installments = 0;
+                    }
+                    cancelRequest.approvalNumber = parsedApproval.approvalNumber;
+                    cancelRequest.originalDate = parsedApproval.salesDate;
+                    cancelRequest.originalTime = parsedApproval.salesTime;
+                    cancelRequest.additionalInfo = "";  // PG cancellation would need 30-digit transaction number
+                    
+                    std::cout << std::endl << "Sending transaction cancel request..." << std::endl;
+                    std::cout << "  Cancel Type: " << cancelType << std::endl;
+                    std::cout << "  Amount: " << cancelRequest.amount << std::endl;
+                    std::cout << "  Approval Number: " << cancelRequest.approvalNumber << std::endl;
+                    std::cout << "  Original Date: " << cancelRequest.originalDate << std::endl;
+                    std::cout << "  Original Time: " << cancelRequest.originalTime << std::endl;
+                    
+                    // Send cancellation request
+                    TransactionCancelResponse cancelResponse;
+                    if (comm.sendTransactionCancelRequest(terminalId, cancelRequest, cancelResponse)) {
+                        std::cout << std::endl << "=== Transaction Cancel Response ===" << std::endl;
+                        std::cout << "Transaction Type: " << cancelResponse.transactionType << std::endl;
+                        std::cout << "Transaction Medium: " << cancelResponse.transactionMedium << std::endl;
+                        std::cout << "Card Number: " << cancelResponse.cardNumber << std::endl;
+                        std::cout << "Approval Amount: " << cancelResponse.approvalAmount << std::endl;
+                        std::cout << "Approval Number: " << cancelResponse.approvalNumber << std::endl;
+                        std::cout << "Sales Date: " << cancelResponse.salesDate << std::endl;
+                        std::cout << "Sales Time: " << cancelResponse.salesTime << std::endl;
+                        std::cout << "Transaction ID: " << cancelResponse.transactionId << std::endl;
+                        std::cout << "Status: " << (cancelResponse.isSuccess() ? "SUCCESS" : "REJECTED") << std::endl;
+                        if (cancelResponse.isRejected()) {
+                            std::cout << "Rejection Info: " << cancelResponse.rejectionInfo << std::endl;
+                        }
+                        std::cout << "===========================================" << std::endl;
+                        std::cout << std::endl << "Transaction cancel completed successfully!" << std::endl;
+                    } else {
+                        std::cerr << std::endl << "Transaction cancel failed: " << comm.getLastError() << std::endl;
+                    }
+                    break;
+                }
+                
                 case 'E': {
                     std::cout << std::endl << ">>> Payment Wait Request..." << std::endl;
                     PaymentWaitResponse response;
@@ -429,7 +563,38 @@ int main(int argc, char* argv[]) {
                     if (comm.sendLastApprovalResponseRequest(terminalId, response)) {
                         std::cout << std::endl << "=== Last Approval Response ===" << std::endl;
                         std::cout << "Data Length: " << response.data.size() << " bytes" << std::endl;
-                        if (!response.data.empty()) {
+                        
+                        if (!response.data.empty() && response.data.size() >= 157) {
+                            // Parse and display detailed information
+                            PaymentApprovalResponse parsed;
+                            if (SmartroProtocol::parsePaymentApprovalResponse(response.data.data(), response.data.size(), parsed)) {
+                                std::cout << "Transaction Type: " << parsed.transactionType << std::endl;
+                                std::cout << "Transaction Medium: " << parsed.transactionMedium << std::endl;
+                                std::cout << "Card Number: " << parsed.cardNumber << std::endl;
+                                std::cout << "Approval Amount: " << parsed.approvalAmount << std::endl;
+                                std::cout << "Tax: " << parsed.tax << std::endl;
+                                std::cout << "Service Charge: " << parsed.serviceCharge << std::endl;
+                                std::cout << "Installments: " << parsed.installments << std::endl;
+                                std::cout << "Approval Number: " << parsed.approvalNumber << std::endl;
+                                std::cout << "Sales Date: " << parsed.salesDate << std::endl;
+                                std::cout << "Sales Time: " << parsed.salesTime << std::endl;
+                                std::cout << "Transaction ID: " << parsed.transactionId << std::endl;
+                                std::cout << "Merchant Number: " << parsed.merchantNumber << std::endl;
+                                std::cout << "Terminal Number: " << parsed.terminalNumber << std::endl;
+                                std::cout << "Issuer: " << parsed.issuer << std::endl;
+                                std::cout << "Acquirer: " << parsed.acquirer << std::endl;
+                                std::cout << "Status: " << (parsed.isSuccess() ? "SUCCESS" : "REJECTED") << std::endl;
+                            } else {
+                                std::cout << "Data (Hex): ";
+                                for (size_t i = 0; i < response.data.size() && i < 64; ++i) {
+                                    printf("%02X ", response.data[i]);
+                                }
+                                if (response.data.size() > 64) {
+                                    std::cout << "...";
+                                }
+                                std::cout << std::endl;
+                            }
+                        } else {
                             std::cout << "Data (Hex): ";
                             for (size_t i = 0; i < response.data.size() && i < 64; ++i) {
                                 printf("%02X ", response.data[i]);

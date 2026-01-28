@@ -1,6 +1,10 @@
 // src/vendor_adapters/smartro/smartro_comm.cpp
-#include "vendor_adapters/smartro/smartro_comm.h"
+// logger.h???????? include??? Windows SDK ?? ???
 #include "logging/logger.h"
+#include "vendor_adapters/smartro/smartro_comm.h"
+#include <algorithm>
+#include <chrono>
+#include <thread>
 
 namespace smartro {
 
@@ -21,101 +25,171 @@ bool SmartroComm::sendDeviceCheckRequest(const std::string& terminalId,
     state_ = CommState::IDLE;
     lastError_.clear();
     
-    if (!serialPort_.isOpen()) {
-        setError("Serial port is not open");
-        return false;
+    // ??? ????????? ?????????? ?? ???? COM ??????????
+    // ?????????????????????????? ???
+    
+    // ??? ???? ???????????
+    if (serialPort_.isOpen()) {
+        serialPort_.close();
     }
     
-    // 패킷 생성
-    auto packet = SmartroProtocol::createDeviceCheckRequest(terminalId);
+    // ??? ???? ?? ??? ??????(????? ??? ??)
+    std::vector<std::string> availablePorts = SerialPort::getAvailablePorts();
     
-    // 요청 전송 (재시도 없이 1번만 시도)
-    state_ = CommState::SENDING_REQUEST;
-    logging::Logger::getInstance().debug("Sending device check request...");
-    
-    // 요청 전송 전에 버퍼 비우기 (이전 데이터 제거)
-    flushSerialBuffer();
-    
-    if (!serialPort_.write(packet.data(), packet.size())) {
-        setError("Failed to send request packet");
+    if (availablePorts.empty()) {
+        setError("No COM ports available");
         state_ = CommState::ERROR;
         return false;
     }
     
-    // ACK 대기 (ACK 수신 후 바로 응답 패킷이 올 수 있으므로 함께 처리)
-    state_ = CommState::WAITING_ACK;
-    logging::Logger::getInstance().debug("Waiting for ACK...");
+    logging::Logger::getInstance().info("Device check: Testing all available COM ports (ignoring saved port)");
     
-    std::vector<uint8_t> responsePacket;
-    if (!waitForAck(ACK_TIMEOUT_MS, responsePacket)) {
-        setError("ACK timeout or NACK received");
-        state_ = CommState::ERROR;
-        return false;
+    // ??????????????????
+    std::string currentPort;
+    std::vector<std::string> triedPorts;
+    
+    for (const auto& portToTry : availablePorts) {
+        // ??? ??? ???
+        if (serialPort_.isOpen()) {
+            serialPort_.close();
+        }
+        
+        logging::Logger::getInstance().info("Testing port: " + portToTry);
+        
+        // ??? ??? ???
+        bool portOpened = false;
+        try {
+            portOpened = serialPort_.open(portToTry, 115200);  // ?? ??????????
+        } catch (...) {
+            logging::Logger::getInstance().warn("Exception while opening port: " + portToTry);
+            portOpened = false;
+        }
+        
+        if (!portOpened) {
+            logging::Logger::getInstance().warn("Failed to open port: " + portToTry + ", trying next port...");
+            triedPorts.push_back(portToTry);
+            continue;
+        }
+        
+        currentPort = portToTry;
+        triedPorts.push_back(currentPort);
+        
+        // ??? ???
+        auto packet = SmartroProtocol::createDeviceCheckRequest(terminalId);
+        
+        // ??? ???
+        state_ = CommState::SENDING_REQUEST;
+        logging::Logger::getInstance().debug("Sending device check request on " + currentPort + "...");
+        
+        // ??? ??? ??? ?? ????
+        flushSerialBuffer();
+        
+        if (!serialPort_.write(packet.data(), packet.size())) {
+            logging::Logger::getInstance().warn("Failed to send request packet on " + currentPort);
+            serialPort_.close();  // ??? ???
+            currentPort.clear();  // ??? ??? ???????? ????
+            continue;
+        }
+        
+        // ACK ????(??? ??? ????? ??????????)
+        state_ = CommState::WAITING_ACK;
+        logging::Logger::getInstance().debug("Waiting for ACK on " + currentPort + "...");
+        
+        // ??? ??? ???????? ?????????? (1.5??
+        uint32_t ackTimeout = 1500;
+        
+        std::vector<uint8_t> responsePacket;
+        if (!waitForAck(ackTimeout, responsePacket)) {
+            logging::Logger::getInstance().warn("ACK timeout or NACK received on " + currentPort + " (timeout: " + std::to_string(ackTimeout) + "ms)");
+            serialPort_.close();  // ??? ???
+            currentPort.clear();  // ??? ??? ???????? ????
+            continue;
+        }
+        
+        // ??? ??? (??? ??? ????? ??????????)
+        state_ = CommState::RECEIVING_RESPONSE;
+        logging::Logger::getInstance().debug("Receiving response on " + currentPort + "...");
+        
+        // ??? ??? ???????? ?????????? (2??
+        uint32_t responseTimeout = 2000;
+        
+        if (!receiveResponse(responsePacket, responseTimeout)) {
+            logging::Logger::getInstance().warn("Failed to receive response on " + currentPort + " (timeout: " + std::to_string(responseTimeout) + "ms)");
+            serialPort_.close();  // ??? ???
+            currentPort.clear();  // ??? ??? ???????? ????
+            continue;
+        }
+        
+        // ??? ???
+        std::vector<uint8_t> header;
+        std::vector<uint8_t> payload;
+        
+        if (responsePacket.empty()) {
+            logging::Logger::getInstance().warn("Empty response packet on " + currentPort);
+            sendNack();
+            serialPort_.close();  // ??? ???
+            currentPort.clear();  // ??? ??? ???????? ????
+            continue;
+        }
+        
+        if (!SmartroProtocol::parsePacket(responsePacket.data(), responsePacket.size(), 
+                                         header, payload)) {
+            logging::Logger::getInstance().warn("Failed to parse response on " + currentPort);
+            sendNack();
+            serialPort_.close();  // ??? ???
+            currentPort.clear();  // ??? ??? ???????? ????
+            continue;
+        }
+        
+        // Job Code ???
+        if (header.size() < HEADER_SIZE) {
+            logging::Logger::getInstance().warn("Invalid header size on " + currentPort);
+            sendNack();
+            serialPort_.close();  // ??? ???
+            currentPort.clear();  // ??? ??? ???????? ????
+            continue;
+        }
+        
+        char jobCode = SmartroProtocol::extractJobCode(header.data());
+        if (jobCode != JOB_CODE_DEVICE_CHECK_RESPONSE) {
+            logging::Logger::getInstance().warn("Unexpected job code on " + currentPort + ": " + std::string(1, jobCode));
+            sendNack();
+            serialPort_.close();  // ??? ???
+            currentPort.clear();  // ??? ??? ???????? ????
+            continue;
+        }
+        
+        // ??? ????????
+        if (!SmartroProtocol::parseDeviceCheckResponse(payload.data(), payload.size(), response)) {
+            logging::Logger::getInstance().warn("Failed to parse device check response on " + currentPort);
+            sendNack();
+            serialPort_.close();  // ??? ???
+            currentPort.clear();  // ??? ??? ???????? ????
+            continue;
+        }
+        
+        // ???! ACK ?????? ??? ????
+        state_ = CommState::SENDING_ACK;
+        if (!sendAck()) {
+            logging::Logger::getInstance().warn("Failed to send ACK, but response was valid");
+        }
+        
+        // ???????? ????
+        SerialPort::saveWorkingPort(currentPort);
+        logging::Logger::getInstance().info("Device check successful on port: " + currentPort);
+        
+        state_ = CommState::COMPLETED;
+        logging::Logger::getInstance().debug("Device check request completed successfully");
+        return true;
     }
     
-    // 응답 수신 (이미 STX를 받았을 수 있음)
-    state_ = CommState::RECEIVING_RESPONSE;
-    logging::Logger::getInstance().debug("Receiving response...");
-    
-    if (!receiveResponse(responsePacket, RESPONSE_TIMEOUT_MS)) {
-        setError("Failed to receive response");
-        state_ = CommState::ERROR;
-        return false;
+    // ?? ??? ??? ???
+    if (serialPort_.isOpen()) {
+        serialPort_.close();
     }
-    
-    // 응답 파싱
-    std::vector<uint8_t> header;
-    std::vector<uint8_t> payload;
-    
-    if (responsePacket.empty()) {
-        setError("Empty response packet");
-        sendNack();
-        state_ = CommState::ERROR;
-        return false;
-    }
-    
-    if (!SmartroProtocol::parsePacket(responsePacket.data(), responsePacket.size(), 
-                                     header, payload)) {
-        setError("Failed to parse response");
-        sendNack();
-        state_ = CommState::ERROR;
-        return false;
-    }
-    
-    // Job Code 확인
-    if (header.size() < HEADER_SIZE) {
-        setError("Invalid header size: " + std::to_string(header.size()));
-        sendNack();
-        state_ = CommState::ERROR;
-        return false;
-    }
-    
-    char jobCode = SmartroProtocol::extractJobCode(header.data());
-    if (jobCode != JOB_CODE_DEVICE_CHECK_RESPONSE) {
-        setError("Unexpected job code: " + std::string(1, jobCode) + 
-                ", expected: " + std::string(1, JOB_CODE_DEVICE_CHECK_RESPONSE));
-        sendNack();
-        state_ = CommState::ERROR;
-        return false;
-    }
-    
-    // 응답 데이터 파싱
-    if (!SmartroProtocol::parseDeviceCheckResponse(payload.data(), payload.size(), response)) {
-        setError("Failed to parse device check response data");
-        sendNack();
-        state_ = CommState::ERROR;
-        return false;
-    }
-    
-    // 성공! ACK 전송하고 즉시 반환
-    state_ = CommState::SENDING_ACK;
-    if (!sendAck()) {
-        logging::Logger::getInstance().warn("Failed to send ACK, but response was valid");
-    }
-    
-    state_ = CommState::COMPLETED;
-    logging::Logger::getInstance().debug("Device check request completed successfully");
-    return true;
+    setError("Device check failed on all attempted ports: " + std::to_string(triedPorts.size()) + " ports tried");
+    state_ = CommState::ERROR;
+    return false;
 }
 
 bool SmartroComm::sendPaymentWaitRequest(const std::string& terminalId, 
@@ -130,10 +204,10 @@ bool SmartroComm::sendPaymentWaitRequest(const std::string& terminalId,
         return false;
     }
     
-    // 패킷 생성
+    // ??? ???
     auto packet = SmartroProtocol::createPaymentWaitRequest(terminalId);
     
-    // 요청 전송 (재시도 없이 1번만 시도)
+    // ??? ??? (???????? 1?? ???)
     state_ = CommState::SENDING_REQUEST;
     logging::Logger::getInstance().debug("Sending payment wait request...");
     
@@ -143,10 +217,10 @@ bool SmartroComm::sendPaymentWaitRequest(const std::string& terminalId,
         return false;
     }
     
-    // 요청 전송 전에 버퍼 비우기 (이전 데이터 제거)
+    // ??? ??? ??? ?? ????(??? ????????)
     flushSerialBuffer();
     
-    // ACK 대기 (ACK 수신 후 바로 응답 패킷이 올 수 있으므로 함께 처리)
+    // ACK ????(ACK ??? ???? ??? ?????????????????? ??)
     state_ = CommState::WAITING_ACK;
     logging::Logger::getInstance().debug("Waiting for ACK...");
     
@@ -157,7 +231,7 @@ bool SmartroComm::sendPaymentWaitRequest(const std::string& terminalId,
         return false;
     }
     
-    // 응답 수신 (이미 STX를 받았을 수 있음)
+    // ??? ??? (???? STX???????????)
     state_ = CommState::RECEIVING_RESPONSE;
     logging::Logger::getInstance().debug("Receiving response...");
     
@@ -167,7 +241,7 @@ bool SmartroComm::sendPaymentWaitRequest(const std::string& terminalId,
         return false;
     }
     
-    // 응답 파싱
+    // ??? ???
     std::vector<uint8_t> header;
     std::vector<uint8_t> payload;
     
@@ -186,7 +260,7 @@ bool SmartroComm::sendPaymentWaitRequest(const std::string& terminalId,
         return false;
     }
     
-    // Job Code 확인
+    // Job Code ???
     if (header.size() < HEADER_SIZE) {
         setError("Invalid header size: " + std::to_string(header.size()));
         sendNack();
@@ -203,7 +277,7 @@ bool SmartroComm::sendPaymentWaitRequest(const std::string& terminalId,
         return false;
     }
     
-    // 응답 데이터 파싱
+    // ??? ????????
     if (!SmartroProtocol::parsePaymentWaitResponse(payload.data(), payload.size(), response)) {
         setError("Failed to parse payment wait response data");
         sendNack();
@@ -211,7 +285,7 @@ bool SmartroComm::sendPaymentWaitRequest(const std::string& terminalId,
         return false;
     }
     
-    // 성공! ACK 전송하고 즉시 반환
+    // ???! ACK ?????? ?? ??
     state_ = CommState::SENDING_ACK;
     if (!sendAck()) {
         logging::Logger::getInstance().warn("Failed to send ACK, but response was valid");
@@ -234,10 +308,10 @@ bool SmartroComm::sendCardUidReadRequest(const std::string& terminalId,
         return false;
     }
     
-    // 패킷 생성
+    // ??? ???
     auto packet = SmartroProtocol::createCardUidReadRequest(terminalId);
     
-    // 요청 전송 (재시도 없이 1번만 시도)
+    // ??? ??? (???????? 1?? ???)
     state_ = CommState::SENDING_REQUEST;
     logging::Logger::getInstance().debug("Sending card UID read request...");
     
@@ -247,10 +321,10 @@ bool SmartroComm::sendCardUidReadRequest(const std::string& terminalId,
         return false;
     }
     
-    // 요청 전송 전에 버퍼 비우기 (이전 데이터 제거)
+    // ??? ??? ??? ?? ????(??? ????????)
     flushSerialBuffer();
     
-    // ACK 대기 (ACK 수신 후 바로 응답 패킷이 올 수 있으므로 함께 처리)
+    // ACK ????(ACK ??? ???? ??? ?????????????????? ??)
     state_ = CommState::WAITING_ACK;
     logging::Logger::getInstance().debug("Waiting for ACK...");
     
@@ -261,7 +335,7 @@ bool SmartroComm::sendCardUidReadRequest(const std::string& terminalId,
         return false;
     }
     
-    // 응답 수신 (이미 STX를 받았을 수 있음)
+    // ??? ??? (???? STX???????????)
     state_ = CommState::RECEIVING_RESPONSE;
     logging::Logger::getInstance().debug("Receiving response...");
     
@@ -271,7 +345,7 @@ bool SmartroComm::sendCardUidReadRequest(const std::string& terminalId,
         return false;
     }
     
-    // 응답 파싱
+    // ??? ???
     std::vector<uint8_t> header;
     std::vector<uint8_t> payload;
     
@@ -290,7 +364,7 @@ bool SmartroComm::sendCardUidReadRequest(const std::string& terminalId,
         return false;
     }
     
-    // Job Code 확인
+    // Job Code ???
     if (header.size() < HEADER_SIZE) {
         setError("Invalid header size: " + std::to_string(header.size()));
         sendNack();
@@ -307,7 +381,7 @@ bool SmartroComm::sendCardUidReadRequest(const std::string& terminalId,
         return false;
     }
     
-    // 응답 데이터 파싱
+    // ??? ????????
     if (!SmartroProtocol::parseCardUidReadResponse(payload.data(), payload.size(), response)) {
         setError("Failed to parse card UID read response data");
         sendNack();
@@ -315,7 +389,7 @@ bool SmartroComm::sendCardUidReadRequest(const std::string& terminalId,
         return false;
     }
     
-    // 성공! ACK 전송하고 즉시 반환
+    // ???! ACK ?????? ?? ??
     state_ = CommState::SENDING_ACK;
     if (!sendAck()) {
         logging::Logger::getInstance().warn("Failed to send ACK, but response was valid");
@@ -327,8 +401,8 @@ bool SmartroComm::sendCardUidReadRequest(const std::string& terminalId,
 }
 
 bool SmartroComm::waitForEvent(EventResponse& event, uint32_t timeoutMs) {
-    // 이벤트 대기는 다른 명령과 동시에 실행될 수 있도록 락을 풀었다 잡았다 함
-    // STX를 찾는 동안에는 락을 풀어서 다른 명령이 실행될 수 있게 함
+    // ????????? ??? ???????????????????????? ????? ???????
+    // STX???? ?????? ??? ????? ??? ?????????????? ??
     
     if (!serialPort_.isOpen()) {
         std::lock_guard<std::mutex> lock(commMutex_);
@@ -336,21 +410,21 @@ bool SmartroComm::waitForEvent(EventResponse& event, uint32_t timeoutMs) {
         return false;
     }
     
-    // 이벤트 대기 (이벤트는 기기에서 자동으로 전송)
+    // ?????????(?????? ????? ?????? ???)
     logging::Logger::getInstance().debug("Waiting for event...");
     
     std::vector<uint8_t> eventPacket;
     
-    // STX를 기다림 (타임아웃 설정: 0이면 무한 대기)
-    // 짧은 타임아웃으로 반복하면서 락을 풀었다 잡았다 함
-    uint32_t stxTimeout = 100;  // 100ms씩 체크
+    // STX??????(??????????: 0??? ?? ????
+    // ??? ???????????????????? ????? ???????
+    uint32_t stxTimeout = 100;  // 100ms????
     uint32_t totalElapsed = 0;
     
     while (timeoutMs == 0 || totalElapsed < timeoutMs) {
         uint8_t byte = 0;
         bool foundStx = false;
         
-        // 짧은 시간 동안만 락을 잡고 읽기 시도
+        // ??? ??? ???????? ??? ??? ???
         {
             std::lock_guard<std::mutex> lock(commMutex_);
             if (readByte(byte, stxTimeout)) {
@@ -366,11 +440,11 @@ bool SmartroComm::waitForEvent(EventResponse& event, uint32_t timeoutMs) {
             break;
         }
         
-        // 타임아웃 (무한 대기 모드에서는 계속 시도)
+        // ???????(?? ????????????? ???)
         if (timeoutMs == 0) {
-            continue;  // 무한 대기 모드에서는 계속 시도
+            continue;  // ?? ????????????? ???
         }
-        // 타임아웃이 설정된 경우
+        // ???????? ???????
         totalElapsed += stxTimeout;
         if (totalElapsed >= timeoutMs) {
             std::lock_guard<std::mutex> lock(commMutex_);
@@ -380,20 +454,20 @@ bool SmartroComm::waitForEvent(EventResponse& event, uint32_t timeoutMs) {
         }
     }
     
-    // STX를 찾았으면 락을 잡고 패킷 읽기
+    // STX??????? ??? ??? ??? ???
     std::lock_guard<std::mutex> lock(commMutex_);
     state_ = CommState::IDLE;
     lastError_.clear();
     state_ = CommState::RECEIVING_RESPONSE;
     
-    // 이벤트 패킷 수신 (STX를 이미 받았으므로 나머지 읽기)
+    // ???????? ??? (STX?????? ???????????? ???)
     if (!receiveResponse(eventPacket, RESPONSE_TIMEOUT_MS)) {
         setError("Failed to receive event packet");
         state_ = CommState::ERROR;
         return false;
     }
     
-    // 이벤트 패킷 파싱
+    // ???????? ???
     std::vector<uint8_t> header;
     std::vector<uint8_t> payload;
     
@@ -410,7 +484,7 @@ bool SmartroComm::waitForEvent(EventResponse& event, uint32_t timeoutMs) {
         return false;
     }
     
-    // Job Code 확인
+    // Job Code ???
     if (header.size() < HEADER_SIZE) {
         setError("Invalid header size: " + std::to_string(header.size()));
         state_ = CommState::ERROR;
@@ -425,14 +499,14 @@ bool SmartroComm::waitForEvent(EventResponse& event, uint32_t timeoutMs) {
         return false;
     }
     
-    // 이벤트 데이터 파싱
+    // ?????????????
     if (!SmartroProtocol::parseEventResponse(payload.data(), payload.size(), event)) {
         setError("Failed to parse event response data");
         state_ = CommState::ERROR;
         return false;
     }
     
-    // 성공! 이벤트는 ACK/NACK 전송하지 않음
+    // ???! ?????? ACK/NACK ??????? ???
     state_ = CommState::COMPLETED;
     logging::Logger::getInstance().debug("Event received successfully");
     return true;
@@ -448,10 +522,10 @@ bool SmartroComm::sendResetRequest(const std::string& terminalId, uint32_t /*tim
         return false;
     }
     
-    // 패킷 생성
+    // ??? ???
     auto packet = SmartroProtocol::createResetRequest(terminalId);
     
-    // 요청 전송
+    // ??? ???
     state_ = CommState::SENDING_REQUEST;
     logging::Logger::getInstance().debug("Sending reset request...");
     
@@ -461,10 +535,10 @@ bool SmartroComm::sendResetRequest(const std::string& terminalId, uint32_t /*tim
         return false;
     }
     
-    // 요청 전송 전에 버퍼 비우기
+    // ??? ??? ??? ?? ????
     flushSerialBuffer();
     
-    // ACK 대기
+    // ACK ????
     state_ = CommState::WAITING_ACK;
     logging::Logger::getInstance().debug("Waiting for ACK...");
     
@@ -475,7 +549,7 @@ bool SmartroComm::sendResetRequest(const std::string& terminalId, uint32_t /*tim
         return false;
     }
     
-    // 응답 수신 (리셋 응답은 간단할 수 있음)
+    // ??? ??? (?? ????? ?????????)
     state_ = CommState::RECEIVING_RESPONSE;
     logging::Logger::getInstance().debug("Receiving response...");
     
@@ -485,7 +559,7 @@ bool SmartroComm::sendResetRequest(const std::string& terminalId, uint32_t /*tim
         return false;
     }
     
-    // 응답 파싱 (리셋 응답은 Job Code만 확인)
+    // ??? ??? (?? ????? Job Code?????)
     std::vector<uint8_t> header;
     std::vector<uint8_t> payload;
     
@@ -504,7 +578,7 @@ bool SmartroComm::sendResetRequest(const std::string& terminalId, uint32_t /*tim
         return false;
     }
     
-    // Job Code 확인
+    // Job Code ???
     if (header.size() < HEADER_SIZE) {
         setError("Invalid header size: " + std::to_string(header.size()));
         sendNack();
@@ -521,7 +595,7 @@ bool SmartroComm::sendResetRequest(const std::string& terminalId, uint32_t /*tim
         return false;
     }
     
-    // 성공! ACK 전송
+    // ???! ACK ???
     state_ = CommState::SENDING_ACK;
     if (!sendAck()) {
         logging::Logger::getInstance().warn("Failed to send ACK, but response was valid");
@@ -535,209 +609,350 @@ bool SmartroComm::sendResetRequest(const std::string& terminalId, uint32_t /*tim
 bool SmartroComm::sendPaymentApprovalRequest(const std::string& terminalId, 
                                             const PaymentApprovalRequest& request,
                                             PaymentApprovalResponse& response,
-                                            uint32_t /*timeoutMs*/) {
-    std::lock_guard<std::mutex> lock(commMutex_);
-    state_ = CommState::IDLE;
-    lastError_.clear();
+                                            uint32_t timeoutMs) {
+    std::unique_lock<std::mutex> lock(commMutex_);
     
-    if (!serialPort_.isOpen()) {
-        setError("Serial port is not open");
-        return false;
+    const uint32_t userInactivityTimeoutMs = 30000;  // 30??(?????, ?? 60000??? ???
+    
+    // ???? ???? ?????(??????? ?? ?? ???)
+    while (true) {
+        state_ = CommState::IDLE;
+        lastError_.clear();
+        
+        if (!serialPort_.isOpen()) {
+            setError("Serial port is not open");
+            return false;
+        }
+        
+        // ???? ????? 30???????????? ??? (??? ???)
+        auto requestStartTime = std::chrono::steady_clock::now();
+        logging::Logger::getInstance().info("Payment approval request started, 30s timeout begins");
+        
+        // ??? ???
+        auto packet = SmartroProtocol::createPaymentApprovalRequest(terminalId, request);
+        
+        // ??? ???
+        state_ = CommState::SENDING_REQUEST;
+        logging::Logger::getInstance().debug("Sending payment approval request...");
+        
+        if (!serialPort_.write(packet.data(), packet.size())) {
+            setError("Failed to send request packet");
+            state_ = CommState::ERROR;
+            return false;
+        }
+        
+        // ??? ??? ??? ?? ????
+        flushSerialBuffer();
+        
+        // ACK ????(30??????????????
+        state_ = CommState::WAITING_ACK;
+        logging::Logger::getInstance().debug("Waiting for ACK...");
+        
+        // ???? ?????????? ??
+        auto elapsed = std::chrono::steady_clock::now() - requestStartTime;
+        uint32_t elapsedMs = static_cast<uint32_t>(
+            std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count());
+        
+        uint32_t remainingSeconds = (userInactivityTimeoutMs - elapsedMs) / 1000;
+        logging::Logger::getInstance().debug("Timeout check: elapsed=" + 
+                                             std::to_string(elapsedMs / 1000) + "s, remaining=" + 
+                                             std::to_string(remainingSeconds) + "s");
+        
+        uint32_t ackRemainingTimeout = (elapsedMs < userInactivityTimeoutMs) ? 
+                                    (userInactivityTimeoutMs - elapsedMs) : 1000;  // ?? 1??
+        
+        // ACK ????????????? ???? ??????? ACK ????????????? ?????
+        uint32_t ackTimeout = (ackRemainingTimeout < ACK_TIMEOUT_MS) ? ackRemainingTimeout : ACK_TIMEOUT_MS;
+        
+        std::vector<uint8_t> responsePacket;
+        if (!waitForAck(ackTimeout, responsePacket)) {
+            // ACK ?????????? ??? ?????????
+            elapsed = std::chrono::steady_clock::now() - requestStartTime;
+            elapsedMs = static_cast<uint32_t>(
+                std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count());
+            
+            if (elapsedMs >= userInactivityTimeoutMs) {
+                // ??? ????????? - Payment Wait??? ???
+                logging::Logger::getInstance().warn("Request timeout reached: elapsed=" + 
+                                                   std::to_string(elapsedMs / 1000) + "s (limit=" + 
+                                                   std::to_string(userInactivityTimeoutMs / 1000) + 
+                                                   "s), sending Payment Wait");
+                lock.unlock();
+                PaymentWaitResponse waitResponse;
+                bool waitSuccess = sendPaymentWaitRequest(terminalId, waitResponse, 3000);
+                lock.lock();
+                if (waitSuccess) {
+                    logging::Logger::getInstance().info("Payment Wait sent successfully");
+                }
+                setError("User inactivity timeout");
+                state_ = CommState::ERROR;
+                return false;
+            }
+            
+            setError("ACK timeout or NACK received");
+            state_ = CommState::ERROR;
+            return false;
+        }
+        
+        // ??? ??? (30??????????????
+        state_ = CommState::RECEIVING_RESPONSE;
+        logging::Logger::getInstance().debug("Receiving response...");
+        
+        // ???? ?????????? ?????
+        elapsed = std::chrono::steady_clock::now() - requestStartTime;
+        elapsedMs = static_cast<uint32_t>(
+            std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count());
+        
+        remainingSeconds = (userInactivityTimeoutMs - elapsedMs) / 1000;
+        logging::Logger::getInstance().debug("Timeout check before response: elapsed=" + 
+                                             std::to_string(elapsedMs / 1000) + "s, remaining=" + 
+                                             std::to_string(remainingSeconds) + "s");
+        
+        uint32_t remainingTimeout = (elapsedMs < userInactivityTimeoutMs) ? 
+                          (userInactivityTimeoutMs - elapsedMs) : 1000;  // ?? 1??
+        
+        if (timeoutMs > 0 && timeoutMs < remainingTimeout) {
+            remainingTimeout = timeoutMs;
+        }
+        
+        if (!receiveResponse(responsePacket, remainingTimeout)) {
+            // ????????? - ??? ?????????
+            elapsed = std::chrono::steady_clock::now() - requestStartTime;
+            elapsedMs = static_cast<uint32_t>(
+                std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count());
+            
+            if (elapsedMs >= userInactivityTimeoutMs) {
+                // ??? ????????? - Payment Wait??? ??? (????????)
+                logging::Logger::getInstance().warn("Request timeout reached: elapsed=" + 
+                                                   std::to_string(elapsedMs / 1000) + "s (limit=" + 
+                                                   std::to_string(userInactivityTimeoutMs / 1000) + 
+                                                   "s), sending Payment Wait to reset state");
+                
+                // Payment Wait ?????? ??????
+                lock.unlock();
+                
+                PaymentWaitResponse waitResponse;
+                bool waitSuccess = sendPaymentWaitRequest(terminalId, waitResponse, 3000);
+                
+                lock.lock();
+                
+                if (waitSuccess) {
+                    logging::Logger::getInstance().info("Payment Wait sent successfully, state reset");
+                } else {
+                    logging::Logger::getInstance().warn("Failed to send Payment Wait");
+                }
+                
+                setError("User inactivity timeout");
+                state_ = CommState::ERROR;
+                return false;
+            } else {
+                // ??????????(??? ??? ???) - ????????
+                setError("Failed to receive response");
+                state_ = CommState::ERROR;
+                return false;
+            }
+        }
+        
+        // ??? ???
+        std::vector<uint8_t> header;
+        std::vector<uint8_t> payload;
+        
+        if (responsePacket.empty()) {
+            setError("Empty response packet");
+            sendNack();
+            state_ = CommState::ERROR;
+            return false;
+        }
+        
+        if (!SmartroProtocol::parsePacket(responsePacket.data(), responsePacket.size(), 
+                                         header, payload)) {
+            setError("Failed to parse response");
+            sendNack();
+            state_ = CommState::ERROR;
+            return false;
+        }
+        
+        // Job Code ???
+        if (header.size() < HEADER_SIZE) {
+            setError("Invalid header size: " + std::to_string(header.size()));
+            sendNack();
+            state_ = CommState::ERROR;
+            return false;
+        }
+        
+        char jobCode = SmartroProtocol::extractJobCode(header.data());
+        if (jobCode != JOB_CODE_PAYMENT_APPROVAL_RESPONSE) {
+            setError("Unexpected job code: " + std::string(1, jobCode) + 
+                    ", expected: " + std::string(1, JOB_CODE_PAYMENT_APPROVAL_RESPONSE));
+            sendNack();
+            state_ = CommState::ERROR;
+            return false;
+        }
+        
+        // ??? ????????
+        if (!SmartroProtocol::parsePaymentApprovalResponse(payload.data(), payload.size(), response)) {
+            setError("Failed to parse payment approval response data");
+            sendNack();
+            state_ = CommState::ERROR;
+            return false;
+        }
+        
+        // ???????? Transaction Medium????? ??? ??
+        if (response.isRejected()) {
+            // ??? ??????? ??? ??
+            elapsed = std::chrono::steady_clock::now() - requestStartTime;
+            elapsedMs = static_cast<uint32_t>(
+                std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count());
+            
+            // ACK ??? (????? ????????
+            state_ = CommState::SENDING_ACK;
+            if (!sendAck()) {
+                logging::Logger::getInstance().warn("Failed to send ACK");
+            }
+            
+            // Transaction Medium ???
+            if (response.transactionMedium == '1') {
+                // IC (?? ???)????: ?? ??? ??????? ????? ??
+                // ??? ?????IPC/Flutter)??? IC_CARD_REMOVED ??????? ??????? ?? ???????????
+                logging::Logger::getInstance().warn("Payment approval rejected (IC, elapsed=" + 
+                                                   std::to_string(elapsedMs / 1000) + "s). " +
+                                                   "Waiting for card removal event to retry...");
+                setError("Payment rejected (IC). Card removal event required for retry");
+                state_ = CommState::ERROR;
+                return false;  // ??? ??, ??? ?????????? ??? ????????????
+            } else if (response.transactionMedium == '3') {
+                // RF (??)????: 3?????????????
+                const uint32_t rfRetryDelayMs = 3000;  // 3??
+                logging::Logger::getInstance().warn("Payment approval rejected (RF, elapsed=" + 
+                                                   std::to_string(elapsedMs / 1000) + "s). " +
+                                                   "Retrying after " + std::to_string(rfRetryDelayMs / 1000) + "s...");
+                
+                // 3??????(Flutter?? ???????????? ??? ??? ??)
+                auto retryStartTime = std::chrono::steady_clock::now();
+                std::this_thread::sleep_for(std::chrono::milliseconds(rfRetryDelayMs));
+                auto retryElapsed = std::chrono::steady_clock::now() - retryStartTime;
+                uint32_t retryElapsedMs = static_cast<uint32_t>(
+                    std::chrono::duration_cast<std::chrono::milliseconds>(retryElapsed).count());
+                logging::Logger::getInstance().info("RF retry delay completed: " + 
+                                                   std::to_string(retryElapsedMs / 1000) + "s");
+                
+                continue;  // ?????(??? ????? ?????30????? ???)
+            } else {
+                // ??? ?? (MS, QR, KEYIN ??????: ?? ???????
+                logging::Logger::getInstance().warn("Payment approval rejected (Medium=" + 
+                                                   std::string(1, response.transactionMedium) + 
+                                                   ", elapsed=" + std::to_string(elapsedMs / 1000) + 
+                                                   "s), retrying with same amount...");
+                
+                // ??? ???????????
+                std::this_thread::sleep_for(std::chrono::milliseconds(500));
+                continue;  // ?? ?????(??? ????? ?????30????? ???)
+            }
+        }
+        
+        // ???! ACK ???
+        elapsed = std::chrono::steady_clock::now() - requestStartTime;
+        elapsedMs = static_cast<uint32_t>(
+            std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count());
+        
+        state_ = CommState::SENDING_ACK;
+        if (!sendAck()) {
+            logging::Logger::getInstance().warn("Failed to send ACK, but response was valid");
+        }
+        
+        state_ = CommState::COMPLETED;
+        logging::Logger::getInstance().info("Payment approval request completed successfully (elapsed=" + 
+                                           std::to_string(elapsedMs / 1000) + "s)");
+        return true;
     }
-    
-    // 패킷 생성
-    auto packet = SmartroProtocol::createPaymentApprovalRequest(terminalId, request);
-    
-    // 요청 전송
-    state_ = CommState::SENDING_REQUEST;
-    logging::Logger::getInstance().debug("Sending payment approval request...");
-    
-    if (!serialPort_.write(packet.data(), packet.size())) {
-        setError("Failed to send request packet");
-        state_ = CommState::ERROR;
-        return false;
-    }
-    
-    // 요청 전송 전에 버퍼 비우기
-    flushSerialBuffer();
-    
-    // ACK 대기
-    state_ = CommState::WAITING_ACK;
-    logging::Logger::getInstance().debug("Waiting for ACK...");
-    
-    std::vector<uint8_t> responsePacket;
-    if (!waitForAck(ACK_TIMEOUT_MS, responsePacket)) {
-        setError("ACK timeout or NACK received");
-        state_ = CommState::ERROR;
-        return false;
-    }
-    
-    // 응답 수신
-    state_ = CommState::RECEIVING_RESPONSE;
-    logging::Logger::getInstance().debug("Receiving response...");
-    
-    if (!receiveResponse(responsePacket, RESPONSE_TIMEOUT_MS * 3)) {  // 결제는 더 오래 걸릴 수 있음
-        setError("Failed to receive response");
-        state_ = CommState::ERROR;
-        return false;
-    }
-    
-    // 응답 파싱
-    std::vector<uint8_t> header;
-    std::vector<uint8_t> payload;
-    
-    if (responsePacket.empty()) {
-        setError("Empty response packet");
-        sendNack();
-        state_ = CommState::ERROR;
-        return false;
-    }
-    
-    if (!SmartroProtocol::parsePacket(responsePacket.data(), responsePacket.size(), 
-                                     header, payload)) {
-        setError("Failed to parse response");
-        sendNack();
-        state_ = CommState::ERROR;
-        return false;
-    }
-    
-    // Job Code 확인
-    if (header.size() < HEADER_SIZE) {
-        setError("Invalid header size: " + std::to_string(header.size()));
-        sendNack();
-        state_ = CommState::ERROR;
-        return false;
-    }
-    
-    char jobCode = SmartroProtocol::extractJobCode(header.data());
-    if (jobCode != JOB_CODE_PAYMENT_APPROVAL_RESPONSE) {
-        setError("Unexpected job code: " + std::string(1, jobCode) + 
-                ", expected: " + std::string(1, JOB_CODE_PAYMENT_APPROVAL_RESPONSE));
-        sendNack();
-        state_ = CommState::ERROR;
-        return false;
-    }
-    
-    // 응답 데이터 파싱
-    if (!SmartroProtocol::parsePaymentApprovalResponse(payload.data(), payload.size(), response)) {
-        setError("Failed to parse payment approval response data");
-        sendNack();
-        state_ = CommState::ERROR;
-        return false;
-    }
-    
-    // 성공! ACK 전송
-    state_ = CommState::SENDING_ACK;
-    if (!sendAck()) {
-        logging::Logger::getInstance().warn("Failed to send ACK, but response was valid");
-    }
-    
-    state_ = CommState::COMPLETED;
-    logging::Logger::getInstance().debug("Payment approval request completed successfully");
-    return true;
 }
 
 bool SmartroComm::sendLastApprovalResponseRequest(const std::string& terminalId, 
                                                   LastApprovalResponse& response,
-                                                  uint32_t /*timeoutMs*/) {
-    std::lock_guard<std::mutex> lock(commMutex_);
-    state_ = CommState::IDLE;
-    lastError_.clear();
-    
-    if (!serialPort_.isOpen()) {
-        setError("Serial port is not open");
-        return false;
+                                                  uint32_t timeoutMs) {
+    {
+        std::lock_guard<std::mutex> lock(commMutex_);
+        state_ = CommState::IDLE;
+        lastError_.clear();
+        
+        if (!serialPort_.isOpen()) {
+            setError("Serial port is not open");
+            return false;
+        }
+        
+        // Create request packet
+        auto packet = SmartroProtocol::createLastApprovalResponseRequest(terminalId);
+        
+        // Send packet
+        state_ = CommState::SENDING_REQUEST;
+        logging::Logger::getInstance().debug("Sending last approval response request...");
+        
+        if (!serialPort_.write(packet.data(), packet.size())) {
+            setError("Failed to send request packet");
+            state_ = CommState::ERROR;
+            return false;
+        }
+        
+        // Flush serial buffer
+        flushSerialBuffer();
+        
+        // Wait for ACK
+        state_ = CommState::WAITING_ACK;
+        logging::Logger::getInstance().debug("Waiting for ACK...");
+        
+        std::vector<uint8_t> responsePacket;
+        if (!waitForAck(ACK_TIMEOUT_MS, responsePacket)) {
+            setError("ACK timeout or NACK received");
+            state_ = CommState::ERROR;
+            return false;
+        }
+        
+        // Send ACK (prepare for response reception)
+        state_ = CommState::SENDING_ACK;
+        if (!sendAck()) {
+            logging::Logger::getInstance().warn("Failed to send ACK");
+        }
     }
     
-    // 패킷 생성
-    auto packet = SmartroProtocol::createLastApprovalResponseRequest(terminalId);
-    
-    // 요청 전송
-    state_ = CommState::SENDING_REQUEST;
-    logging::Logger::getInstance().debug("Sending last approval response request...");
-    
-    if (!serialPort_.write(packet.data(), packet.size())) {
-        setError("Failed to send request packet");
-        state_ = CommState::ERROR;
-        return false;
-    }
-    
-    // 요청 전송 전에 버퍼 비우기
-    flushSerialBuffer();
-    
-    // ACK 대기
-    state_ = CommState::WAITING_ACK;
-    logging::Logger::getInstance().debug("Waiting for ACK...");
-    
-    std::vector<uint8_t> responsePacket;
-    if (!waitForAck(ACK_TIMEOUT_MS, responsePacket)) {
-        setError("ACK timeout or NACK received");
-        state_ = CommState::ERROR;
-        return false;
-    }
-    
-    // 응답 수신
+    // Response will be queued by responseReceiverThread, so get it from queue
     state_ = CommState::RECEIVING_RESPONSE;
-    logging::Logger::getInstance().debug("Receiving response...");
+    logging::Logger::getInstance().debug("Waiting for last approval response from queue...");
     
-    if (!receiveResponse(responsePacket, RESPONSE_TIMEOUT_MS * 3)) {  // 결제 응답은 더 오래 걸릴 수 있음
-        setError("Failed to receive response");
+    uint32_t actualTimeout = (timeoutMs == 0) ? (RESPONSE_TIMEOUT_MS * 3) : timeoutMs;
+    ResponseData responseData;
+    if (!pollResponse(responseData, actualTimeout)) {
+        std::lock_guard<std::mutex> lock(commMutex_);
+        setError("Timeout waiting for last approval response");
         state_ = CommState::ERROR;
         return false;
     }
     
-    // 응답 파싱
-    std::vector<uint8_t> header;
-    std::vector<uint8_t> payload;
-    
-    if (responsePacket.empty()) {
-        setError("Empty response packet");
-        sendNack();
-        state_ = CommState::ERROR;
-        return false;
-    }
-    
-    if (!SmartroProtocol::parsePacket(responsePacket.data(), responsePacket.size(), 
-                                     header, payload)) {
-        setError("Failed to parse response");
-        sendNack();
-        state_ = CommState::ERROR;
-        return false;
-    }
-    
-    // Job Code 확인
-    if (header.size() < HEADER_SIZE) {
-        setError("Invalid header size: " + std::to_string(header.size()));
-        sendNack();
-        state_ = CommState::ERROR;
-        return false;
-    }
-    
-    char jobCode = SmartroProtocol::extractJobCode(header.data());
-    if (jobCode != JOB_CODE_LAST_APPROVAL_RESPONSE_RESPONSE) {
-        setError("Unexpected job code: " + std::string(1, jobCode) + 
+    // Verify Job Code
+    if (responseData.jobCode != JOB_CODE_LAST_APPROVAL_RESPONSE_RESPONSE) {
+        std::lock_guard<std::mutex> lock(commMutex_);
+        setError("Unexpected job code: " + std::string(1, responseData.jobCode) + 
                 ", expected: " + std::string(1, JOB_CODE_LAST_APPROVAL_RESPONSE_RESPONSE));
-        sendNack();
         state_ = CommState::ERROR;
         return false;
     }
     
-    // 응답 데이터 파싱
-    if (!SmartroProtocol::parseLastApprovalResponse(payload.data(), payload.size(), response)) {
-        setError("Failed to parse last approval response data");
-        sendNack();
+    // Copy response data
+    if (responseData.type != ResponseType::LAST_APPROVAL) {
+        std::lock_guard<std::mutex> lock(commMutex_);
+        setError("Unexpected response type");
         state_ = CommState::ERROR;
         return false;
     }
     
-    // 성공! ACK 전송
-    state_ = CommState::SENDING_ACK;
-    if (!sendAck()) {
-        logging::Logger::getInstance().warn("Failed to send ACK, but response was valid");
+    response = responseData.lastApproval;
+    
+    {
+        std::lock_guard<std::mutex> lock(commMutex_);
+        state_ = CommState::COMPLETED;
     }
     
-    state_ = CommState::COMPLETED;
-    logging::Logger::getInstance().debug("Last approval response request completed successfully");
+    logging::Logger::getInstance().info("Last approval response request completed successfully: " + 
+                                       std::to_string(response.data.size()) + " bytes");
     return true;
 }
 
@@ -754,10 +969,10 @@ bool SmartroComm::sendScreenSoundSettingRequest(const std::string& terminalId,
         return false;
     }
     
-    // 패킷 생성
+    // ??? ???
     auto packet = SmartroProtocol::createScreenSoundSettingRequest(terminalId, request);
     
-    // 요청 전송
+    // ??? ???
     state_ = CommState::SENDING_REQUEST;
     logging::Logger::getInstance().debug("Sending screen/sound setting request...");
     
@@ -767,10 +982,10 @@ bool SmartroComm::sendScreenSoundSettingRequest(const std::string& terminalId,
         return false;
     }
     
-    // 요청 전송 전에 버퍼 비우기
+    // ??? ??? ??? ?? ????
     flushSerialBuffer();
     
-    // ACK 대기
+    // ACK ????
     state_ = CommState::WAITING_ACK;
     logging::Logger::getInstance().debug("Waiting for ACK...");
     
@@ -781,7 +996,7 @@ bool SmartroComm::sendScreenSoundSettingRequest(const std::string& terminalId,
         return false;
     }
     
-    // 응답 수신
+    // ??? ???
     state_ = CommState::RECEIVING_RESPONSE;
     logging::Logger::getInstance().debug("Receiving response...");
     
@@ -791,7 +1006,7 @@ bool SmartroComm::sendScreenSoundSettingRequest(const std::string& terminalId,
         return false;
     }
     
-    // 응답 파싱
+    // ??? ???
     std::vector<uint8_t> header;
     std::vector<uint8_t> payload;
     
@@ -810,7 +1025,7 @@ bool SmartroComm::sendScreenSoundSettingRequest(const std::string& terminalId,
         return false;
     }
     
-    // Job Code 확인
+    // Job Code ???
     if (header.size() < HEADER_SIZE) {
         setError("Invalid header size: " + std::to_string(header.size()));
         sendNack();
@@ -827,7 +1042,7 @@ bool SmartroComm::sendScreenSoundSettingRequest(const std::string& terminalId,
         return false;
     }
     
-    // 응답 데이터 파싱
+    // ??? ????????
     if (!SmartroProtocol::parseScreenSoundSettingResponse(payload.data(), payload.size(), response)) {
         setError("Failed to parse screen/sound setting response data");
         sendNack();
@@ -835,7 +1050,7 @@ bool SmartroComm::sendScreenSoundSettingRequest(const std::string& terminalId,
         return false;
     }
     
-    // 성공! ACK 전송
+    // ???! ACK ???
     state_ = CommState::SENDING_ACK;
     if (!sendAck()) {
         logging::Logger::getInstance().warn("Failed to send ACK, but response was valid");
@@ -858,10 +1073,10 @@ bool SmartroComm::sendIcCardCheckRequest(const std::string& terminalId,
         return false;
     }
     
-    // 패킷 생성
+    // ??? ???
     auto packet = SmartroProtocol::createIcCardCheckRequest(terminalId);
     
-    // 요청 전송
+    // ??? ???
     state_ = CommState::SENDING_REQUEST;
     logging::Logger::getInstance().debug("Sending IC card check request...");
     
@@ -871,10 +1086,10 @@ bool SmartroComm::sendIcCardCheckRequest(const std::string& terminalId,
         return false;
     }
     
-    // 요청 전송 전에 버퍼 비우기
+    // ??? ??? ??? ?? ????
     flushSerialBuffer();
     
-    // ACK 대기
+    // ACK ????
     state_ = CommState::WAITING_ACK;
     logging::Logger::getInstance().debug("Waiting for ACK...");
     
@@ -885,7 +1100,7 @@ bool SmartroComm::sendIcCardCheckRequest(const std::string& terminalId,
         return false;
     }
     
-    // 응답 수신
+    // ??? ???
     state_ = CommState::RECEIVING_RESPONSE;
     logging::Logger::getInstance().debug("Receiving response...");
     
@@ -895,7 +1110,7 @@ bool SmartroComm::sendIcCardCheckRequest(const std::string& terminalId,
         return false;
     }
     
-    // 응답 파싱
+    // ??? ???
     std::vector<uint8_t> header;
     std::vector<uint8_t> payload;
     
@@ -914,7 +1129,7 @@ bool SmartroComm::sendIcCardCheckRequest(const std::string& terminalId,
         return false;
     }
     
-    // Job Code 확인
+    // Job Code ???
     if (header.size() < HEADER_SIZE) {
         setError("Invalid header size: " + std::to_string(header.size()));
         sendNack();
@@ -931,7 +1146,7 @@ bool SmartroComm::sendIcCardCheckRequest(const std::string& terminalId,
         return false;
     }
     
-    // 응답 데이터 파싱
+    // ??? ????????
     if (!SmartroProtocol::parseIcCardCheckResponse(payload.data(), payload.size(), response)) {
         setError("Failed to parse IC card check response data");
         sendNack();
@@ -939,7 +1154,7 @@ bool SmartroComm::sendIcCardCheckRequest(const std::string& terminalId,
         return false;
     }
     
-    // 성공! ACK 전송
+    // ???! ACK ???
     state_ = CommState::SENDING_ACK;
     if (!sendAck()) {
         logging::Logger::getInstance().warn("Failed to send ACK, but response was valid");
@@ -962,26 +1177,26 @@ bool SmartroComm::waitForAck(uint32_t timeoutMs, std::vector<uint8_t>& responseP
     if (byte == ACK) {
         logging::Logger::getInstance().debug("ACK received (0x06)");
         
-        // ACK를 받은 후, 응답 패킷이 바로 올 수 있으므로 짧은 타임아웃으로 STX 확인
+        // ACK????? ?? ??? ??????? ????????????? ??????????STX ???
         uint8_t nextByte = 0;
-        if (readByte(nextByte, 1000)) {  // 1초 타임아웃 (응답이 빠르게 올 수 있음)
+        if (readByte(nextByte, 1000)) {  // 1?????????(????????????????)
             if (nextByte == STX) {
                 logging::Logger::getInstance().debug("STX received immediately after ACK");
                 responsePacket.push_back(STX);
                 return true;
             } else {
-                // STX가 아니면 버퍼에 다시 넣을 수 없으므로 로그만 남김
+                // STX? ???????????? ??? ????????????????
                 logging::Logger::getInstance().warn("Unexpected byte after ACK: 0x" + 
                                                    std::to_string(static_cast<int>(nextByte)));
             }
         }
-        // STX가 안 왔어도 ACK는 받았으므로 성공 (receiveResponse에서 STX를 찾을 것)
+        // STX? ???????ACK????????????? (receiveResponse??? STX???? ??
         return true;
     } else if (byte == NACK) {
         logging::Logger::getInstance().warn("NACK received (0x15)");
         return false;
     } else if (byte == STX) {
-        // STX가 먼저 오면 (ACK 없이 응답이 바로 시작)
+        // STX? ??? ??? (ACK ??? ??????? ???)
         logging::Logger::getInstance().debug("STX received instead of ACK, treating as response start");
         responsePacket.push_back(STX);
         return true;
@@ -989,10 +1204,10 @@ bool SmartroComm::waitForAck(uint32_t timeoutMs, std::vector<uint8_t>& responseP
         logging::Logger::getInstance().warn("Unexpected byte received while waiting for ACK: 0x" + 
                                            std::to_string(static_cast<int>(byte)) + 
                                            ", discarding...");
-        // 예상치 못한 바이트도 버퍼에 남아있을 수 있으므로 읽어서 버퍼 비우기
+        // ??????? ????? ?????????? ??????????????? ????
         uint8_t dummy;
         while (readByte(dummy, 10)) {
-            // 버퍼 비우기
+            // ?? ????
         }
         return false;
     }
@@ -1024,9 +1239,9 @@ bool SmartroComm::sendNack() {
 
 bool SmartroComm::receiveResponse(std::vector<uint8_t>& responsePacket, uint32_t timeoutMs) {
     uint32_t elapsed = 0;
-    const uint32_t readTimeout = 100;  // 각 읽기 시도마다 100ms
+    const uint32_t readTimeout = 100;  // ????? ????? 100ms
     
-    // STX 찾기 (이미 받았을 수 있음)
+    // STX ?? (???? ?????????)
     bool foundStx = !responsePacket.empty() && responsePacket[0] == STX;
     
     if (!foundStx) {
@@ -1051,7 +1266,7 @@ bool SmartroComm::receiveResponse(std::vector<uint8_t>& responsePacket, uint32_t
         logging::Logger::getInstance().debug("STX already received, continuing packet read...");
     }
     
-    // Header 나머지 읽기 (34 bytes)
+    // Header ???? ??? (34 bytes)
     size_t headerRemaining = HEADER_SIZE - 1;
     while (headerRemaining > 0 && elapsed < timeoutMs) {
         uint8_t byte = 0;
@@ -1068,7 +1283,7 @@ bool SmartroComm::receiveResponse(std::vector<uint8_t>& responsePacket, uint32_t
         return false;
     }
     
-    // 헤더 크기 확인
+    // ??? ??? ???
     if (responsePacket.size() < HEADER_SIZE) {
         logging::Logger::getInstance().error("Header size insufficient: " + 
                                             std::to_string(responsePacket.size()) + 
@@ -1077,11 +1292,11 @@ bool SmartroComm::receiveResponse(std::vector<uint8_t>& responsePacket, uint32_t
         return false;
     }
     
-    // Data Length 추출
+    // Data Length ??
     uint16_t dataLength = SmartroProtocol::extractDataLength(responsePacket.data());
     logging::Logger::getInstance().debug("Response data length: " + std::to_string(dataLength));
     
-    // Data 읽기
+    // Data ???
     for (uint16_t i = 0; i < dataLength && elapsed < timeoutMs; ++i) {
         uint8_t byte = 0;
         if (readByte(byte, readTimeout)) {
@@ -1091,7 +1306,7 @@ bool SmartroComm::receiveResponse(std::vector<uint8_t>& responsePacket, uint32_t
         }
     }
     
-    // ETX와 BCC 읽기
+    // ETX?? BCC ???
     uint8_t etx = 0;
     uint8_t bcc = 0;
     
@@ -1110,6 +1325,12 @@ bool SmartroComm::receiveResponse(std::vector<uint8_t>& responsePacket, uint32_t
     logging::Logger::getInstance().debug("Response packet received: " + 
                                        std::to_string(responsePacket.size()) + " bytes");
     
+    // ??? ????????? ?? ??
+    if (responsePacket.size() > 0) {
+        logging::Logger::getInstance().debugHex("Serial RX [Complete Packet]", 
+                                               responsePacket.data(), responsePacket.size());
+    }
+    
     return true;
 }
 
@@ -1122,11 +1343,11 @@ bool SmartroComm::readByte(uint8_t& byte, uint32_t timeoutMs) {
 }
 
 void SmartroComm::flushSerialBuffer() {
-    // 짧은 타임아웃으로 버퍼에 남아있는 데이터 읽어서 버리기
+    // ??? ???????????????????? ??????????????
     uint8_t dummy;
     size_t bytesRead = 0;
     while (serialPort_.read(&dummy, 1, bytesRead, 10) && bytesRead > 0) {
-        // 버퍼 비우기
+        // ?? ????
     }
     logging::Logger::getInstance().debug("Serial buffer flushed");
 }
@@ -1136,9 +1357,17 @@ void SmartroComm::setError(const std::string& error) {
     logging::Logger::getInstance().error("SmartroComm error: " + error);
 }
 
+CommState SmartroComm::getState() const {
+    return state_;
+}
+
+std::string SmartroComm::getLastError() const {
+    return lastError_;
+}
+
 void SmartroComm::startResponseReceiver() {
     if (receiverRunning_.exchange(true)) {
-        // 이미 실행 중
+        // ???? ??? ??
         return;
     }
     
@@ -1148,12 +1377,12 @@ void SmartroComm::startResponseReceiver() {
 
 void SmartroComm::stopResponseReceiver() {
     if (!receiverRunning_.exchange(false)) {
-        // 이미 중지됨
+        // ???? ?????
         return;
     }
     
     if (receiverThread_.joinable()) {
-        queueCondition_.notify_all();  // 대기 중인 스레드 깨우기
+        queueCondition_.notify_all();  // ?????? ?????????
         receiverThread_.join();
     }
     
@@ -1164,7 +1393,7 @@ void SmartroComm::responseReceiverThread() {
     logging::Logger::getInstance().debug("Response receiver thread started");
     
     while (receiverRunning_) {
-        // STX 찾기 (짧은 타임아웃으로 반복)
+        // STX ?? (??? ????????????)
         uint8_t byte = 0;
         bool foundStx = false;
         
@@ -1175,7 +1404,7 @@ void SmartroComm::responseReceiverThread() {
                 continue;
             }
             
-            if (readByte(byte, 100)) {  // 100ms 타임아웃
+            if (readByte(byte, 100)) {  // 100ms ???????
                 if (byte == STX) {
                     foundStx = true;
                 }
@@ -1187,7 +1416,7 @@ void SmartroComm::responseReceiverThread() {
             continue;
         }
         
-        // STX를 찾았으면 패킷 읽기
+        // STX??????? ??? ???
         std::vector<uint8_t> packet;
         packet.push_back(STX);
         
@@ -1199,7 +1428,7 @@ void SmartroComm::responseReceiverThread() {
             }
         }
         
-        // 응답 처리 및 큐에 추가
+        // ??? ?? ????? ???
         processResponse(packet);
     }
     
@@ -1211,7 +1440,7 @@ void SmartroComm::processResponse(const std::vector<uint8_t>& packet) {
         return;
     }
     
-    // 패킷 파싱
+    // ??? ???
     std::vector<uint8_t> header;
     std::vector<uint8_t> payload;
     
@@ -1231,7 +1460,7 @@ void SmartroComm::processResponse(const std::vector<uint8_t>& packet) {
     response.jobCode = jobCode;
     response.rawData = packet;
     
-    // Job Code에 따라 파싱
+    // Job Code????? ???
     bool parsed = false;
     
     switch (jobCode) {
@@ -1255,19 +1484,43 @@ void SmartroComm::processResponse(const std::vector<uint8_t>& packet) {
             
         case JOB_CODE_RESET_RESPONSE:  // 'r'
             response.type = ResponseType::RESET;
-            parsed = true;  // Reset은 데이터가 없음
+            parsed = true;  // Reset?? ??????? ???
             break;
             
         case JOB_CODE_PAYMENT_APPROVAL_RESPONSE:  // 'b'
             response.type = ResponseType::PAYMENT_APPROVAL;
             parsed = SmartroProtocol::parsePaymentApprovalResponse(payload.data(), payload.size(), 
                                                                   response.paymentApproval);
+            if (parsed) {
+                logging::Logger::getInstance().info("Payment approval response parsed successfully: " + 
+                                                   std::to_string(response.paymentApproval.data.size()) + " bytes");
+            } else {
+                logging::Logger::getInstance().error("Failed to parse payment approval response");
+            }
+            break;
+            
+        case JOB_CODE_TRANSACTION_CANCEL_RESPONSE:  // 'c'
+            response.type = ResponseType::PAYMENT_APPROVAL;  // Same structure as payment approval
+            parsed = SmartroProtocol::parsePaymentApprovalResponse(payload.data(), payload.size(), 
+                                                                  response.paymentApproval);
+            if (parsed) {
+                logging::Logger::getInstance().info("Transaction cancel response parsed successfully: " + 
+                                                   std::to_string(response.paymentApproval.data.size()) + " bytes");
+            } else {
+                logging::Logger::getInstance().error("Failed to parse transaction cancel response");
+            }
             break;
             
         case JOB_CODE_LAST_APPROVAL_RESPONSE_RESPONSE:  // 'l'
             response.type = ResponseType::LAST_APPROVAL;
             parsed = SmartroProtocol::parseLastApprovalResponse(payload.data(), payload.size(), 
                                                                response.lastApproval);
+            if (parsed) {
+                logging::Logger::getInstance().info("Last approval response parsed successfully: " + 
+                                                   std::to_string(response.lastApproval.data.size()) + " bytes");
+            } else {
+                logging::Logger::getInstance().error("Failed to parse last approval response");
+            }
             break;
             
         case JOB_CODE_SCREEN_SOUND_SETTING_RESPONSE:  // 's'
@@ -1300,7 +1553,7 @@ void SmartroComm::processResponse(const std::vector<uint8_t>& packet) {
         return;
     }
     
-    // 큐에 추가
+    // ??? ???
     {
         std::lock_guard<std::mutex> lock(queueMutex_);
         responseQueue_.push(response);
@@ -1312,25 +1565,33 @@ void SmartroComm::processResponse(const std::vector<uint8_t>& packet) {
 
 bool SmartroComm::pollResponse(ResponseData& response, uint32_t timeoutMs) {
     std::unique_lock<std::mutex> lock(queueMutex_);
+    size_t initialQueueSize = responseQueue_.size();
+    
+    logging::Logger::getInstance().debug("pollResponse called, timeout: " + std::to_string(timeoutMs) + "ms, initial queue size: " + std::to_string(initialQueueSize));
     
     if (timeoutMs == 0) {
-        // 무한 대기
+        // ?? ??
+        logging::Logger::getInstance().debug("pollResponse: waiting indefinitely for response");
         queueCondition_.wait(lock, [this] { return !responseQueue_.empty() || !receiverRunning_; });
     } else {
-        // 타임아웃 설정
+        // ???? ??
         auto timeout = std::chrono::milliseconds(timeoutMs);
+        logging::Logger::getInstance().debug("pollResponse: waiting with timeout");
         if (!queueCondition_.wait_for(lock, timeout, 
                                       [this] { return !responseQueue_.empty() || !receiverRunning_; })) {
-            return false;  // 타임아웃
+            logging::Logger::getInstance().debug("pollResponse: timeout, queue size: " + std::to_string(responseQueue_.size()));
+            return false;  // ????
         }
     }
     
     if (responseQueue_.empty()) {
-        return false;  // 스레드가 중지됨
+        logging::Logger::getInstance().debug("pollResponse: queue is empty after wait (receiver stopped?)");
+        return false;  // ???? ???
     }
     
     response = responseQueue_.front();
     responseQueue_.pop();
+    logging::Logger::getInstance().info("pollResponse: retrieved response from queue, remaining: " + std::to_string(responseQueue_.size()) + ", type: " + std::to_string(static_cast<int>(response.type)));
     return true;
 }
 
@@ -1345,14 +1606,14 @@ bool SmartroComm::sendPaymentApprovalRequestAsync(const std::string& terminalId,
         return false;
     }
     
-    // 패킷 생성
+    // ??? ???
     auto packet = SmartroProtocol::createPaymentApprovalRequest(terminalId, request);
     
-    // 요청 전송
+    // ??? ???
     state_ = CommState::SENDING_REQUEST;
     logging::Logger::getInstance().debug("Sending payment approval request (async)...");
     
-    // 요청 전송 전에 버퍼 비우기
+    // ??? ??? ??? ?? ????
     flushSerialBuffer();
     
     if (!serialPort_.write(packet.data(), packet.size())) {
@@ -1361,7 +1622,7 @@ bool SmartroComm::sendPaymentApprovalRequestAsync(const std::string& terminalId,
         return false;
     }
     
-    // ACK 대기 (짧은 타임아웃)
+    // ACK ????(??? ???????
     state_ = CommState::WAITING_ACK;
     logging::Logger::getInstance().debug("Waiting for ACK...");
     
@@ -1372,15 +1633,120 @@ bool SmartroComm::sendPaymentApprovalRequestAsync(const std::string& terminalId,
         return false;
     }
     
-    // ACK 전송
+    // ACK ???
     state_ = CommState::SENDING_ACK;
     if (!sendAck()) {
         logging::Logger::getInstance().warn("Failed to send ACK");
     }
     
-    // 요청 전송 완료 (응답은 백그라운드 스레드에서 받음)
+    // ??? ??? ??? (????? ?????????????????)
     state_ = CommState::IDLE;
     logging::Logger::getInstance().debug("Payment approval request sent (async), waiting for response in background");
+    return true;
+}
+
+bool SmartroComm::sendTransactionCancelRequest(const std::string& terminalId,
+                                               const TransactionCancelRequest& request,
+                                               TransactionCancelResponse& response,
+                                               uint32_t timeoutMs) {
+    std::lock_guard<std::mutex> lock(commMutex_);
+    state_ = CommState::IDLE;
+    lastError_.clear();
+    
+    if (!serialPort_.isOpen()) {
+        setError("Serial port is not open");
+        return false;
+    }
+    
+    // ?? ??
+    auto packet = SmartroProtocol::createTransactionCancelRequest(terminalId, request);
+    
+    // ?? ??
+    state_ = CommState::SENDING_REQUEST;
+    logging::Logger::getInstance().debug("Sending transaction cancel request...");
+    
+    // ??? ?? ???
+    flushSerialBuffer();
+    
+    if (!serialPort_.write(packet.data(), packet.size())) {
+        setError("Failed to send request packet");
+        state_ = CommState::ERROR;
+        return false;
+    }
+    
+    // ACK ??
+    state_ = CommState::WAITING_ACK;
+    logging::Logger::getInstance().debug("Waiting for ACK...");
+    
+    std::vector<uint8_t> responsePacket;
+    if (!waitForAck(ACK_TIMEOUT_MS, responsePacket)) {
+        setError("ACK timeout or NACK received");
+        state_ = CommState::ERROR;
+        return false;
+    }
+    
+    // ?? ?? (STX? ?? ???)
+    state_ = CommState::RECEIVING_RESPONSE;
+    logging::Logger::getInstance().debug("Receiving response...");
+    
+    if (!receiveResponse(responsePacket, timeoutMs)) {
+        setError("Failed to receive response");
+        state_ = CommState::ERROR;
+        return false;
+    }
+    
+    // ?? ??
+    std::vector<uint8_t> header;
+    std::vector<uint8_t> payload;
+    
+    if (responsePacket.empty()) {
+        setError("Empty response packet");
+        sendNack();
+        state_ = CommState::ERROR;
+        return false;
+    }
+    
+    if (!SmartroProtocol::parsePacket(responsePacket.data(), responsePacket.size(), 
+                                     header, payload)) {
+        setError("Failed to parse response");
+        sendNack();
+        state_ = CommState::ERROR;
+        return false;
+    }
+    
+    // Job Code ??
+    if (header.size() < HEADER_SIZE) {
+        setError("Invalid header size: " + std::to_string(header.size()));
+        sendNack();
+        state_ = CommState::ERROR;
+        return false;
+    }
+    
+    char jobCode = SmartroProtocol::extractJobCode(header.data());
+    if (jobCode != JOB_CODE_TRANSACTION_CANCEL_RESPONSE) {
+        setError("Unexpected job code: " + std::string(1, jobCode) + 
+                ", expected: " + std::string(1, JOB_CODE_TRANSACTION_CANCEL_RESPONSE));
+        sendNack();
+        state_ = CommState::ERROR;
+        return false;
+    }
+    
+    // ?? ??? ??
+    if (!SmartroProtocol::parseTransactionCancelResponse(payload.data(), payload.size(), response)) {
+        setError("Failed to parse transaction cancel response data");
+        sendNack();
+        state_ = CommState::ERROR;
+        return false;
+    }
+    
+    // ??! ACK ??
+    state_ = CommState::SENDING_ACK;
+    if (!sendAck()) {
+        logging::Logger::getInstance().warn("Failed to send ACK, but response was valid");
+    }
+    
+    state_ = CommState::COMPLETED;
+    logging::Logger::getInstance().debug("Transaction cancel request completed successfully");
     return true;
 }
 

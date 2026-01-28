@@ -1,8 +1,18 @@
 // include/vendor_adapters/smartro/smartro_comm.h
 #pragma once
 
-#include "vendor_adapters/smartro/serial_port.h"
+// Windows macro protection
+#ifdef _WIN32
+    #ifndef WIN32_LEAN_AND_MEAN
+        #define WIN32_LEAN_AND_MEAN
+    #endif
+    #ifndef NOMINMAX
+        #define NOMINMAX
+    #endif
+#endif
+
 #include "vendor_adapters/smartro/smartro_protocol.h"
+#include "vendor_adapters/smartro/serial_port.h"
 #include <string>
 #include <vector>
 #include <cstdint>
@@ -25,7 +35,7 @@ enum class CommState {
     ERROR
 };
 
-// 응답 타입 (Job Code로 구분)
+// Response type (distinguished by Job Code)
 enum class ResponseType {
     DEVICE_CHECK,           // 'a'
     PAYMENT_WAIT,           // 'e'
@@ -38,13 +48,15 @@ enum class ResponseType {
     EVENT                  // '@'
 };
 
-// 통합 응답 구조체
+// Unified response structure
+// Note: Types DeviceCheckResponse, PaymentWaitResponse, etc. are defined in smartro_protocol.h
 struct ResponseData {
     ResponseType type;
     char jobCode;
-    std::vector<uint8_t> rawData;  // 원본 데이터
+    std::vector<uint8_t> rawData;  // Original data
     
-    // 각 타입별 데이터 (타입에 맞는 것만 사용)
+    // Type-specific data (use only the one matching the type)
+    // Types are in the same namespace, so no namespace prefix needed
     DeviceCheckResponse deviceCheck;
     PaymentWaitResponse paymentWait;
     CardUidReadResponse cardUid;
@@ -60,103 +72,109 @@ public:
     SmartroComm(SerialPort& serialPort);
     ~SmartroComm();
     
-    // 응답 수신 스레드 시작/중지
+    // Start/stop response receiver thread
     void startResponseReceiver();
     void stopResponseReceiver();
     
-    // 응답 폴링 (비동기 응답 가져오기)
+    // Poll response (get asynchronous response)
     bool pollResponse(ResponseData& response, uint32_t timeoutMs = 0);
     
-    // 기존 동기 방식 함수들 (하위 호환성 유지)
-    // 장치체크 요청 전송 및 응답 수신
+    // Legacy synchronous functions (for backward compatibility)
+    // Send device check request and receive response
     bool sendDeviceCheckRequest(const std::string& terminalId, 
                                 DeviceCheckResponse& response,
                                 uint32_t timeoutMs = 3000);
     
-    // 결제대기 요청 전송 및 응답 수신
+    // Send payment wait request and receive response
     bool sendPaymentWaitRequest(const std::string& terminalId, 
                                 PaymentWaitResponse& response,
                                 uint32_t timeoutMs = 3000);
     
-    // 카드 UID 읽기 요청 전송 및 응답 수신
+    // Send card UID read request and receive response
     bool sendCardUidReadRequest(const std::string& terminalId, 
                                 CardUidReadResponse& response,
                                 uint32_t timeoutMs = 3000);
     
-    // 이벤트 대기 (블로킹, 타임아웃 가능)
-    // 이벤트는 기기에서 자동으로 전송되므로 ACK/NACK 미전송
-    bool waitForEvent(EventResponse& event, uint32_t timeoutMs = 0);  // timeoutMs=0이면 무한 대기
+    // Wait for event (blocking, timeout available)
+    // Events are automatically sent from device, so no ACK/NACK is sent
+    bool waitForEvent(EventResponse& event, uint32_t timeoutMs = 0);  // timeoutMs=0 means infinite wait
     
-    // 단말기 리셋 요청 전송 및 응답 수신
+    // Send terminal reset request and receive response
     bool sendResetRequest(const std::string& terminalId, uint32_t timeoutMs = 3000);
     
-    // 거래승인 요청 전송 (비동기 - 요청만 보내고 바로 반환)
+    // Send payment approval request (asynchronous - send request and return immediately)
     bool sendPaymentApprovalRequestAsync(const std::string& terminalId, 
                                         const PaymentApprovalRequest& request);
     
-    // 거래승인 요청 전송 및 응답 수신 (동기 - 하위 호환성)
+    // Send payment approval request and receive response (synchronous - for backward compatibility)
     bool sendPaymentApprovalRequest(const std::string& terminalId, 
                                     const PaymentApprovalRequest& request,
                                     PaymentApprovalResponse& response,
-                                    uint32_t timeoutMs = 30000);  // 결제는 시간이 더 걸릴 수 있음
+                                    uint32_t timeoutMs = 30000);  // Payment may take longer
     
-    // 마지막 승인 응답 요청 전송 및 응답 수신
+    // Send transaction cancellation request and receive response
+    bool sendTransactionCancelRequest(const std::string& terminalId,
+                                     const TransactionCancelRequest& request,
+                                     TransactionCancelResponse& response,
+                                     uint32_t timeoutMs = 30000);
+    
+    // Send last approval response request and receive response
     bool sendLastApprovalResponseRequest(const std::string& terminalId, 
                                         LastApprovalResponse& response,
                                         uint32_t timeoutMs = 30000);
     
-    // 화면/음성 설정 요청 전송 및 응답 수신
+    // Send screen/sound setting request and receive response
     bool sendScreenSoundSettingRequest(const std::string& terminalId, 
                                        const ScreenSoundSettingRequest& request,
                                        ScreenSoundSettingResponse& response,
                                        uint32_t timeoutMs = 3000);
     
-    // IC 카드 체크 요청 전송 및 응답 수신
+    // Send IC card check request and receive response
     bool sendIcCardCheckRequest(const std::string& terminalId, 
                                IcCardCheckResponse& response,
                                uint32_t timeoutMs = 3000);
     
-    // 상태 조회
-    CommState getState() const { return state_; }
-    std::string getLastError() const { return lastError_; }
+    // Get state
+    CommState getState() const;
+    std::string getLastError() const;
     
 private:
     SerialPort& serialPort_;
     CommState state_;
     std::string lastError_;
-    mutable std::mutex commMutex_;  // 멀티스레드 안전을 위한 락
+    mutable std::mutex commMutex_;  // Lock for thread safety
     
-    // 비동기 응답 수신 관련
+    // Asynchronous response reception
     std::atomic<bool> receiverRunning_;
     std::thread receiverThread_;
     std::queue<ResponseData> responseQueue_;
     std::mutex queueMutex_;
     std::condition_variable queueCondition_;
     
-    static constexpr uint32_t ACK_TIMEOUT_MS = 5000;  // ACK 대기 타임아웃
-    static constexpr uint32_t RESPONSE_TIMEOUT_MS = 10000;  // 응답 수신 타임아웃
+    static constexpr uint32_t ACK_TIMEOUT_MS = 5000;  // ACK wait timeout
+    static constexpr uint32_t RESPONSE_TIMEOUT_MS = 10000;  // Response receive timeout
     
-    // 백그라운드 응답 수신 스레드
+    // Background response receiver thread
     void responseReceiverThread();
     
-    // 응답 파싱 및 큐에 추가
+    // Parse response and add to queue
     void processResponse(const std::vector<uint8_t>& packet);
     
-    // ACK/NACK 처리
+    // ACK/NACK handling
     bool waitForAck(uint32_t timeoutMs, std::vector<uint8_t>& responsePacket);
     bool sendAck();
     bool sendNack();
     
-    // 응답 수신
+    // Receive response
     bool receiveResponse(std::vector<uint8_t>& responsePacket, uint32_t timeoutMs);
     
-    // 단일 바이트 읽기 (ACK/NACK용)
+    // Read single byte (for ACK/NACK)
     bool readByte(uint8_t& byte, uint32_t timeoutMs);
     
-    // Serial 버퍼 비우기
+    // Flush serial buffer
     void flushSerialBuffer();
     
-    // 에러 설정
+    // Set error
     void setError(const std::string& error);
 };
 

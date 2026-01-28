@@ -1,11 +1,14 @@
 // src/vendor_adapters/smartro/serial_port.cpp
-#include "vendor_adapters/smartro/serial_port.h"
+// logger.h�?가??먼�? include?�여 Windows SDK 충돌 방�?
 #include "logging/logger.h"
+#include "vendor_adapters/smartro/serial_port.h"
 #include <windows.h>
 #include <string>
 #include <algorithm>
 #include <vector>
-#include <fstream>
+#include <thread>
+#include <atomic>
+#include <chrono>
 
 namespace smartro {
 
@@ -27,7 +30,7 @@ bool SerialPort::open(const std::string& portName, uint32_t baudRate) {
     portName_ = portName;
     baudRate_ = baudRate;
     
-    // COM 포트 이름 변환 (COM3 -> \\.\COM3)
+    // COM ?�트 ?�름 변??(COM3 -> \\.\COM3)
     std::string fullPortName = portName;
     if (portName.find("\\\\.\\") != 0) {
         fullPortName = "\\\\.\\" + portName;
@@ -35,20 +38,56 @@ bool SerialPort::open(const std::string& portName, uint32_t baudRate) {
     
     logging::Logger::getInstance().debug("Opening serial port: " + fullPortName + " (Baud: " + std::to_string(baudRate) + ")");
     
-    handle_ = CreateFileA(
-        fullPortName.c_str(),
-        GENERIC_READ | GENERIC_WRITE,
-        0,
-        nullptr,
-        OPEN_EXISTING,
-        0,
-        nullptr
-    );
+    // ?�트 ?�기�?별도 ?�레?�에???�행?�여 ?�?�아???�정
+    std::atomic<bool> openSuccess(false);
+    std::atomic<bool> openComplete(false);
+    HANDLE openedHandle = INVALID_HANDLE_VALUE;
     
-    if (handle_ == INVALID_HANDLE_VALUE) {
-        logError("Failed to open serial port");
+    std::thread openThread([&]() {
+        openedHandle = CreateFileA(
+            fullPortName.c_str(),
+            GENERIC_READ | GENERIC_WRITE,
+            0,
+            nullptr,
+            OPEN_EXISTING,
+            0,
+            nullptr
+        );
+        
+        if (openedHandle != INVALID_HANDLE_VALUE) {
+            openSuccess = true;
+        }
+        openComplete = true;
+    });
+    
+    // ?�?�아?? 2�?
+    auto timeout = std::chrono::steady_clock::now() + std::chrono::milliseconds(2000);
+    while (!openComplete && std::chrono::steady_clock::now() < timeout) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    
+    if (!openComplete) {
+        // ?�?�아??발생 - ?�레?��? ?�직 ?�행 중이�?종료 ?��?
+        logging::Logger::getInstance().warn("Port open timeout for " + portName + ", trying next port...");
+        // ?�레?��? 종료???�까지 기다리�? ?�고 계속 진행
+        // (?�트가 ?�리�??�중???�을 ???�음)
+        openThread.detach();
         return false;
     }
+    
+    openThread.join();
+    
+    if (!openSuccess || openedHandle == INVALID_HANDLE_VALUE) {
+        DWORD error = GetLastError();
+        if (error == ERROR_ACCESS_DENIED || error == ERROR_FILE_NOT_FOUND) {
+            logging::Logger::getInstance().warn("Port " + portName + " is not available (error: " + std::to_string(error) + ")");
+        } else {
+            logError("Failed to open serial port");
+        }
+        return false;
+    }
+    
+    handle_ = openedHandle;
     
     if (!configurePort()) {
         logError("Failed to configure serial port");
@@ -112,7 +151,7 @@ bool SerialPort::read(uint8_t* buffer, size_t bufferSize, size_t& bytesRead, uin
         return false;
     }
     
-    // 타임아웃 설정
+    // ?�?�아???�정
     COMMTIMEOUTS timeouts = {0};
     timeouts.ReadIntervalTimeout = 0;
     timeouts.ReadTotalTimeoutConstant = timeoutMs;
@@ -143,7 +182,9 @@ bool SerialPort::read(uint8_t* buffer, size_t bufferSize, size_t& bytesRead, uin
         return false;
     }
     
-    if (bytesRead > 0) {
+    // 1바이???�기??로그 출력?��? ?�음 (?�무 많�? 로그 방�?)
+    // ?�러 바이???�을 ?�만 로그 출력
+    if (bytesRead > 0 && bytesRead > 1) {
         logging::Logger::getInstance().debugHex("Serial RX", buffer, bytesRead);
     }
     
@@ -159,17 +200,17 @@ bool SerialPort::setBaudRate(uint32_t baudRate) {
 }
 
 bool SerialPort::setDataBits(uint8_t dataBits) {
-    // 구현 생략 (필요시 추가)
+    // 구현 ?�략 (?�요??추�?)
     return true;
 }
 
 bool SerialPort::setStopBits(uint8_t stopBits) {
-    // 구현 생략 (필요시 추가)
+    // 구현 ?�략 (?�요??추�?)
     return true;
 }
 
 bool SerialPort::setParity(uint8_t parity) {
-    // 구현 생략 (필요시 추가)
+    // 구현 ?�략 (?�요??추�?)
     return true;
 }
 
@@ -182,7 +223,7 @@ bool SerialPort::configurePort() {
         return false;
     }
     
-    // 기본 설정
+    // 기본 ?�정
     dcb.BaudRate = baudRate_;
     dcb.ByteSize = 8;
     dcb.Parity = NOPARITY;
@@ -206,10 +247,10 @@ bool SerialPort::configurePort() {
         return false;
     }
     
-    // 버퍼 크기 설정
+    // 버퍼 ?�기 ?�정
     SetupComm(static_cast<HANDLE>(handle_), 4096, 4096);
     
-    // 타임아웃 설정
+    // ?�?�아???�정
     COMMTIMEOUTS timeouts = {0};
     timeouts.ReadIntervalTimeout = MAXDWORD;
     timeouts.ReadTotalTimeoutConstant = 0;
@@ -235,7 +276,7 @@ void SerialPort::logError(const std::string& operation) {
 std::vector<std::string> SerialPort::getAvailablePorts() {
     std::vector<std::string> ports;
     
-    // 레지스트리에서 COM 포트 목록 읽기
+    // ?��??�트리에??COM ?�트 목록 ?�기
     HKEY hKey;
     if (RegOpenKeyExA(HKEY_LOCAL_MACHINE, 
                       "HARDWARE\\DEVICEMAP\\SERIALCOMM", 
@@ -264,7 +305,7 @@ std::vector<std::string> SerialPort::getAvailablePorts() {
             
             if (type == REG_SZ && dataSize > 0) {
                 std::string portName(data);
-                // COM 포트 이름만 추출 (예: "COM3")
+                // COM ?�트 ?�름�?추출 (?? "COM3")
                 if (portName.find("COM") == 0) {
                     ports.push_back(portName);
                 }
@@ -276,7 +317,7 @@ std::vector<std::string> SerialPort::getAvailablePorts() {
         RegCloseKey(hKey);
     }
     
-    // 레지스트리에서 찾지 못한 경우, COM1~COM20까지 시도
+    // ?��??�트리에??찾�? 못한 경우, COM1~COM20까�? ?�도
     if (ports.empty()) {
         for (int i = 1; i <= 20; ++i) {
             std::string portName = "COM" + std::to_string(i);
@@ -303,27 +344,55 @@ std::vector<std::string> SerialPort::getAvailablePorts() {
 }
 
 bool SerialPort::saveWorkingPort(const std::string& portName) {
-    std::ofstream file("smartro_port.cfg");
-    if (!file.is_open()) {
+    // Windows API�??�용?�여 ?�일 ?�기 (fstream ?�??
+    HANDLE hFile = CreateFileA(
+        "smartro_port.cfg",
+        GENERIC_WRITE,
+        0,
+        nullptr,
+        CREATE_ALWAYS,
+        FILE_ATTRIBUTE_NORMAL,
+        nullptr
+    );
+    
+    if (hFile == INVALID_HANDLE_VALUE) {
         logging::Logger::getInstance().warn("Failed to save working port to file");
         return false;
     }
     
-    file << portName;
-    file.close();
+    DWORD bytesWritten = 0;
+    WriteFile(hFile, portName.c_str(), static_cast<DWORD>(portName.length()), &bytesWritten, nullptr);
+    CloseHandle(hFile);
+    
     logging::Logger::getInstance().info("Saved working port: " + portName);
     return true;
 }
 
 std::string SerialPort::loadWorkingPort() {
-    std::ifstream file("smartro_port.cfg");
-    if (!file.is_open()) {
+    // Windows API�??�용?�여 ?�일 ?�기 (fstream ?�??
+    HANDLE hFile = CreateFileA(
+        "smartro_port.cfg",
+        GENERIC_READ,
+        0,
+        nullptr,
+        OPEN_EXISTING,
+        FILE_ATTRIBUTE_NORMAL,
+        nullptr
+    );
+    
+    if (hFile == INVALID_HANDLE_VALUE) {
         return "";
     }
     
-    std::string portName;
-    file >> portName;
-    file.close();
+    char buffer[256] = {0};
+    DWORD bytesRead = 0;
+    ReadFile(hFile, buffer, sizeof(buffer) - 1, &bytesRead, nullptr);
+    CloseHandle(hFile);
+    
+    std::string portName(buffer, bytesRead);
+    
+    // 공백 ?�거
+    portName.erase(portName.find_last_not_of(" \t\n\r\f\v") + 1);
     
     if (!portName.empty()) {
         logging::Logger::getInstance().info("Loaded saved port: " + portName);
