@@ -16,6 +16,8 @@
 #include <fstream>
 #include <sstream>
 #include <filesystem>
+#include <thread>
+#include <chrono>
 
 namespace canon {
 
@@ -118,6 +120,7 @@ void EdsdkCameraAdapter::shutdown() {
     if (!sdkInitialized_) {
         return;
     }
+    stopPreview();
 
     if (commandProcessor_) {
         if (cameraModel_) {
@@ -232,15 +235,68 @@ devices::DeviceState EdsdkCameraAdapter::getState() const {
 }
 
 bool EdsdkCameraAdapter::startPreview() {
-    // Preview not implemented for now
-    logging::Logger::getInstance().warn("Preview not implemented");
-    return false;
+    if (!commandProcessor_ || !cameraModel_) {
+        logging::Logger::getInstance().warn("LiveView: camera not initialized");
+        return false;
+    }
+    evfStartedPromise_ = std::promise<bool>();
+    std::future<bool> evfFut = evfStartedPromise_.get_future();
+    commandProcessor_->enqueue(std::make_shared<StartEvfCommand>(this));
+    bool ok = false;
+    try {
+        ok = evfFut.get();
+    } catch (...) {}
+    if (!ok) return false;
+    liveViewServer_.start(EdsdkLiveviewServer::DEFAULT_PORT);
+    evfPumpRunning_ = true;
+    pendingEvfFrames_ = 0;
+    evfPumpThread_ = std::thread([this]() {
+        while (evfPumpRunning_) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(33));
+            if (!evfPumpRunning_) break;
+            while (evfPumpRunning_ && pendingEvfFrames_.load() > 0)
+                std::this_thread::sleep_for(std::chrono::milliseconds(5));
+            if (!evfPumpRunning_) break;
+            if (commandProcessor_) {
+                pendingEvfFrames_++;
+                commandProcessor_->enqueue(std::make_shared<GetEvfFrameCommand>(this));
+            }
+        }
+    });
+    return true;
 }
 
 bool EdsdkCameraAdapter::stopPreview() {
-    // Preview not implemented for now
-    logging::Logger::getInstance().warn("Preview not implemented");
-    return false;
+    evfPumpRunning_ = false;
+    if (evfPumpThread_.joinable())
+        evfPumpThread_.join();
+    if (commandProcessor_)
+        commandProcessor_->enqueue(std::make_shared<StopEvfCommand>(this));
+    liveViewServer_.stop();
+    return true;
+}
+
+void EdsdkCameraAdapter::setEvfRefs(EdsStreamRef streamRef, EdsBaseRef evfImageRef) {
+    releaseEvfRefs();
+    evfStream_ = streamRef;
+    evfImageRef_ = evfImageRef;
+}
+
+void EdsdkCameraAdapter::releaseEvfRefs() {
+    if (evfImageRef_) {
+        EdsRelease(evfImageRef_);
+        evfImageRef_ = nullptr;
+    }
+    if (evfStream_) {
+        EdsRelease(evfStream_);
+        evfStream_ = nullptr;
+    }
+}
+
+void EdsdkCameraAdapter::onEvfStarted(bool success) {
+    try {
+        evfStartedPromise_.set_value(success);
+    } catch (...) {}
 }
 
 bool EdsdkCameraAdapter::setSettings(const devices::CameraSettings& settings) {
@@ -326,6 +382,12 @@ void EdsdkCameraAdapter::onError(EdsError error) {
     std::string errorMsg = "EDSDK error: " + std::to_string(error);
     setLastError(errorMsg);
     logging::Logger::getInstance().error(errorMsg);
+    // DEVICE_BUSY(129)는 촬영 직후 일시적으로 올 수 있음. ERROR로 바꾸면 다음 촬영이 막힘.
+    EdsError errId = (error & EDS_ERRORID_MASK);
+    if (errId == EDS_ERR_DEVICE_BUSY) {
+        logging::Logger::getInstance().warn("Ignoring DEVICE_BUSY in onError - keeping current state for next capture");
+        return;
+    }
     updateState(devices::DeviceState::STATE_ERROR);
 }
 

@@ -44,7 +44,8 @@ enum class CommandType {
     CAMERA_STATUS,
     CAMERA_START_PREVIEW,
     CAMERA_STOP_PREVIEW,
-    CAMERA_SET_SETTINGS
+    CAMERA_SET_SETTINGS,
+    CAMERA_RECONNECT
 };
 
 // Event types
@@ -117,6 +118,7 @@ inline std::string commandTypeToString(CommandType type) {
         case CommandType::CAMERA_START_PREVIEW: return "camera_start_preview";
         case CommandType::CAMERA_STOP_PREVIEW: return "camera_stop_preview";
         case CommandType::CAMERA_SET_SETTINGS: return "camera_set_settings";
+        case CommandType::CAMERA_RECONNECT: return "camera_reconnect";
         default: return "unknown";
     }
 }
@@ -140,6 +142,7 @@ inline CommandType stringToCommandType(const std::string& str) {
     if (str == "camera_start_preview") return CommandType::CAMERA_START_PREVIEW;
     if (str == "camera_stop_preview") return CommandType::CAMERA_STOP_PREVIEW;
     if (str == "camera_set_settings") return CommandType::CAMERA_SET_SETTINGS;
+    if (str == "camera_reconnect") return CommandType::CAMERA_RECONNECT;
     return CommandType::PAYMENT_START; // Default
 }
 

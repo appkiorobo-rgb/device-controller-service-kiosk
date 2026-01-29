@@ -28,8 +28,8 @@
 #include "config/config_manager.h"
 
 // Include camera model AFTER device types and EDSDK forward declarations
-// edsdk_camera_model.h uses forward declarations (no edsdk_wrapper.h in header)
 #include "vendor_adapters/canon/edsdk_camera_model.h"
+#include "vendor_adapters/canon/edsdk_liveview_server.h"
 
 #include <string>
 #include <memory>
@@ -80,6 +80,15 @@ public:
     // Decrement and optionally EdsTerminateSDK (called from command on EDSDK thread on init failure)
     void decrementSdkRefCountAndMaybeTerminate();
 
+    // LiveView (EVF) - used by StartEvfCommand, GetEvfFrameCommand, StopEvfCommand
+    void setEvfRefs(EdsStreamRef streamRef, EdsBaseRef evfImageRef);
+    void releaseEvfRefs();
+    EdsStreamRef getEvfStream() const { return evfStream_; }
+    EdsBaseRef getEvfImageRef() const { return evfImageRef_; }
+    EdsdkLiveviewServer* getLiveViewServer() { return &liveViewServer_; }
+    void onEvfStarted(bool success = true);
+    std::string getLiveviewUrl() const { return liveViewServer_.getUrl(); }
+
 private:
     void disconnectCamera();
     
@@ -125,6 +134,20 @@ private:
     static std::mutex sdkMutex_;
 
     std::promise<bool> initPromise_;
+
+    // LiveView (EVF) - EvfImageRef is EdsBaseRef in EDSDK
+    EdsStreamRef evfStream_{nullptr};
+    EdsBaseRef evfImageRef_{nullptr};
+    EdsdkLiveviewServer liveViewServer_;
+    std::thread evfPumpThread_;
+    std::atomic<bool> evfPumpRunning_{false};
+    std::promise<bool> evfStartedPromise_;
+    /// EVF 프레임이 큐에 올라가 있는 개수 (최대 1로 유지해 다른 명령이 끼어들 수 있게 함)
+    std::atomic<int> pendingEvfFrames_{0};
+public:
+    /// GetEvfFrameCommand 실행 완료 시 호출 (큐 포화 방지)
+    void onEvfFrameProcessed() { if (pendingEvfFrames_.load() > 0) pendingEvfFrames_--; }
+private:
 };
 
 } // namespace canon

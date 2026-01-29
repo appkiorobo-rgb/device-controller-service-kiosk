@@ -94,6 +94,7 @@ private:
     ipc::Response handleCameraStartPreview(const ipc::Command& cmd);
     ipc::Response handleCameraStopPreview(const ipc::Command& cmd);
     ipc::Response handleCameraSetSettings(const ipc::Command& cmd);
+    ipc::Response handleCameraReconnect(const ipc::Command& cmd);
     
     // Async task implementations (executed in worker thread)
     void executePaymentStart(const DeviceTask& task);

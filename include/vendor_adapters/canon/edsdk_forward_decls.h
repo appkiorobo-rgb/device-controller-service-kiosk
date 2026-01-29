@@ -37,6 +37,7 @@ struct _EdsStreamRef;
 typedef struct _EdsStreamRef* EdsStreamRef;
 
 typedef unsigned int EdsUInt32;
+typedef unsigned long long EdsUInt64;
 typedef int EdsError;
 typedef unsigned int EdsPropertyID;
 typedef char EdsChar;

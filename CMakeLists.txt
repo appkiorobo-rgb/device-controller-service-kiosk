@@ -147,6 +147,7 @@ set(CANON_SOURCES
     src/vendor_adapters/canon/edsdk_commands.cpp
     src/vendor_adapters/canon/edsdk_event_handler.cpp
     src/vendor_adapters/canon/edsdk_camera_model.cpp
+    src/vendor_adapters/canon/edsdk_liveview_server.cpp
 )
 
 set(CONFIG_SOURCES
@@ -290,6 +291,7 @@ endif()
 # Windows 설정
 # =========================
 if(WIN32)
+    target_link_libraries(device_controller_service PRIVATE ws2_32)
     # Windows API 레벨 고정 (Windows 10 기준)
     target_compile_definitions(device_controller_service PRIVATE _WIN32_WINNT=0x0A00)
     target_compile_definitions(test_integrated          PRIVATE _WIN32_WINNT=0x0A00)

@@ -556,3 +556,103 @@ EdsError GetPropertyCommand::getProperty(EdsPropertyID propertyID) {
     
     return err;
 }
+
+// ----- LiveView (EVF) commands -----
+StartEvfCommand::StartEvfCommand(canon::EdsdkCameraAdapter* adapter)
+    : EdsdkCommand(adapter ? adapter->getCameraModel() : nullptr)
+    , adapter_(adapter) {
+}
+
+bool StartEvfCommand::execute() {
+    if (!adapter_ || !model_ || !model_->getCameraObject()) {
+        if (adapter_) adapter_->onEvfStarted(false);
+        return true;
+    }
+    EdsCameraRef cam = model_->getCameraObject();
+    EdsUInt32 outDevice = kEdsEvfOutputDevice_PC;
+    EdsError err = EdsSetPropertyData(cam, kEdsPropID_Evf_OutputDevice, 0, sizeof(outDevice), &outDevice);
+    if (err != EDS_ERR_OK) {
+        logging::Logger::getInstance().error("StartEvfCommand: Set Evf_OutputDevice PC failed: " + std::to_string(err));
+        model_->notifyError(err);
+        adapter_->onEvfStarted(false);
+        return true;
+    }
+    EdsStreamRef streamRef = nullptr;
+    err = EdsCreateMemoryStream(4 * 1024 * 1024, &streamRef);
+    if (err != EDS_ERR_OK || !streamRef) {
+        logging::Logger::getInstance().error("StartEvfCommand: EdsCreateMemoryStream failed: " + std::to_string(err));
+        adapter_->onEvfStarted(false);
+        return true;
+    }
+    EdsEvfImageRef evfImageRef = nullptr;
+    err = EdsCreateEvfImageRef(streamRef, &evfImageRef);
+    if (err != EDS_ERR_OK || !evfImageRef) {
+        EdsRelease(streamRef);
+        logging::Logger::getInstance().error("StartEvfCommand: EdsCreateEvfImageRef failed: " + std::to_string(err));
+        adapter_->onEvfStarted(false);
+        return true;
+    }
+    adapter_->setEvfRefs(streamRef, static_cast<EdsBaseRef>(evfImageRef));
+    adapter_->onEvfStarted(true);
+    return true;
+}
+
+GetEvfFrameCommand::GetEvfFrameCommand(canon::EdsdkCameraAdapter* adapter)
+    : EdsdkCommand(adapter ? adapter->getCameraModel() : nullptr)
+    , adapter_(adapter) {
+}
+
+bool GetEvfFrameCommand::execute() {
+    if (!adapter_ || !model_ || !model_->getCameraObject()) {
+        if (adapter_) adapter_->onEvfFrameProcessed();
+        return true;
+    }
+    EdsStreamRef streamRef = adapter_->getEvfStream();
+    EdsBaseRef evfImageRef = adapter_->getEvfImageRef();
+    if (!streamRef || !evfImageRef) {
+        adapter_->onEvfFrameProcessed();
+        return true;
+    }
+    EdsError err = EdsDownloadEvfImage(model_->getCameraObject(), static_cast<EdsEvfImageRef>(evfImageRef));
+    if (err != EDS_ERR_OK) {
+        adapter_->onEvfFrameProcessed();
+        return true;
+    }
+    EdsUInt64 len = 0;
+    err = EdsGetLength(streamRef, &len);
+    if (err != EDS_ERR_OK || len == 0 || len > 4 * 1024 * 1024) {
+        adapter_->onEvfFrameProcessed();
+        return true;
+    }
+    err = EdsSeek(streamRef, 0, kEdsSeek_Begin);
+    if (err != EDS_ERR_OK) {
+        adapter_->onEvfFrameProcessed();
+        return true;
+    }
+    std::vector<uint8_t> buf(static_cast<size_t>(len));
+    EdsUInt64 readSize = 0;
+    err = EdsRead(streamRef, len, buf.data(), &readSize);
+    if (err != EDS_ERR_OK || readSize == 0) {
+        adapter_->onEvfFrameProcessed();
+        return true;
+    }
+    adapter_->getLiveViewServer()->setFrame(buf.data(), static_cast<size_t>(readSize));
+    adapter_->onEvfFrameProcessed();
+    return true;
+}
+
+StopEvfCommand::StopEvfCommand(canon::EdsdkCameraAdapter* adapter)
+    : EdsdkCommand(adapter ? adapter->getCameraModel() : nullptr)
+    , adapter_(adapter) {
+}
+
+bool StopEvfCommand::execute() {
+    if (!adapter_ || !model_ || !model_->getCameraObject()) {
+        if (adapter_) adapter_->releaseEvfRefs();
+        return true;
+    }
+    EdsUInt32 outDevice = kEdsEvfOutputDevice_TFT;
+    EdsSetPropertyData(model_->getCameraObject(), kEdsPropID_Evf_OutputDevice, 0, sizeof(outDevice), &outDevice);
+    adapter_->releaseEvfRefs();
+    return true;
+}

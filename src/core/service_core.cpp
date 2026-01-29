@@ -4,7 +4,9 @@
 #include "core/service_core.h"
 #include "config/config_manager.h"
 #include "devices/device_types.h"
+#include "devices/icamera.h"
 #include "ipc/message_types.h"
+#include "vendor_adapters/canon/edsdk_camera_adapter.h"
 #include "ipc/message_parser.h"
 #include "vendor_adapters/smartro/smartro_payment_adapter.h"
 #include "vendor_adapters/smartro/smartro_protocol.h"
@@ -148,6 +150,10 @@ void ServiceCore::registerCommandHandlers() {
     
     ipcServer_.registerHandler(ipc::CommandType::CAMERA_SET_SETTINGS, [this](const ipc::Command& cmd) {
         return handleCameraSetSettings(cmd);
+    });
+    
+    ipcServer_.registerHandler(ipc::CommandType::CAMERA_RECONNECT, [this](const ipc::Command& cmd) {
+        return handleCameraReconnect(cmd);
     });
 }
 
@@ -1322,6 +1328,9 @@ ipc::Response ServiceCore::handleCameraStartPreview(const ipc::Command& cmd) {
     
     if (camera->startPreview()) {
         resp.status = ipc::ResponseStatus::OK;
+        auto* edsdkCam = dynamic_cast<canon::EdsdkCameraAdapter*>(camera.get());
+        if (edsdkCam)
+            resp.result["liveview_url"] = edsdkCam->getLiveviewUrl();
     } else {
         resp.status = ipc::ResponseStatus::FAILED;
         auto error = std::make_shared<ipc::Error>();
@@ -1329,7 +1338,6 @@ ipc::Response ServiceCore::handleCameraStartPreview(const ipc::Command& cmd) {
         error->message = "Failed to start preview";
         resp.error = error;
     }
-    
     return resp;
 }
 
@@ -1422,6 +1430,52 @@ ipc::Response ServiceCore::handleCameraSetSettings(const ipc::Command& cmd) {
         resp.error = error;
     }
     
+    return resp;
+}
+
+ipc::Response ServiceCore::handleCameraReconnect(const ipc::Command& cmd) {
+    ipc::Response resp;
+    resp.protocolVersion = cmd.protocolVersion;
+    resp.kind = ipc::MessageKind::RESPONSE;
+    resp.commandId = cmd.commandId;
+    resp.timestampMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count();
+    
+    auto camera = deviceManager_.getDefaultCamera();
+    if (!camera) {
+        resp.status = ipc::ResponseStatus::REJECTED;
+        auto error = std::make_shared<ipc::Error>();
+        error->code = "DEVICE_NOT_FOUND";
+        error->message = "No camera registered";
+        resp.error = error;
+        return resp;
+    }
+    
+    auto* edsdkCam = dynamic_cast<canon::EdsdkCameraAdapter*>(camera.get());
+    if (!edsdkCam) {
+        resp.status = ipc::ResponseStatus::REJECTED;
+        auto error = std::make_shared<ipc::Error>();
+        error->code = "UNSUPPORTED";
+        error->message = "Camera reconnect only supported for EDSDK camera";
+        resp.error = error;
+        return resp;
+    }
+    
+    logging::Logger::getInstance().info("Camera reconnect: shutting down then re-initializing");
+    edsdkCam->shutdown();
+    bool ok = edsdkCam->initialize();
+    if (ok) {
+        resp.status = ipc::ResponseStatus::OK;
+        resp.result["status"] = "ok";
+        logging::Logger::getInstance().info("Camera reconnect completed successfully");
+    } else {
+        resp.status = ipc::ResponseStatus::FAILED;
+        auto error = std::make_shared<ipc::Error>();
+        error->code = "RECONNECT_FAILED";
+        error->message = "Camera re-initialization failed";
+        resp.error = error;
+        logging::Logger::getInstance().warn("Camera reconnect: re-initialization failed");
+    }
     return resp;
 }
 

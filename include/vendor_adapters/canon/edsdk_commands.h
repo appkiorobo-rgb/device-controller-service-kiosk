@@ -110,3 +110,28 @@ private:
     EdsPropertyID propertyID_;
     EdsError getProperty(EdsPropertyID propertyID);
 };
+
+// LiveView (EVF) commands - run on command processor thread
+class StartEvfCommand : public EdsdkCommand {
+public:
+    StartEvfCommand(canon::EdsdkCameraAdapter* adapter);
+    bool execute() override;
+private:
+    canon::EdsdkCameraAdapter* adapter_;
+};
+
+class GetEvfFrameCommand : public EdsdkCommand {
+public:
+    GetEvfFrameCommand(canon::EdsdkCameraAdapter* adapter);
+    bool execute() override;
+private:
+    canon::EdsdkCameraAdapter* adapter_;
+};
+
+class StopEvfCommand : public EdsdkCommand {
+public:
+    StopEvfCommand(canon::EdsdkCameraAdapter* adapter);
+    bool execute() override;
+private:
+    canon::EdsdkCameraAdapter* adapter_;
+};
