@@ -38,7 +38,13 @@ enum class CommandType {
     PAYMENT_IC_CARD_CHECK,
     PAYMENT_SCREEN_SOUND_SETTING,
     GET_DEVICE_LIST,
-    GET_STATE_SNAPSHOT
+    GET_STATE_SNAPSHOT,
+    CAMERA_CAPTURE,
+    CAMERA_SET_SESSION,
+    CAMERA_STATUS,
+    CAMERA_START_PREVIEW,
+    CAMERA_STOP_PREVIEW,
+    CAMERA_SET_SETTINGS
 };
 
 // Event types
@@ -47,7 +53,9 @@ enum class EventType {
     PAYMENT_FAILED,
     PAYMENT_CANCELLED,
     DEVICE_STATE_CHANGED,
-    SYSTEM_STATUS_CHECK
+    SYSTEM_STATUS_CHECK,
+    CAMERA_CAPTURE_COMPLETE,
+    CAMERA_STATE_CHANGED
 };
 
 // Error structure
@@ -103,6 +111,12 @@ inline std::string commandTypeToString(CommandType type) {
         case CommandType::PAYMENT_SCREEN_SOUND_SETTING: return "payment_screen_sound_setting";
         case CommandType::GET_DEVICE_LIST: return "get_device_list";
         case CommandType::GET_STATE_SNAPSHOT: return "get_state_snapshot";
+        case CommandType::CAMERA_CAPTURE: return "camera_capture";
+        case CommandType::CAMERA_SET_SESSION: return "camera_set_session";
+        case CommandType::CAMERA_STATUS: return "camera_status";
+        case CommandType::CAMERA_START_PREVIEW: return "camera_start_preview";
+        case CommandType::CAMERA_STOP_PREVIEW: return "camera_stop_preview";
+        case CommandType::CAMERA_SET_SETTINGS: return "camera_set_settings";
         default: return "unknown";
     }
 }
@@ -120,6 +134,12 @@ inline CommandType stringToCommandType(const std::string& str) {
     if (str == "payment_screen_sound_setting") return CommandType::PAYMENT_SCREEN_SOUND_SETTING;
     if (str == "get_device_list") return CommandType::GET_DEVICE_LIST;
     if (str == "get_state_snapshot") return CommandType::GET_STATE_SNAPSHOT;
+    if (str == "camera_capture") return CommandType::CAMERA_CAPTURE;
+    if (str == "camera_set_session") return CommandType::CAMERA_SET_SESSION;
+    if (str == "camera_status") return CommandType::CAMERA_STATUS;
+    if (str == "camera_start_preview") return CommandType::CAMERA_START_PREVIEW;
+    if (str == "camera_stop_preview") return CommandType::CAMERA_STOP_PREVIEW;
+    if (str == "camera_set_settings") return CommandType::CAMERA_SET_SETTINGS;
     return CommandType::PAYMENT_START; // Default
 }
 
@@ -146,6 +166,8 @@ inline std::string eventTypeToString(EventType type) {
         case EventType::PAYMENT_CANCELLED: return "payment_cancelled";
         case EventType::DEVICE_STATE_CHANGED: return "device_state_changed";
         case EventType::SYSTEM_STATUS_CHECK: return "system_status_check";
+        case EventType::CAMERA_CAPTURE_COMPLETE: return "camera_capture_complete";
+        case EventType::CAMERA_STATE_CHANGED: return "camera_state_changed";
         default: return "unknown";
     }
 }
@@ -156,6 +178,8 @@ inline EventType stringToEventType(const std::string& str) {
     if (str == "payment_cancelled") return EventType::PAYMENT_CANCELLED;
     if (str == "device_state_changed") return EventType::DEVICE_STATE_CHANGED;
     if (str == "system_status_check") return EventType::SYSTEM_STATUS_CHECK;
+    if (str == "camera_capture_complete") return EventType::CAMERA_CAPTURE_COMPLETE;
+    if (str == "camera_state_changed") return EventType::CAMERA_STATE_CHANGED;
     return EventType::PAYMENT_COMPLETE; // Default
 }
 

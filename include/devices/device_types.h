@@ -1,6 +1,16 @@
 // include/devices/device_types.h
 #pragma once
 
+// Protect from Windows SDK conflicts
+#ifdef _WIN32
+    #ifndef WIN32_LEAN_AND_MEAN
+        #define WIN32_LEAN_AND_MEAN
+    #endif
+    #ifndef NOMINMAX
+        #define NOMINMAX
+    #endif
+#endif
+
 #include <string>
 #include <cstdint>
 #include <chrono>
@@ -16,13 +26,14 @@ enum class DeviceType {
 };
 
 // Device state (common)
+// Use STATE_ prefix to avoid Windows/EDSDK macros (ERROR, CONNECTING, READY, PROCESSING)
 enum class DeviceState {
-    DISCONNECTED = 0,  // Not connected
-    CONNECTING = 1,    // Connecting
-    READY = 2,         // Ready
-    PROCESSING = 3,    // Processing
-    ERROR = 4,         // Error occurred
-    HUNG = 5           // No response (timeout)
+    DISCONNECTED = 0,   // Not connected
+    STATE_CONNECTING = 1,
+    STATE_READY = 2,
+    STATE_PROCESSING = 3,
+    STATE_ERROR = 4,
+    HUNG = 5            // No response (timeout)
 };
 
 // Convert device type to string
@@ -47,10 +58,10 @@ inline DeviceType stringToDeviceType(const std::string& str) {
 inline std::string deviceStateToString(DeviceState state) {
     switch (state) {
         case DeviceState::DISCONNECTED: return "DISCONNECTED";
-        case DeviceState::CONNECTING: return "CONNECTING";
-        case DeviceState::READY: return "READY";
-        case DeviceState::PROCESSING: return "PROCESSING";
-        case DeviceState::ERROR: return "ERROR";
+        case DeviceState::STATE_CONNECTING: return "CONNECTING";
+        case DeviceState::STATE_READY: return "READY";
+        case DeviceState::STATE_PROCESSING: return "PROCESSING";
+        case DeviceState::STATE_ERROR: return "ERROR";
         case DeviceState::HUNG: return "HUNG";
         default: return "UNKNOWN";
     }

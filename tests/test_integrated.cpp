@@ -274,13 +274,13 @@ int main(int argc, char* argv[]) {
                     std::cout << "You can now send E (Payment Wait/Cancel) if needed." << std::endl;
                     std::cout << "Press Enter to check for response, or type 'E' to send cancel..." << std::endl;
                     
-                    // 응답 폴링 또는 취소 대기
-                    bool waiting = true;
-                    while (waiting) {
-                        std::string userInput;
-                        std::getline(std::cin, userInput);
+                    // 응답 폴링 또는 취소 대기 (변수명은 Windows 매크로 충돌 방지)
+                    bool keepWaiting = true;
+                    while (keepWaiting) {
+                        std::string inputLine;
+                        std::getline(std::cin, inputLine);
                         
-                        if (userInput == "E" || userInput == "e") {
+                        if (inputLine == "E" || inputLine == "e") {
                             // 취소 요청 (E)
                             std::cout << std::endl << ">>> Sending Payment Wait (Cancel) Request..." << std::endl;
                             PaymentWaitResponse cancelResponse;
@@ -308,7 +308,7 @@ int main(int argc, char* argv[]) {
                                     std::cout << std::endl;
                                 }
                                 std::cout << "===========================================" << std::endl;
-                                waiting = false;
+                                keepWaiting = false;
                             } else if (response.type == ResponseType::PAYMENT_WAIT) {
                                 std::cout << std::endl << "=== Payment Wait Response Received ===" << std::endl;
                                 std::cout << "Data Length: " << response.paymentWait.data.size() << " bytes" << std::endl;
@@ -316,7 +316,7 @@ int main(int argc, char* argv[]) {
                             }
                         }
                         
-                        if (userInput.empty() && !waiting) {
+                        if (inputLine.empty() && !keepWaiting) {
                             break;
                         }
                     }

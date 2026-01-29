@@ -87,6 +87,14 @@ private:
     ipc::Response handlePaymentIcCardCheck(const ipc::Command& cmd);
     ipc::Response handlePaymentScreenSoundSetting(const ipc::Command& cmd);
     
+    // Camera command handlers
+    ipc::Response handleCameraCapture(const ipc::Command& cmd);
+    ipc::Response handleCameraSetSession(const ipc::Command& cmd);
+    ipc::Response handleCameraStatus(const ipc::Command& cmd);
+    ipc::Response handleCameraStartPreview(const ipc::Command& cmd);
+    ipc::Response handleCameraStopPreview(const ipc::Command& cmd);
+    ipc::Response handleCameraSetSettings(const ipc::Command& cmd);
+    
     // Async task implementations (executed in worker thread)
     void executePaymentStart(const DeviceTask& task);
     void executePaymentCancel(const DeviceTask& task);
@@ -99,6 +107,7 @@ private:
     void publishPaymentCancelledEvent(const devices::PaymentCancelledEvent& event);
     void publishDeviceStateChangedEvent(const std::string& deviceType, devices::DeviceState state);
     void publishSystemStatusCheckEvent(const std::map<std::string, devices::DeviceInfo>& deviceStatuses, bool allHealthy);
+    void publishCameraCaptureCompleteEvent(const devices::CaptureCompleteEvent& event);
     
     // Status check on client connection
     void performSystemStatusCheck();

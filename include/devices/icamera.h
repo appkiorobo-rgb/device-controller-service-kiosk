@@ -1,6 +1,16 @@
 // include/devices/icamera.h
 #pragma once
 
+// Protect from Windows SDK conflicts
+#ifdef _WIN32
+    #ifndef WIN32_LEAN_AND_MEAN
+        #define WIN32_LEAN_AND_MEAN
+    #endif
+    #ifndef NOMINMAX
+        #define NOMINMAX
+    #endif
+#endif
+
 #include "devices/device_types.h"
 #include <string>
 #include <vector>
@@ -12,7 +22,9 @@ namespace devices {
 // Capture complete event data
 struct CaptureCompleteEvent {
     std::string captureId;
-    std::vector<uint8_t> imageData;  // JPEG or PNG binary
+    std::string filePath;     // Full path to saved file (e.g. photos/{sessionId}/0.jpg)
+    std::string imageIndex;   // Session-local index as string ("0", "1", ...)
+    std::vector<uint8_t> imageData;  // JPEG or PNG binary (optional, for in-memory use)
     std::string imageFormat;         // "jpeg", "png", etc.
     uint32_t width;
     uint32_t height;

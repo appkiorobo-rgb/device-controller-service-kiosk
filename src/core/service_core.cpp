@@ -2,6 +2,7 @@
 // logger.h? ?? include?? Windows SDK ?? ??
 #include "logging/logger.h"
 #include "core/service_core.h"
+#include "config/config_manager.h"
 #include "devices/device_types.h"
 #include "ipc/message_types.h"
 #include "ipc/message_parser.h"
@@ -45,7 +46,7 @@ bool ServiceCore::start() {
         auto terminal = deviceManager_.getDefaultPaymentTerminal();
         if (terminal) {
             auto info = terminal->getDeviceInfo();
-            if (info.state == devices::DeviceState::PROCESSING) {
+            if (info.state == devices::DeviceState::STATE_PROCESSING) {
                 terminal->cancelPayment();
                 logging::Logger::getInstance().info("Payment cancelled due to client disconnection");
             }
@@ -124,6 +125,29 @@ void ServiceCore::registerCommandHandlers() {
     
     ipcServer_.registerHandler(ipc::CommandType::PAYMENT_SCREEN_SOUND_SETTING, [this](const ipc::Command& cmd) {
         return handlePaymentScreenSoundSetting(cmd);
+    });
+    
+    // Camera commands
+    ipcServer_.registerHandler(ipc::CommandType::CAMERA_CAPTURE, [this](const ipc::Command& cmd) {
+        return handleCameraCapture(cmd);
+    });
+    ipcServer_.registerHandler(ipc::CommandType::CAMERA_SET_SESSION, [this](const ipc::Command& cmd) {
+        return handleCameraSetSession(cmd);
+    });
+    ipcServer_.registerHandler(ipc::CommandType::CAMERA_STATUS, [this](const ipc::Command& cmd) {
+        return handleCameraStatus(cmd);
+    });
+    
+    ipcServer_.registerHandler(ipc::CommandType::CAMERA_START_PREVIEW, [this](const ipc::Command& cmd) {
+        return handleCameraStartPreview(cmd);
+    });
+    
+    ipcServer_.registerHandler(ipc::CommandType::CAMERA_STOP_PREVIEW, [this](const ipc::Command& cmd) {
+        return handleCameraStopPreview(cmd);
+    });
+    
+    ipcServer_.registerHandler(ipc::CommandType::CAMERA_SET_SETTINGS, [this](const ipc::Command& cmd) {
+        return handleCameraSetSettings(cmd);
     });
 }
 
@@ -755,6 +779,18 @@ void ServiceCore::setupEventCallbacks() {
             publishDeviceStateChangedEvent("payment", state);
         });
     }
+    
+    // Setup camera event callbacks
+    auto camera = deviceManager_.getDefaultCamera();
+    if (camera) {
+        camera->setCaptureCompleteCallback([this](const devices::CaptureCompleteEvent& event) {
+            publishCameraCaptureCompleteEvent(event);
+        });
+        
+        camera->setStateChangedCallback([this](devices::DeviceState state) {
+            publishDeviceStateChangedEvent("camera", state);
+        });
+    }
 }
 
 void ServiceCore::publishPaymentCompleteEvent(const devices::PaymentCompleteEvent& event) {
@@ -860,7 +896,7 @@ void ServiceCore::performSystemStatusCheck() {
             logging::Logger::getInstance().info("Checking payment terminal: " + deviceId + ", state: " + devices::deviceStateToString(info.state));
             
             // If payment terminal is in PROCESSING state, cancel and recheck
-            if (info.state == devices::DeviceState::PROCESSING) {
+            if (info.state == devices::DeviceState::STATE_PROCESSING) {
                 logging::Logger::getInstance().warn("Payment terminal " + deviceId + " is in PROCESSING state - cancelling payment");
                 terminal->cancelPayment();
                 
@@ -885,7 +921,7 @@ void ServiceCore::performSystemStatusCheck() {
             deviceStatuses[deviceId] = info;
             
             // Check if device is in error state
-            if (info.state == devices::DeviceState::ERROR || info.state == devices::DeviceState::DISCONNECTED) {
+            if (info.state == devices::DeviceState::STATE_ERROR || info.state == devices::DeviceState::DISCONNECTED) {
                 allHealthy = false;
             }
         }
@@ -900,7 +936,7 @@ void ServiceCore::performSystemStatusCheck() {
             logging::Logger::getInstance().info("Checking printer: " + deviceId + ", state: " + devices::deviceStateToString(info.state));
             deviceStatuses[deviceId] = info;
             
-            if (info.state == devices::DeviceState::ERROR || info.state == devices::DeviceState::DISCONNECTED) {
+            if (info.state == devices::DeviceState::STATE_ERROR || info.state == devices::DeviceState::DISCONNECTED) {
                 allHealthy = false;
             }
         }
@@ -915,7 +951,7 @@ void ServiceCore::performSystemStatusCheck() {
             logging::Logger::getInstance().info("Checking camera: " + deviceId + ", state: " + devices::deviceStateToString(info.state));
             deviceStatuses[deviceId] = info;
             
-            if (info.state == devices::DeviceState::ERROR || info.state == devices::DeviceState::DISCONNECTED) {
+            if (info.state == devices::DeviceState::STATE_ERROR || info.state == devices::DeviceState::DISCONNECTED) {
                 allHealthy = false;
             }
         }
@@ -1158,6 +1194,259 @@ void ServiceCore::executePaymentDeviceCheck(const DeviceTask& task) {
     } else {
         logging::Logger::getInstance().info("Device check completed successfully");
     }
+}
+
+ipc::Response ServiceCore::handleCameraSetSession(const ipc::Command& cmd) {
+    ipc::Response resp;
+    resp.protocolVersion = cmd.protocolVersion;
+    resp.kind = ipc::MessageKind::RESPONSE;
+    resp.commandId = cmd.commandId;
+    resp.timestampMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count();
+
+    auto it = cmd.payload.find("sessionId");
+    if (it == cmd.payload.end()) {
+        resp.status = ipc::ResponseStatus::REJECTED;
+        auto error = std::make_shared<ipc::Error>();
+        error->code = "INVALID_PAYLOAD";
+        error->message = "Missing 'sessionId' parameter";
+        resp.error = error;
+        return resp;
+    }
+    config::ConfigManager::getInstance().setSessionId(it->second);
+    resp.status = ipc::ResponseStatus::OK;
+    resp.result["sessionId"] = it->second;
+    return resp;
+}
+
+ipc::Response ServiceCore::handleCameraCapture(const ipc::Command& cmd) {
+    ipc::Response resp;
+    resp.protocolVersion = cmd.protocolVersion;
+    resp.kind = ipc::MessageKind::RESPONSE;
+    resp.commandId = cmd.commandId;
+    resp.timestampMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count();
+    
+    // Validate payload
+    auto it = cmd.payload.find("captureId");
+    if (it == cmd.payload.end()) {
+        logging::Logger::getInstance().warn("Camera capture failed: Missing 'captureId' parameter");
+        resp.status = ipc::ResponseStatus::REJECTED;
+        auto error = std::make_shared<ipc::Error>();
+        error->code = "INVALID_PAYLOAD";
+        error->message = "Missing 'captureId' parameter";
+        resp.error = error;
+        return resp;
+    }
+    
+    // Validate device exists
+    auto camera = deviceManager_.getDefaultCamera();
+    if (!camera) {
+        logging::Logger::getInstance().warn("Camera capture failed: No camera registered");
+        resp.status = ipc::ResponseStatus::REJECTED;
+        auto error = std::make_shared<ipc::Error>();
+        error->code = "DEVICE_NOT_FOUND";
+        error->message = "No camera registered";
+        resp.error = error;
+        return resp;
+    }
+    
+    // Execute capture (async)
+    std::string captureId = it->second;
+    if (camera->capture(captureId)) {
+        resp.status = ipc::ResponseStatus::OK;
+        auto info = camera->getDeviceInfo();
+        resp.result["commandId"] = cmd.commandId;
+        resp.result["captureId"] = captureId;
+        resp.result["deviceId"] = info.deviceId;
+        resp.result["state"] = std::to_string(static_cast<int>(info.state));
+        resp.result["stateString"] = devices::deviceStateToString(info.state);
+    } else {
+        resp.status = ipc::ResponseStatus::FAILED;
+        auto info = camera->getDeviceInfo();
+        auto error = std::make_shared<ipc::Error>();
+        error->code = "CAMERA_CAPTURE_FAILED";
+        error->message = info.lastError;
+        resp.error = error;
+    }
+    
+    return resp;
+}
+
+ipc::Response ServiceCore::handleCameraStatus(const ipc::Command& cmd) {
+    ipc::Response resp;
+    resp.protocolVersion = cmd.protocolVersion;
+    resp.kind = ipc::MessageKind::RESPONSE;
+    resp.commandId = cmd.commandId;
+    resp.status = ipc::ResponseStatus::OK;
+    resp.timestampMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count();
+    
+    auto camera = deviceManager_.getDefaultCamera();
+    if (!camera) {
+        resp.status = ipc::ResponseStatus::REJECTED;
+        auto error = std::make_shared<ipc::Error>();
+        error->code = "DEVICE_NOT_FOUND";
+        error->message = "No camera registered";
+        resp.error = error;
+        return resp;
+    }
+    
+    auto info = camera->getDeviceInfo();
+    resp.result["deviceId"] = info.deviceId;
+    resp.result["state"] = std::to_string(static_cast<int>(info.state));
+    resp.result["stateString"] = devices::deviceStateToString(info.state);
+    resp.result["deviceName"] = info.deviceName;
+    resp.result["lastError"] = info.lastError;
+    
+    return resp;
+}
+
+ipc::Response ServiceCore::handleCameraStartPreview(const ipc::Command& cmd) {
+    ipc::Response resp;
+    resp.protocolVersion = cmd.protocolVersion;
+    resp.kind = ipc::MessageKind::RESPONSE;
+    resp.commandId = cmd.commandId;
+    resp.timestampMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count();
+    
+    auto camera = deviceManager_.getDefaultCamera();
+    if (!camera) {
+        resp.status = ipc::ResponseStatus::REJECTED;
+        auto error = std::make_shared<ipc::Error>();
+        error->code = "DEVICE_NOT_FOUND";
+        error->message = "No camera registered";
+        resp.error = error;
+        return resp;
+    }
+    
+    if (camera->startPreview()) {
+        resp.status = ipc::ResponseStatus::OK;
+    } else {
+        resp.status = ipc::ResponseStatus::FAILED;
+        auto error = std::make_shared<ipc::Error>();
+        error->code = "PREVIEW_START_FAILED";
+        error->message = "Failed to start preview";
+        resp.error = error;
+    }
+    
+    return resp;
+}
+
+ipc::Response ServiceCore::handleCameraStopPreview(const ipc::Command& cmd) {
+    ipc::Response resp;
+    resp.protocolVersion = cmd.protocolVersion;
+    resp.kind = ipc::MessageKind::RESPONSE;
+    resp.commandId = cmd.commandId;
+    resp.timestampMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count();
+    
+    auto camera = deviceManager_.getDefaultCamera();
+    if (!camera) {
+        resp.status = ipc::ResponseStatus::REJECTED;
+        auto error = std::make_shared<ipc::Error>();
+        error->code = "DEVICE_NOT_FOUND";
+        error->message = "No camera registered";
+        resp.error = error;
+        return resp;
+    }
+    
+    if (camera->stopPreview()) {
+        resp.status = ipc::ResponseStatus::OK;
+    } else {
+        resp.status = ipc::ResponseStatus::FAILED;
+        auto error = std::make_shared<ipc::Error>();
+        error->code = "PREVIEW_STOP_FAILED";
+        error->message = "Failed to stop preview";
+        resp.error = error;
+    }
+    
+    return resp;
+}
+
+ipc::Response ServiceCore::handleCameraSetSettings(const ipc::Command& cmd) {
+    ipc::Response resp;
+    resp.protocolVersion = cmd.protocolVersion;
+    resp.kind = ipc::MessageKind::RESPONSE;
+    resp.commandId = cmd.commandId;
+    resp.timestampMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count();
+    
+    auto camera = deviceManager_.getDefaultCamera();
+    if (!camera) {
+        resp.status = ipc::ResponseStatus::REJECTED;
+        auto error = std::make_shared<ipc::Error>();
+        error->code = "DEVICE_NOT_FOUND";
+        error->message = "No camera registered";
+        resp.error = error;
+        return resp;
+    }
+    
+    devices::CameraSettings settings = camera->getSettings();
+    
+    // Update settings from payload
+    auto widthIt = cmd.payload.find("resolutionWidth");
+    auto heightIt = cmd.payload.find("resolutionHeight");
+    auto formatIt = cmd.payload.find("imageFormat");
+    auto qualityIt = cmd.payload.find("quality");
+    auto autoFocusIt = cmd.payload.find("autoFocus");
+    
+    if (widthIt != cmd.payload.end()) {
+        settings.resolutionWidth = std::stoul(widthIt->second);
+    }
+    if (heightIt != cmd.payload.end()) {
+        settings.resolutionHeight = std::stoul(heightIt->second);
+    }
+    if (formatIt != cmd.payload.end()) {
+        settings.imageFormat = formatIt->second;
+    }
+    if (qualityIt != cmd.payload.end()) {
+        settings.quality = std::stoul(qualityIt->second);
+    }
+    if (autoFocusIt != cmd.payload.end()) {
+        settings.autoFocus = (autoFocusIt->second == "true" || autoFocusIt->second == "1");
+    }
+    
+    if (camera->setSettings(settings)) {
+        resp.status = ipc::ResponseStatus::OK;
+        resp.result["resolutionWidth"] = std::to_string(settings.resolutionWidth);
+        resp.result["resolutionHeight"] = std::to_string(settings.resolutionHeight);
+        resp.result["imageFormat"] = settings.imageFormat;
+        resp.result["quality"] = std::to_string(settings.quality);
+        resp.result["autoFocus"] = settings.autoFocus ? "true" : "false";
+    } else {
+        resp.status = ipc::ResponseStatus::FAILED;
+        auto error = std::make_shared<ipc::Error>();
+        error->code = "SETTINGS_FAILED";
+        error->message = "Failed to set camera settings";
+        resp.error = error;
+    }
+    
+    return resp;
+}
+
+void ServiceCore::publishCameraCaptureCompleteEvent(const devices::CaptureCompleteEvent& event) {
+    ipc::Event ipcEvent;
+    ipcEvent.protocolVersion = ipc::PROTOCOL_VERSION;
+    ipcEvent.kind = ipc::MessageKind::EVENT;
+    ipcEvent.eventId = generateUUID();
+    ipcEvent.eventType = ipc::EventType::CAMERA_CAPTURE_COMPLETE;
+    ipcEvent.timestampMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count();
+    ipcEvent.deviceType = "camera";
+
+    ipcEvent.data["captureId"] = event.captureId;
+    ipcEvent.data["filePath"] = event.filePath;
+    ipcEvent.data["imageIndex"] = event.imageIndex;
+    ipcEvent.data["success"] = event.success ? "true" : "false";
+    ipcEvent.data["imageFormat"] = event.imageFormat;
+    ipcEvent.data["width"] = std::to_string(event.width);
+    ipcEvent.data["height"] = std::to_string(event.height);
+    ipcEvent.data["state"] = std::to_string(static_cast<int>(event.state));
+    if (!event.success) {
+        ipcEvent.data["errorMessage"] = event.errorMessage;
+    }
+    ipcServer_.broadcastEvent(ipcEvent);
 }
 
 } // namespace core

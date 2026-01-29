@@ -5,6 +5,8 @@
 #include "logging/logger.h"
 #include "core/service_core.h"
 #include "vendor_adapters/smartro/smartro_payment_adapter.h"
+#include "vendor_adapters/canon/edsdk_camera_adapter.h"
+#include "config/config_manager.h"
 #include <iostream>
 #include <string>
 #include <thread>
@@ -36,6 +38,9 @@ int main(int argc, char* argv[]) {
     std::signal(SIGTERM, SignalHandler);
     
     try {
+        // Initialize configuration
+        config::ConfigManager::getInstance().initialize();
+        
         // Create and start service core
         core::ServiceCore serviceCore;
         g_serviceCore = &serviceCore;
@@ -61,6 +66,19 @@ int main(int argc, char* argv[]) {
         );
         
         serviceCore.getDeviceManager().registerPaymentTerminal(deviceId, paymentAdapter);
+        
+        // Register camera (EDSDK)
+        std::string cameraDeviceId = "canon_camera_001";
+        logging::Logger::getInstance().info("Initializing EDSDK camera adapter: " + cameraDeviceId);
+        
+        auto cameraAdapter = std::make_shared<canon::EdsdkCameraAdapter>(cameraDeviceId);
+        
+        if (cameraAdapter->initialize()) {
+            serviceCore.getDeviceManager().registerCamera(cameraDeviceId, cameraAdapter);
+            logging::Logger::getInstance().info("Camera registered successfully: " + cameraDeviceId);
+        } else {
+            logging::Logger::getInstance().warn("Failed to initialize camera adapter. Camera features will not be available.");
+        }
         
         // Start service
         if (!serviceCore.start()) {

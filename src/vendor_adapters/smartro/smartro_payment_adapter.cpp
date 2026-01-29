@@ -54,7 +54,7 @@ devices::DeviceInfo SmartroPaymentAdapter::getDeviceInfo() const {
 bool SmartroPaymentAdapter::startPayment(uint32_t amount) {
     std::lock_guard<std::mutex> lock(stateMutex_);
     
-    if (state_ != devices::DeviceState::READY) {
+    if (state_ != devices::DeviceState::STATE_READY) {
         lastError_ = "Device is not ready. Current state: " + devices::deviceStateToString(state_);
         logging::Logger::getInstance().warn("Cannot start payment: " + lastError_);
         return false;
@@ -78,7 +78,7 @@ bool SmartroPaymentAdapter::startPayment(uint32_t amount) {
     
     if (!smartroComm_->sendPaymentApprovalRequestAsync(terminalId_, approvalReq)) {
         lastError_ = "Failed to send payment approval request: " + smartroComm_->getLastError();
-        updateState(devices::DeviceState::ERROR);
+        updateState(devices::DeviceState::STATE_ERROR);
         return false;
     }
     
@@ -86,7 +86,7 @@ bool SmartroPaymentAdapter::startPayment(uint32_t amount) {
     paymentInProgress_ = true;
     paymentCancelled_ = false;  // Reset cancel flag
     currentAmount_ = amount;
-    updateState(devices::DeviceState::PROCESSING);
+    updateState(devices::DeviceState::STATE_PROCESSING);
     
     // Response will be processed in background thread (eventMonitorThread)
     
@@ -110,11 +110,11 @@ bool SmartroPaymentAdapter::cancelPayment() {
         
         // Update state immediately so startPayment() can be called again
         paymentInProgress_ = false;
-        updateState(devices::DeviceState::READY);
+        updateState(devices::DeviceState::STATE_READY);
         
         // Prepare callback event
         if (paymentCancelledCallback_) {
-            event.state = devices::DeviceState::READY;
+            event.state = devices::DeviceState::STATE_READY;
             shouldCallCallback = true;
         }
     }
@@ -160,7 +160,7 @@ bool SmartroPaymentAdapter::reset() {
     
     paymentInProgress_ = false;
     paymentCancelled_ = false;
-    updateState(devices::DeviceState::READY);
+    updateState(devices::DeviceState::STATE_READY);
     
     return true;
 }
@@ -168,7 +168,7 @@ bool SmartroPaymentAdapter::reset() {
 bool SmartroPaymentAdapter::checkDevice() {
     std::lock_guard<std::mutex> lock(stateMutex_);
     
-    updateState(devices::DeviceState::CONNECTING);
+    updateState(devices::DeviceState::STATE_CONNECTING);
     
     // Open serial port
     if (!serialPort_->isOpen()) {
@@ -190,7 +190,7 @@ bool SmartroPaymentAdapter::checkDevice() {
     DeviceCheckResponse response;
     if (!smartroComm_->sendDeviceCheckRequest(terminalId_, response, 3000)) {
         lastError_ = "Device check failed: " + smartroComm_->getLastError();
-        updateState(devices::DeviceState::ERROR);
+        updateState(devices::DeviceState::STATE_ERROR);
         return false;
     }
     
@@ -201,7 +201,7 @@ bool SmartroPaymentAdapter::checkDevice() {
                  (response.integrationServerStatus == 'O' || response.integrationServerStatus == 'N');
     
     if (allOk) {
-        updateState(devices::DeviceState::READY);
+        updateState(devices::DeviceState::STATE_READY);
         lastError_.clear();
         return true;
     } else {
@@ -211,7 +211,7 @@ bool SmartroPaymentAdapter::checkDevice() {
             << ", van=" << response.vanServerStatus
             << ", integration=" << response.integrationServerStatus;
         lastError_ = oss.str();
-        updateState(devices::DeviceState::ERROR);
+        updateState(devices::DeviceState::STATE_ERROR);
         return false;
     }
 }
@@ -267,14 +267,14 @@ void SmartroPaymentAdapter::processPaymentResponse(const PaymentApprovalResponse
     if (response.isRejected()) {
         // Payment failed
         logging::Logger::getInstance().info("Payment was rejected");
-        updateState(devices::DeviceState::READY);
+        updateState(devices::DeviceState::STATE_READY);
         
         if (paymentFailedCallback_) {
             devices::PaymentFailedEvent event;
             event.errorCode = "VAN_REJECTED";
             event.errorMessage = response.rejectionInfo.empty() ? "Payment rejected" : response.rejectionInfo;
             event.amount = currentAmount_;
-            event.state = devices::DeviceState::READY;
+            event.state = devices::DeviceState::STATE_READY;
             logging::Logger::getInstance().info("Calling paymentFailedCallback_");
             paymentFailedCallback_(event);
         } else {
@@ -283,7 +283,7 @@ void SmartroPaymentAdapter::processPaymentResponse(const PaymentApprovalResponse
     } else {
         // Payment success
         logging::Logger::getInstance().info("Payment was successful - transactionId: " + response.transactionId);
-        updateState(devices::DeviceState::READY);
+        updateState(devices::DeviceState::STATE_READY);
         
         if (paymentCompleteCallback_) {
             devices::PaymentCompleteEvent event;
@@ -294,7 +294,7 @@ void SmartroPaymentAdapter::processPaymentResponse(const PaymentApprovalResponse
             event.salesDate = response.salesDate;
             event.salesTime = response.salesTime;
             event.transactionMedium = std::string(1, response.transactionMedium);
-            event.state = devices::DeviceState::READY;
+            event.state = devices::DeviceState::STATE_READY;
             logging::Logger::getInstance().info("Calling paymentCompleteCallback_");
             paymentCompleteCallback_(event);
         } else {
@@ -314,21 +314,21 @@ void SmartroPaymentAdapter::processEvent(const EventResponse& event) {
         case EventType::IC_CARD_DETECTED:
             logging::Logger::getInstance().info("IC Card Detected event");
             if (stateChangedCallback_) {
-                stateChangedCallback_(devices::DeviceState::PROCESSING);
+                stateChangedCallback_(devices::DeviceState::STATE_PROCESSING);
             }
             break;
             
         case EventType::MS_CARD_DETECTED:
             logging::Logger::getInstance().info("MS Card Detected event");
             if (stateChangedCallback_) {
-                stateChangedCallback_(devices::DeviceState::PROCESSING);
+                stateChangedCallback_(devices::DeviceState::STATE_PROCESSING);
             }
             break;
             
         case EventType::RF_CARD_DETECTED:
             logging::Logger::getInstance().info("RF Card Detected event");
             if (stateChangedCallback_) {
-                stateChangedCallback_(devices::DeviceState::PROCESSING);
+                stateChangedCallback_(devices::DeviceState::STATE_PROCESSING);
             }
             break;
             

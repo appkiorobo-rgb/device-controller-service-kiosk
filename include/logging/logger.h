@@ -31,7 +31,7 @@ enum class LogLevel {
     DEBUG,
     INFO,
     WARN,
-    ERROR
+    ERR   // named ERR to avoid Windows macro ERROR (winerror.h)
 };
 
 // Simple Logger class - console output only, no file output
@@ -69,7 +69,7 @@ public:
     void debug(const std::string& message) { log(LogLevel::DEBUG, message); }
     void info(const std::string& message) { log(LogLevel::INFO, message); }
     void warn(const std::string& message) { log(LogLevel::WARN, message); }
-    void error(const std::string& message) { log(LogLevel::ERROR, message); }
+    void error(const std::string& message) { log(LogLevel::ERR, message); }
     
     void debugHex(const std::string& label, const uint8_t* data, size_t length) {
         logHex(LogLevel::DEBUG, label, data, length);
@@ -90,7 +90,7 @@ private:
             case LogLevel::DEBUG: return "DEBUG";
             case LogLevel::INFO:  return "INFO ";
             case LogLevel::WARN:  return "WARN ";
-            case LogLevel::ERROR: return "ERROR";
+            case LogLevel::ERR: return "ERROR";
             default: return "UNKNOWN";
         }
     }
