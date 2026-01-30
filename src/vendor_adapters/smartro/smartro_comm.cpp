@@ -192,9 +192,9 @@ bool SmartroComm::sendDeviceCheckRequest(const std::string& terminalId,
     return false;
 }
 
-bool SmartroComm::sendPaymentWaitRequest(const std::string& terminalId, 
-                                         PaymentWaitResponse& response,
-                                         uint32_t /*timeoutMs*/) {
+bool smartro::SmartroComm::sendPaymentWaitRequest(const std::string& terminalId, 
+                                                  PaymentWaitResponse& response,
+                                                  uint32_t /*timeoutMs*/) {
     std::lock_guard<std::mutex> lock(commMutex_);
     state_ = CommState::IDLE;
     lastError_.clear();
