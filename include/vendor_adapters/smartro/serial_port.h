@@ -65,7 +65,10 @@ private:
     void* handle_;  // HANDLE (declared as void* to minimize windows.h dependency)
     std::string portName_;
     uint32_t baudRate_;
-    
+    uint8_t dataBits_;
+    uint8_t stopBits_;
+    uint8_t parity_;  // 0=NOPARITY, 1=ODDPARITY, 2=EVENPARITY (Windows)
+
     bool configurePort();
     void logError(const std::string& operation);
 };

@@ -71,42 +71,55 @@ bool PipeClient::sendMessage(const std::string& message) {
 }
 
 bool PipeClient::receiveMessage(std::string& message, uint32_t timeoutMs) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    
-    if (!isConnected() || pipeHandle_ == INVALID_HANDLE_VALUE) {
-        return false;
-    }
-    
-    // Read message size (4 bytes)
-    DWORD messageSize = 0;
-    DWORD bytesRead = 0;
-    if (!ReadFile(pipeHandle_, &messageSize, sizeof(messageSize), &bytesRead, nullptr)) {
-        DWORD error = GetLastError();
-        if (error == ERROR_BROKEN_PIPE || error == ERROR_PIPE_NOT_CONNECTED || error == ERROR_INVALID_HANDLE) {
-            connected_ = false;
-            pipeHandle_ = INVALID_HANDLE_VALUE;
+    message.clear();
+    const DWORD pollIntervalMs = 50;
+    DWORD elapsed = 0;
+
+    // Wait for data using PeekNamedPipe without holding the lock for long, so that
+    // other threads (e.g. camera callback) can call sendMessage() to push events.
+    while (elapsed < timeoutMs) {
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            if (!isConnected() || pipeHandle_ == INVALID_HANDLE_VALUE) {
+                return false;
+            }
+            DWORD messageSize = 0;
+            DWORD bytesRead = 0;
+            DWORD bytesAvailable = 0;
+            if (!PeekNamedPipe(pipeHandle_, &messageSize, sizeof(messageSize), &bytesRead, &bytesAvailable, nullptr)) {
+                DWORD error = GetLastError();
+                if (error == ERROR_BROKEN_PIPE || error == ERROR_PIPE_NOT_CONNECTED || error == ERROR_INVALID_HANDLE) {
+                    connected_ = false;
+                    pipeHandle_ = INVALID_HANDLE_VALUE;
+                }
+                return false;
+            }
+            if (bytesAvailable >= sizeof(DWORD) && messageSize > 0 && messageSize <= BUFFER_SIZE) {
+                if (!ReadFile(pipeHandle_, &messageSize, sizeof(messageSize), &bytesRead, nullptr)) {
+                    DWORD error = GetLastError();
+                    if (error == ERROR_BROKEN_PIPE || error == ERROR_PIPE_NOT_CONNECTED || error == ERROR_INVALID_HANDLE) {
+                        connected_ = false;
+                        pipeHandle_ = INVALID_HANDLE_VALUE;
+                    }
+                    return false;
+                }
+                std::vector<char> buffer(messageSize);
+                if (!ReadFile(pipeHandle_, buffer.data(), messageSize, &bytesRead, nullptr)) {
+                    DWORD error = GetLastError();
+                    if (error == ERROR_BROKEN_PIPE || error == ERROR_PIPE_NOT_CONNECTED || error == ERROR_INVALID_HANDLE) {
+                        connected_ = false;
+                        pipeHandle_ = INVALID_HANDLE_VALUE;
+                    }
+                    return false;
+                }
+                message.assign(buffer.data(), messageSize);
+                return true;
+            }
         }
-        return false;
+        std::this_thread::sleep_for(std::chrono::milliseconds(pollIntervalMs));
+        elapsed += pollIntervalMs;
     }
-    
-    if (messageSize == 0 || messageSize > BUFFER_SIZE) {
-        logging::Logger::getInstance().warn("Invalid message size: " + std::to_string(messageSize));
-        return false;
-    }
-    
-    // Read message body
-    std::vector<char> buffer(messageSize);
-    if (!ReadFile(pipeHandle_, buffer.data(), messageSize, &bytesRead, nullptr)) {
-        DWORD error = GetLastError();
-        if (error == ERROR_BROKEN_PIPE || error == ERROR_PIPE_NOT_CONNECTED || error == ERROR_INVALID_HANDLE) {
-            connected_ = false;
-            pipeHandle_ = INVALID_HANDLE_VALUE;
-        }
-        return false;
-    }
-    
-    message.assign(buffer.data(), messageSize);
-    return true;
+    return false;  // timeout
 }
 
 void PipeClient::disconnect() {

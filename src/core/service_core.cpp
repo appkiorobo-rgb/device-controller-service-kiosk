@@ -42,17 +42,10 @@ bool ServiceCore::start() {
         performSystemStatusCheck();
     });
     
-    // Setup client disconnected callback - cancel payment when client disconnects
+    // Setup client disconnected callback - reset all: cancel payment, stop liveview, etc.
     ipcServer_.getPipeServer().setClientDisconnectedCallback([this]() {
-        logging::Logger::getInstance().info("Client disconnected - cancelling any ongoing payment");
-        auto terminal = deviceManager_.getDefaultPaymentTerminal();
-        if (terminal) {
-            auto info = terminal->getDeviceInfo();
-            if (info.state == devices::DeviceState::STATE_PROCESSING) {
-                terminal->cancelPayment();
-                logging::Logger::getInstance().info("Payment cancelled due to client disconnection");
-            }
-        }
+        logging::Logger::getInstance().info("Pipe disconnected - resetting (payment cancel, stop liveview)");
+        resetOnClientDisconnect();
     });
     
     // Start IPC server
@@ -61,10 +54,7 @@ bool ServiceCore::start() {
         stopTaskWorker();
         return false;
     }
-    
-    // Setup event callbacks
-    setupEventCallbacks();
-    
+
     running_ = true;
     logging::Logger::getInstance().info("Service Core started successfully");
     return true;
@@ -765,6 +755,10 @@ ipc::Response ServiceCore::handlePaymentTransactionCancel(const ipc::Command& cm
     return resp;
 }
 
+void ServiceCore::prepareEventCallbacks() {
+    setupEventCallbacks();
+}
+
 void ServiceCore::setupEventCallbacks() {
     // Setup payment terminal event callbacks (for IPC event broadcasting)
     auto terminal = deviceManager_.getDefaultPaymentTerminal();
@@ -792,10 +786,12 @@ void ServiceCore::setupEventCallbacks() {
         camera->setCaptureCompleteCallback([this](const devices::CaptureCompleteEvent& event) {
             publishCameraCaptureCompleteEvent(event);
         });
-        
         camera->setStateChangedCallback([this](devices::DeviceState state) {
             publishDeviceStateChangedEvent("camera", state);
         });
+        logging::Logger::getInstance().info("Camera capture_complete and state_changed callbacks registered");
+    } else {
+        logging::Logger::getInstance().warn("setupEventCallbacks: no camera available, capture_complete will not be sent");
     }
 }
 
@@ -821,6 +817,17 @@ void ServiceCore::publishPaymentCompleteEvent(const devices::PaymentCompleteEven
     ipcEvent.data["salesTime"] = event.salesTime;
     ipcEvent.data["transactionMedium"] = event.transactionMedium;
     ipcEvent.data["state"] = std::to_string(static_cast<int>(event.state));
+    // Full approval detail (for server/store)
+    ipcEvent.data["status"] = event.status;
+    ipcEvent.data["transactionType"] = event.transactionType;
+    ipcEvent.data["approvalAmount"] = event.approvalAmount;
+    ipcEvent.data["tax"] = event.tax;
+    ipcEvent.data["serviceCharge"] = event.serviceCharge;
+    ipcEvent.data["installments"] = event.installments;
+    ipcEvent.data["merchantNumber"] = event.merchantNumber;
+    ipcEvent.data["terminalNumber"] = event.terminalNumber;
+    ipcEvent.data["issuer"] = event.issuer;
+    ipcEvent.data["acquirer"] = event.acquirer;
     
     logging::Logger::getInstance().info("Broadcasting PAYMENT_COMPLETE event to IPC clients");
     ipcServer_.broadcastEvent(ipcEvent);
@@ -885,6 +892,25 @@ void ServiceCore::publishDeviceStateChangedEvent(const std::string& deviceType, 
     logging::Logger::getInstance().info("Broadcasting DEVICE_STATE_CHANGED event to IPC clients");
     ipcServer_.broadcastEvent(ipcEvent);
     logging::Logger::getInstance().info("DEVICE_STATE_CHANGED event broadcasted");
+}
+
+void ServiceCore::resetOnClientDisconnect() {
+    // Cancel any ongoing payment
+    auto terminal = deviceManager_.getDefaultPaymentTerminal();
+    if (terminal) {
+        auto info = terminal->getDeviceInfo();
+        if (info.state == devices::DeviceState::STATE_PROCESSING) {
+            terminal->cancelPayment();
+            logging::Logger::getInstance().info("Payment cancelled due to pipe disconnect");
+        }
+    }
+    // Stop camera liveview so next client gets clean state
+    auto camera = deviceManager_.getDefaultCamera();
+    if (camera) {
+        if (camera->stopPreview()) {
+            logging::Logger::getInstance().info("Liveview stopped due to pipe disconnect");
+        }
+    }
 }
 
 void ServiceCore::performSystemStatusCheck() {
@@ -1233,7 +1259,19 @@ ipc::Response ServiceCore::handleCameraCapture(const ipc::Command& cmd) {
     resp.timestampMs = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::system_clock::now().time_since_epoch()).count();
     
-    // Validate payload
+    // sessionId required: folder is created/used per capture
+    auto itSession = cmd.payload.find("sessionId");
+    if (itSession == cmd.payload.end() || itSession->second.empty()) {
+        logging::Logger::getInstance().warn("Camera capture failed: Missing 'sessionId' parameter");
+        resp.status = ipc::ResponseStatus::REJECTED;
+        auto error = std::make_shared<ipc::Error>();
+        error->code = "INVALID_PAYLOAD";
+        error->message = "Missing 'sessionId' parameter";
+        resp.error = error;
+        return resp;
+    }
+    config::ConfigManager::getInstance().setSessionId(itSession->second);
+    
     auto it = cmd.payload.find("captureId");
     if (it == cmd.payload.end()) {
         logging::Logger::getInstance().warn("Camera capture failed: Missing 'captureId' parameter");
@@ -1480,6 +1518,8 @@ ipc::Response ServiceCore::handleCameraReconnect(const ipc::Command& cmd) {
 }
 
 void ServiceCore::publishCameraCaptureCompleteEvent(const devices::CaptureCompleteEvent& event) {
+    logging::Logger::getInstance().info("=== Publishing CAMERA_CAPTURE_COMPLETE ===");
+    logging::Logger::getInstance().info("  filePath: " + event.filePath + ", captureId: " + event.captureId + ", success: " + (event.success ? "true" : "false"));
     ipc::Event ipcEvent;
     ipcEvent.protocolVersion = ipc::PROTOCOL_VERSION;
     ipcEvent.kind = ipc::MessageKind::EVENT;

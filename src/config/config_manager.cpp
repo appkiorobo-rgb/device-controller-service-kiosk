@@ -4,6 +4,7 @@
 #include <fstream>
 #include <sstream>
 #include <iostream>
+#include <cstdlib>
 
 namespace config {
 
@@ -14,13 +15,14 @@ ConfigManager& ConfigManager::getInstance() {
 
 void ConfigManager::initialize(const std::string& configPath) {
     if (configPath.empty()) {
-        // Use default config path
+        // Use default: current working directory / config.ini (실행 시 CWD 기준)
         std::filesystem::path defaultPath = std::filesystem::current_path() / "config.ini";
         configFilePath_ = defaultPath.string();
     } else {
         configFilePath_ = configPath;
     }
-    
+    logging::Logger::getInstance().info("Config path: " + configFilePath_);
+
     // Try to load from file, fallback to defaults
     if (std::filesystem::exists(configFilePath_)) {
         try {
@@ -43,16 +45,32 @@ void ConfigManager::initialize(const std::string& configPath) {
 }
 
 void ConfigManager::loadDefaults() {
-    std::filesystem::path defaultPath = std::filesystem::current_path() / "photos";
-    cameraSavePath_ = defaultPath.string();
+    // Default: user Documents/AiKiosk (override via config.ini camera.save_path)
+    const char* userProfile = std::getenv("USERPROFILE");
+#ifdef _WIN32
+    if (userProfile && userProfile[0]) {
+        cameraSavePath_ = std::string(userProfile) + "\\Documents\\AiKiosk";
+    } else {
+        cameraSavePath_ = (std::filesystem::current_path() / "AiKiosk").string();
+    }
+#else
+    const char* home = userProfile && userProfile[0] ? userProfile : std::getenv("HOME");
+    if (home && home[0]) {
+        cameraSavePath_ = std::string(home) + "/Documents/AiKiosk";
+    } else {
+        cameraSavePath_ = (std::filesystem::current_path() / "AiKiosk").string();
+    }
+#endif
     currentSessionId_.clear();
     sessionNextIndex_ = 0;
     ensureSaveDirectoryExists();
 }
 
 void ConfigManager::setSessionId(const std::string& sessionId) {
-    currentSessionId_ = sessionId;
-    sessionNextIndex_ = 0;
+    if (sessionId != currentSessionId_) {
+        currentSessionId_ = sessionId;
+        sessionNextIndex_ = 0;
+    }
     if (!sessionId.empty()) {
         std::filesystem::path dir = std::filesystem::path(cameraSavePath_) / sessionId;
         if (!std::filesystem::exists(dir)) {
@@ -118,6 +136,35 @@ void ConfigManager::loadFromFile(const std::string& configPath) {
     }
     
     file.close();
+    
+    // Migrate old default "photos" (relative or .../bin/.../photos) to Documents/AiKiosk
+    std::string pathNorm = cameraSavePath_;
+    while (!pathNorm.empty() && (pathNorm.back() == '\\' || pathNorm.back() == '/')) pathNorm.pop_back();
+    bool isOldPhotos = cameraSavePath_.empty() || pathNorm == "photos"
+        || (pathNorm.size() >= 7 && (pathNorm.substr(pathNorm.size() - 6) == "/photos" || pathNorm.substr(pathNorm.size() - 6) == "\\photos"));
+    if (isOldPhotos) {
+        const char* userProfile = std::getenv("USERPROFILE");
+#ifdef _WIN32
+        if (userProfile && userProfile[0]) {
+            cameraSavePath_ = std::string(userProfile) + "\\Documents\\AiKiosk";
+        } else {
+            cameraSavePath_ = (std::filesystem::current_path() / "AiKiosk").string();
+        }
+#else
+        const char* home = userProfile && userProfile[0] ? userProfile : std::getenv("HOME");
+        if (home && home[0]) {
+            cameraSavePath_ = std::string(home) + "/Documents/AiKiosk";
+        } else {
+            cameraSavePath_ = (std::filesystem::current_path() / "AiKiosk").string();
+        }
+#endif
+        logging::Logger::getInstance().info("Migrated camera.save_path to: " + cameraSavePath_);
+        try {
+            saveToFile(configPath);
+        } catch (const std::exception& e) {
+            logging::Logger::getInstance().warn("Failed to save migrated config: " + std::string(e.what()));
+        }
+    }
     
     // Ensure directory exists
     ensureSaveDirectoryExists();

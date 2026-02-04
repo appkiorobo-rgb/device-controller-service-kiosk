@@ -340,6 +340,7 @@ void EdsdkCameraAdapter::onSessionClosed() {
 }
 
 void EdsdkCameraAdapter::onDownloadComplete(const std::string& filePath, const std::string& captureId) {
+    logging::Logger::getInstance().info("onDownloadComplete: filePath=" + filePath + ", captureId=" + captureId);
     std::string imageIndex = std::filesystem::path(filePath).stem().string();
 
     devices::CaptureCompleteEvent event;
@@ -352,11 +353,14 @@ void EdsdkCameraAdapter::onDownloadComplete(const std::string& filePath, const s
 
     std::vector<uint8_t> imageData = readImageFile(filePath);
     if (imageData.empty()) {
+        logging::Logger::getInstance().warn("onDownloadComplete: readImageFile returned empty for " + filePath);
         event.success = false;
         event.errorMessage = "Failed to read image file";
         updateState(devices::DeviceState::STATE_READY);
         event.state = devices::DeviceState::STATE_READY;
-        if (captureCompleteCallback_) {
+        if (!captureCompleteCallback_) {
+            logging::Logger::getInstance().warn("onDownloadComplete (failure path): captureCompleteCallback_ is NULL");
+        } else {
             captureCompleteCallback_(event);
         }
         return;
@@ -369,13 +373,15 @@ void EdsdkCameraAdapter::onDownloadComplete(const std::string& filePath, const s
         pendingCaptures_.erase(captureId);
     }
 
-    // Set READY before sending capture_complete so next capture() is accepted immediately.
-    // Previously we sent capture_complete first; Flutter then tapped capture and got "PROCESSING" reject.
-    updateState(devices::DeviceState::STATE_READY);
     event.state = devices::DeviceState::STATE_READY;
-    if (captureCompleteCallback_) {
+    // Send camera_capture_complete first so Flutter receives 촬영 완료 신호 (with exact filePath).
+    // Then set READY so the next capture() is accepted.
+    if (!captureCompleteCallback_) {
+        logging::Logger::getInstance().warn("onDownloadComplete: captureCompleteCallback_ is NULL - CAMERA_CAPTURE_COMPLETE will not be sent");
+    } else {
         captureCompleteCallback_(event);
     }
+    updateState(devices::DeviceState::STATE_READY);
 }
 
 void EdsdkCameraAdapter::onError(EdsError error) {

@@ -141,7 +141,7 @@ std::shared_ptr<Event> MessageParser::parseEvent(const std::string& json) {
 
 std::string MessageParser::escapeJsonString(const std::string& str) {
     std::ostringstream oss;
-    for (char c : str) {
+    for (unsigned char c : str) {
         switch (c) {
             case '"': oss << "\\\""; break;
             case '\\': oss << "\\\\"; break;
@@ -150,7 +150,13 @@ std::string MessageParser::escapeJsonString(const std::string& str) {
             case '\n': oss << "\\n"; break;
             case '\r': oss << "\\r"; break;
             case '\t': oss << "\\t"; break;
-            default: oss << c; break;
+            default:
+                if (c <= 0x1F || c == 0x7F) {
+                    oss << ' ';  // 제어문자·DEL → 공백 (JSON 규격 위반 방지)
+                } else {
+                    oss << static_cast<char>(c);
+                }
+                break;
         }
     }
     return oss.str();

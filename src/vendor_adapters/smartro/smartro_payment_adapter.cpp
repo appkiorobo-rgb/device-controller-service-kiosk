@@ -1,11 +1,55 @@
 // src/vendor_adapters/smartro/smartro_payment_adapter.cpp
-// logger.h???????? include??? Windows SDK ?? ???
 #include "logging/logger.h"
 #include "vendor_adapters/smartro/smartro_payment_adapter.h"
 #include "vendor_adapters/smartro/smartro_protocol.h"
 #include <sstream>
+#include <vector>
+#ifdef _WIN32
+    #ifndef WIN32_LEAN_AND_MEAN
+        #define WIN32_LEAN_AND_MEAN
+    #endif
+    #include <windows.h>
+#endif
 
 namespace smartro {
+
+namespace {
+// Map Smartro transaction type char to human-readable string (e.g. for IPC/Flutter)
+std::string transactionTypeToString(char type) {
+    switch (type) {
+        case '1': return "Credit Approval";
+        case '2': return "Cash Receipt";
+        case '3': return "Prepaid";
+        case '4': return "Zero Pay";
+        case '5': return "Kakao Mini";
+        case '6': return "Kakao Credit";
+        case 'X':
+        case 'x': return "Rejected";
+        default: return std::string("Type ") + type;
+    }
+}
+
+// 응답전문 [b] 발급사/매입사는 CP949(한국어 Windows). IPC/Flutter는 UTF-8이므로 변환.
+std::string cp949ToUtf8(const std::string& cp949) {
+    if (cp949.empty()) return cp949;
+#ifdef _WIN32
+    const int cp949_code_page = 949;
+    int wlen = MultiByteToWideChar(cp949_code_page, 0, cp949.c_str(), static_cast<int>(cp949.size()), nullptr, 0);
+    if (wlen <= 0) return cp949;
+    std::vector<wchar_t> wbuf(static_cast<size_t>(wlen) + 1u, 0);
+    if (MultiByteToWideChar(cp949_code_page, 0, cp949.c_str(), static_cast<int>(cp949.size()), wbuf.data(), wlen) == 0)
+        return cp949;
+    int ulen = WideCharToMultiByte(CP_UTF8, 0, wbuf.data(), wlen, nullptr, 0, nullptr, nullptr);
+    if (ulen <= 0) return cp949;
+    std::string utf8(static_cast<size_t>(ulen), '\0');
+    if (WideCharToMultiByte(CP_UTF8, 0, wbuf.data(), wlen, &utf8[0], ulen, nullptr, nullptr) == 0)
+        return cp949;
+    return utf8;
+#else
+    return cp949;
+#endif
+}
+}  // namespace
 
 SmartroPaymentAdapter::SmartroPaymentAdapter(const std::string& deviceId,
                                              const std::string& comPort,
@@ -295,6 +339,16 @@ void SmartroPaymentAdapter::processPaymentResponse(const PaymentApprovalResponse
             event.salesTime = response.salesTime;
             event.transactionMedium = std::string(1, response.transactionMedium);
             event.state = devices::DeviceState::STATE_READY;
+            event.status = "SUCCESS";
+            event.transactionType = transactionTypeToString(response.transactionType);
+            event.approvalAmount = response.approvalAmount;
+            event.tax = response.tax;
+            event.serviceCharge = response.serviceCharge;
+            event.installments = response.installments;
+            event.merchantNumber = response.merchantNumber;
+            event.terminalNumber = response.terminalNumber;
+            event.issuer = cp949ToUtf8(response.issuer);
+            event.acquirer = cp949ToUtf8(response.acquirer);
             logging::Logger::getInstance().info("Calling paymentCompleteCallback_");
             paymentCompleteCallback_(event);
         } else {

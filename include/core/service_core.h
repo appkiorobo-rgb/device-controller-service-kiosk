@@ -48,7 +48,10 @@ public:
     ipc::IpcServer& getIpcServer() { return ipcServer_; }
     
     bool isRunning() const { return running_; }
-    
+
+    /// Call after registering devices and before start(). Registers capture_complete etc. so events are sent.
+    void prepareEventCallbacks();
+
 private:
     DeviceManager deviceManager_;
     ipc::IpcServer ipcServer_;
@@ -112,6 +115,9 @@ private:
     
     // Status check on client connection
     void performSystemStatusCheck();
+    
+    /// Called when pipe client disconnects: cancel payment, stop liveview, etc.
+    void resetOnClientDisconnect();
     
     // UUID generation
     std::string generateUUID();

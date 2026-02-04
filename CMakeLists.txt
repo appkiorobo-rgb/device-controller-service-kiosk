@@ -141,6 +141,11 @@ set(VENDOR_ADAPTER_SOURCES
     src/vendor_adapters/smartro/smartro_payment_adapter.cpp
 )
 
+set(LV77_SOURCES
+    src/vendor_adapters/lv77/lv77_comm.cpp
+    src/vendor_adapters/lv77/lv77_bill_adapter.cpp
+)
+
 set(CANON_SOURCES
     src/vendor_adapters/canon/edsdk_camera_adapter.cpp
     src/vendor_adapters/canon/edsdk_command_processor.cpp
@@ -183,6 +188,13 @@ add_executable(test_camera_client
     tests/test_camera_client.cpp
 )
 
+# LV77 bill validator test client (standalone exe, 9600 8E1)
+add_executable(test_lv77_client
+    tests/test_lv77_client.cpp
+    src/vendor_adapters/smartro/serial_port.cpp
+    src/vendor_adapters/lv77/lv77_comm.cpp
+)
+
 # EDSDK-only camera test (no IPC) - like test_integrated but for camera
 add_executable(test_edsdk_camera
     tests/test_edsdk_camera.cpp
@@ -220,6 +232,10 @@ target_include_directories(test_pipe_client PRIVATE
 )
 
 target_include_directories(test_camera_client PRIVATE
+    ${PROJECT_INCLUDE_DIR}
+)
+
+target_include_directories(test_lv77_client PRIVATE
     ${PROJECT_INCLUDE_DIR}
 )
 
@@ -297,6 +313,7 @@ if(WIN32)
     target_compile_definitions(test_integrated          PRIVATE _WIN32_WINNT=0x0A00)
     target_compile_definitions(test_pipe_client        PRIVATE _WIN32_WINNT=0x0A00)
     target_compile_definitions(test_camera_client      PRIVATE _WIN32_WINNT=0x0A00)
+    target_compile_definitions(test_lv77_client       PRIVATE _WIN32_WINNT=0x0A00)
     target_compile_definitions(test_edsdk_camera       PRIVATE _WIN32_WINNT=0x0A00)
 endif()
 
@@ -336,12 +353,18 @@ if(MSVC)
         /permissive-
         /Zc:__cplusplus
     )
+    target_compile_options(test_lv77_client PRIVATE
+        /W4
+        /permissive-
+        /Zc:__cplusplus
+    )
 else()
         target_compile_options(device_controller_service PRIVATE -Wall -Wextra -Wpedantic)
         target_compile_options(test_integrated          PRIVATE -Wall -Wextra -Wpedantic)
         target_compile_options(test_pipe_client         PRIVATE -Wall -Wextra -Wpedantic)
         target_compile_options(test_camera_client       PRIVATE -Wall -Wextra -Wpedantic)
         target_compile_options(test_edsdk_camera        PRIVATE -Wall -Wextra -Wpedantic)
+        target_compile_options(test_lv77_client         PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
 # =========================
@@ -360,7 +383,7 @@ endif()
 # =========================
 # Install
 # =========================
-install(TARGETS device_controller_service test_integrated test_pipe_client test_camera_client test_edsdk_camera
+install(TARGETS device_controller_service test_integrated test_pipe_client test_camera_client test_lv77_client test_edsdk_camera
     RUNTIME DESTINATION bin
 )
 

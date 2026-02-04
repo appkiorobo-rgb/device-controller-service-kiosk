@@ -1,5 +1,5 @@
 // src/vendor_adapters/smartro/serial_port.cpp
-// logger.h�?가??먼�? include?�여 Windows SDK 충돌 방�?
+// logger.h�?가??먼�? include?�여 Windows SDK 충돌 방�?
 #include "logging/logger.h"
 #include "vendor_adapters/smartro/serial_port.h"
 #include <windows.h>
@@ -14,7 +14,10 @@ namespace smartro {
 
 SerialPort::SerialPort() 
     : handle_(INVALID_HANDLE_VALUE)
-    , baudRate_(115200) {
+    , baudRate_(115200)
+    , dataBits_(8)
+    , stopBits_(1)
+    , parity_(0) {  // NOPARITY
 }
 
 SerialPort::~SerialPort() {
@@ -30,7 +33,7 @@ bool SerialPort::open(const std::string& portName, uint32_t baudRate) {
     portName_ = portName;
     baudRate_ = baudRate;
     
-    // COM ?�트 ?�름 변??(COM3 -> \\.\COM3)
+    // COM ?�트 ?�름 변??(COM3 -> \\.\COM3)
     std::string fullPortName = portName;
     if (portName.find("\\\\.\\") != 0) {
         fullPortName = "\\\\.\\" + portName;
@@ -38,7 +41,7 @@ bool SerialPort::open(const std::string& portName, uint32_t baudRate) {
     
     logging::Logger::getInstance().debug("Opening serial port: " + fullPortName + " (Baud: " + std::to_string(baudRate) + ")");
     
-    // ?�트 ?�기�?별도 ?�레?�에???�행?�여 ?�?�아???�정
+    // ?�트 ?�기�?별도 ?�레?�에???�행?�여 ?�?�아???�정
     std::atomic<bool> openSuccess(false);
     std::atomic<bool> openComplete(false);
     HANDLE openedHandle = INVALID_HANDLE_VALUE;
@@ -60,17 +63,17 @@ bool SerialPort::open(const std::string& portName, uint32_t baudRate) {
         openComplete = true;
     });
     
-    // ?�?�아?? 2�?
+    // ?�?�아?? 2�?
     auto timeout = std::chrono::steady_clock::now() + std::chrono::milliseconds(2000);
     while (!openComplete && std::chrono::steady_clock::now() < timeout) {
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
     
     if (!openComplete) {
-        // ?�?�아??발생 - ?�레?��? ?�직 ?�행 중이�?종료 ?��?
+        // ?�?�아??발생 - ?�레?��? ?�직 ?�행 중이�?종료 ?��?
         logging::Logger::getInstance().warn("Port open timeout for " + portName + ", trying next port...");
-        // ?�레?��? 종료???�까지 기다리�? ?�고 계속 진행
-        // (?�트가 ?�리�??�중???�을 ???�음)
+        // ?�레?��? 종료???�까지 기다리�? ?�고 계속 진행
+        // (?�트가 ?�리�??�중???�을 ???�음)
         openThread.detach();
         return false;
     }
@@ -151,7 +154,7 @@ bool SerialPort::read(uint8_t* buffer, size_t bufferSize, size_t& bytesRead, uin
         return false;
     }
     
-    // ?�?�아???�정
+    // ?�?�아???�정
     COMMTIMEOUTS timeouts = {0};
     timeouts.ReadIntervalTimeout = 0;
     timeouts.ReadTotalTimeoutConstant = timeoutMs;
@@ -178,12 +181,25 @@ bool SerialPort::read(uint8_t* buffer, size_t bufferSize, size_t& bytesRead, uin
             logging::Logger::getInstance().debug("Read timeout after " + std::to_string(timeoutMs) + "ms");
             return false;
         }
+        // ERROR_ACCESS_DENIED (5): COM ??? ?? ????? ??????,
+        // ??? ?????, ?? ??. ?? ?? ??? ?? 5?? ? ?? ??.
+        if (error == 5) {
+            static std::chrono::steady_clock::time_point lastLogTime;
+            auto now = std::chrono::steady_clock::now();
+            if (now - lastLogTime >= std::chrono::seconds(5)) {
+                lastLogTime = now;
+                logging::Logger::getInstance().warn(
+                    "Serial read failed: Access denied (error 5). "
+                    "Port may be in use by another process, disconnected, or no permission.");
+            }
+            return false;
+        }
         logError("Failed to read data");
         return false;
     }
     
-    // 1바이???�기??로그 출력?��? ?�음 (?�무 많�? 로그 방�?)
-    // ?�러 바이???�을 ?�만 로그 출력
+    // 1바이???�기??로그 출력?��? ?�음 (?�무 많�? 로그 방�?)
+    // ?�러 바이???�을 ?�만 로그 출력
     if (bytesRead > 0 && bytesRead > 1) {
         logging::Logger::getInstance().debugHex("Serial RX", buffer, bytesRead);
     }
@@ -200,17 +216,23 @@ bool SerialPort::setBaudRate(uint32_t baudRate) {
 }
 
 bool SerialPort::setDataBits(uint8_t dataBits) {
-    // 구현 ?�략 (?�요??추�?)
+    // 구현 ?�략 (?�요??추�?)
+    dataBits_ = dataBits;
+    if (isOpen()) return configurePort();
     return true;
 }
 
 bool SerialPort::setStopBits(uint8_t stopBits) {
-    // 구현 ?�략 (?�요??추�?)
+    // 구현 ?�략 (?�요??추�?)
+    stopBits_ = stopBits;
+    if (isOpen()) return configurePort();
     return true;
 }
 
 bool SerialPort::setParity(uint8_t parity) {
-    // 구현 ?�략 (?�요??추�?)
+    // 구현 ?�략 (?�요??추�?)
+    parity_ = parity;
+    if (isOpen()) return configurePort();
     return true;
 }
 
@@ -223,13 +245,13 @@ bool SerialPort::configurePort() {
         return false;
     }
     
-    // 기본 ?�정
+    // 기본 ?�정
     dcb.BaudRate = baudRate_;
-    dcb.ByteSize = 8;
-    dcb.Parity = NOPARITY;
-    dcb.StopBits = ONESTOPBIT;
+    dcb.ByteSize = dataBits_;
+    dcb.Parity = (parity_ == 1) ? ODDPARITY : (parity_ == 2) ? EVENPARITY : NOPARITY;
+    dcb.StopBits = (stopBits_ == 2) ? TWOSTOPBITS : ONESTOPBIT;
     dcb.fBinary = TRUE;
-    dcb.fParity = FALSE;
+    dcb.fParity = (parity_ != 0);
     dcb.fOutxCtsFlow = FALSE;
     dcb.fOutxDsrFlow = FALSE;
     dcb.fDtrControl = DTR_CONTROL_ENABLE;
@@ -247,10 +269,10 @@ bool SerialPort::configurePort() {
         return false;
     }
     
-    // 버퍼 ?�기 ?�정
+    // 버퍼 ?�기 ?�정
     SetupComm(static_cast<HANDLE>(handle_), 4096, 4096);
     
-    // ?�?�아???�정
+    // ?�?�아???�정
     COMMTIMEOUTS timeouts = {0};
     timeouts.ReadIntervalTimeout = MAXDWORD;
     timeouts.ReadTotalTimeoutConstant = 0;
@@ -276,7 +298,7 @@ void SerialPort::logError(const std::string& operation) {
 std::vector<std::string> SerialPort::getAvailablePorts() {
     std::vector<std::string> ports;
     
-    // ?��??�트리에??COM ?�트 목록 ?�기
+    // ?��??�트리에??COM ?�트 목록 ?�기
     HKEY hKey;
     if (RegOpenKeyExA(HKEY_LOCAL_MACHINE, 
                       "HARDWARE\\DEVICEMAP\\SERIALCOMM", 
@@ -305,7 +327,7 @@ std::vector<std::string> SerialPort::getAvailablePorts() {
             
             if (type == REG_SZ && dataSize > 0) {
                 std::string portName(data);
-                // COM ?�트 ?�름�?추출 (?? "COM3")
+                // COM ?�트 ?�름�?추출 (?? "COM3")
                 if (portName.find("COM") == 0) {
                     ports.push_back(portName);
                 }
@@ -317,7 +339,7 @@ std::vector<std::string> SerialPort::getAvailablePorts() {
         RegCloseKey(hKey);
     }
     
-    // ?��??�트리에??찾�? 못한 경우, COM1~COM20까�? ?�도
+    // ?��??�트리에??찾�? 못한 경우, COM1~COM20까�? ?�도
     if (ports.empty()) {
         for (int i = 1; i <= 20; ++i) {
             std::string portName = "COM" + std::to_string(i);
@@ -344,7 +366,7 @@ std::vector<std::string> SerialPort::getAvailablePorts() {
 }
 
 bool SerialPort::saveWorkingPort(const std::string& portName) {
-    // Windows API�??�용?�여 ?�일 ?�기 (fstream ?�??
+    // Windows API�??�용?�여 ?�일 ?�기 (fstream ?�??
     HANDLE hFile = CreateFileA(
         "smartro_port.cfg",
         GENERIC_WRITE,
@@ -369,7 +391,7 @@ bool SerialPort::saveWorkingPort(const std::string& portName) {
 }
 
 std::string SerialPort::loadWorkingPort() {
-    // Windows API�??�용?�여 ?�일 ?�기 (fstream ?�??
+    // Windows API�??�용?�여 ?�일 ?�기 (fstream ?�??
     HANDLE hFile = CreateFileA(
         "smartro_port.cfg",
         GENERIC_READ,
@@ -391,7 +413,7 @@ std::string SerialPort::loadWorkingPort() {
     
     std::string portName(buffer, bytesRead);
     
-    // 공백 ?�거
+    // 공백 ?�거
     portName.erase(portName.find_last_not_of(" \t\n\r\f\v") + 1);
     
     if (!portName.empty()) {

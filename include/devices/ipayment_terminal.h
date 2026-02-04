@@ -9,16 +9,27 @@
 
 namespace devices {
 
-// Payment complete event data
+// Payment complete event data (full approval detail for server/store)
 struct PaymentCompleteEvent {
     std::string transactionId;
     uint32_t amount;
-    std::string cardNumber;      // Masked card number
+    std::string cardNumber;       // Masked card number
     std::string approvalNumber;
     std::string salesDate;        // YYYYMMDD
     std::string salesTime;        // hhmmss
     std::string transactionMedium; // IC/MS/RF/QR
     DeviceState state;            // Usually returns to READY
+    // Extended approval detail (from Smartro approval response)
+    std::string status;           // e.g. "SUCCESS"
+    std::string transactionType; // e.g. "Credit Approval"
+    std::string approvalAmount;  // 10 bytes string from terminal
+    std::string tax;
+    std::string serviceCharge;
+    std::string installments;
+    std::string merchantNumber;
+    std::string terminalNumber;
+    std::string issuer;
+    std::string acquirer;
 };
 
 // Payment failed event data

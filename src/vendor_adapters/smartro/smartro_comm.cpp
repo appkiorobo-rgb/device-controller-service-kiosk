@@ -1565,33 +1565,23 @@ void SmartroComm::processResponse(const std::vector<uint8_t>& packet) {
 
 bool SmartroComm::pollResponse(ResponseData& response, uint32_t timeoutMs) {
     std::unique_lock<std::mutex> lock(queueMutex_);
-    size_t initialQueueSize = responseQueue_.size();
-    
-    logging::Logger::getInstance().debug("pollResponse called, timeout: " + std::to_string(timeoutMs) + "ms, initial queue size: " + std::to_string(initialQueueSize));
-    
+
     if (timeoutMs == 0) {
-        // ?? ??
-        logging::Logger::getInstance().debug("pollResponse: waiting indefinitely for response");
         queueCondition_.wait(lock, [this] { return !responseQueue_.empty() || !receiverRunning_; });
     } else {
-        // ???? ??
         auto timeout = std::chrono::milliseconds(timeoutMs);
-        logging::Logger::getInstance().debug("pollResponse: waiting with timeout");
-        if (!queueCondition_.wait_for(lock, timeout, 
+        if (!queueCondition_.wait_for(lock, timeout,
                                       [this] { return !responseQueue_.empty() || !receiverRunning_; })) {
-            logging::Logger::getInstance().debug("pollResponse: timeout, queue size: " + std::to_string(responseQueue_.size()));
-            return false;  // ????
+            return false;
         }
     }
-    
+
     if (responseQueue_.empty()) {
-        logging::Logger::getInstance().debug("pollResponse: queue is empty after wait (receiver stopped?)");
-        return false;  // ???? ???
+        return false;
     }
-    
+
     response = responseQueue_.front();
     responseQueue_.pop();
-    logging::Logger::getInstance().info("pollResponse: retrieved response from queue, remaining: " + std::to_string(responseQueue_.size()) + ", type: " + std::to_string(static_cast<int>(response.type)));
     return true;
 }
 

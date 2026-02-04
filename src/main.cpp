@@ -79,7 +79,10 @@ int main(int argc, char* argv[]) {
         } else {
             logging::Logger::getInstance().warn("Failed to initialize camera adapter. Camera features will not be available.");
         }
-        
+
+        // Setup event callbacks (capture_complete etc.) before starting IPC so they are set on the registered camera
+        serviceCore.prepareEventCallbacks();
+
         // Start service
         if (!serviceCore.start()) {
             logging::Logger::getInstance().error("Failed to start service core");
