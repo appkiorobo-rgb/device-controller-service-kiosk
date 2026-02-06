@@ -19,6 +19,72 @@
 #include <chrono>
 #include <thread>
 
+// Maximum items to delete when flushing internal memory (safety limit)
+static const EdsUInt32 kFlushInternalMaxItems = 500;
+
+// Recursively delete all directory items under inRef (volume or folder).
+// Always deletes index 0 and recurses into folders first (indices shift after delete).
+static void deleteAllItemsInDirectory(EdsBaseRef inRef, EdsUInt32& deletedSoFar) {
+    if (deletedSoFar >= kFlushInternalMaxItems)
+        return;
+    EdsUInt32 count = 0;
+    EdsError err = EdsGetChildCount(inRef, &count);
+    if (err != EDS_ERR_OK || count == 0)
+        return;
+    while (deletedSoFar < kFlushInternalMaxItems) {
+        err = EdsGetChildCount(inRef, &count);
+        if (err != EDS_ERR_OK || count == 0)
+            break;
+        EdsDirectoryItemRef itemRef = nullptr;
+        err = EdsGetChildAtIndex(inRef, 0, &itemRef);
+        if (err != EDS_ERR_OK || !itemRef)
+            break;
+        EdsDirectoryItemInfo info = {};
+        err = EdsGetDirectoryItemInfo(itemRef, &info);
+        if (err == EDS_ERR_OK && info.isFolder) {
+            deleteAllItemsInDirectory(itemRef, deletedSoFar);
+        }
+        err = EdsDeleteDirectoryItem(itemRef);
+        if (err == EDS_ERR_OK) {
+            deletedSoFar++;
+        }
+    }
+}
+
+// Flush camera internal memory (volumes with kEdsStorageType_Non). When images
+// remain in internal memory, SaveTo Host can fail with EDS_ERR_DEVICE_BUSY (129).
+// Deleting those items allows SaveTo Host to succeed.
+static void flushInternalMemoryVolumes(EdsCameraRef cameraRef) {
+    EdsUInt32 volCount = 0;
+    EdsError err = EdsGetChildCount(cameraRef, &volCount);
+    if (err != EDS_ERR_OK || volCount == 0)
+        return;
+    for (EdsUInt32 v = 0; v < volCount; v++) {
+        EdsVolumeRef volRef = nullptr;
+        err = EdsGetChildAtIndex(cameraRef, v, &volRef);
+        if (err != EDS_ERR_OK || !volRef)
+            continue;
+        EdsVolumeInfo volInfo = {};
+        err = EdsGetVolumeInfo(volRef, &volInfo);
+        if (err != EDS_ERR_OK) {
+            EdsRelease(volRef);
+            continue;
+        }
+        if (volInfo.storageType != kEdsStorageType_Non) {
+            EdsRelease(volRef);
+            continue;
+        }
+        EdsUInt32 deletedSoFar = 0;
+        deleteAllItemsInDirectory(volRef, deletedSoFar);
+        if (deletedSoFar > 0) {
+            logging::Logger::getInstance().info(
+                "InitializeCameraCommand: Flushed internal memory (volume type Non): deleted " +
+                std::to_string(deletedSoFar) + " item(s)");
+        }
+        EdsRelease(volRef);
+    }
+}
+
 // Map EDSDK error code to human-readable description (for logging)
 static std::string edsdkErrorToString(EdsError err) {
     EdsError id = (err & EDS_ERRORID_MASK);
@@ -131,10 +197,38 @@ bool InitializeCameraCommand::execute() {
         return true;
     }
 
+    // Flush internal memory before SaveTo Host. When images remain in camera
+    // internal memory, Set SaveTo can fail with EDS_ERR_DEVICE_BUSY (129).
+    flushInternalMemoryVolumes(modelPtr->getCameraObject());
+
     EdsUInt32 saveTo = kEdsSaveTo_Host;
     err = EdsSetPropertyData(modelPtr->getCameraObject(), kEdsPropID_SaveTo, 0, sizeof(saveTo), &saveTo);
     if (err != EDS_ERR_OK) {
-        logging::Logger::getInstance().error("InitializeCameraCommand: SaveTo Host FAILED: " + std::to_string(err));
+        if ((err & EDS_ERRORID_MASK) == EDS_ERR_DEVICE_BUSY) {
+            logging::Logger::getInstance().info(
+                "InitializeCameraCommand: SaveTo Host returned DEVICE_BUSY(129), flushing all volumes and retrying");
+            EdsUInt32 volCount = 0;
+            if (EdsGetChildCount(modelPtr->getCameraObject(), &volCount) == EDS_ERR_OK) {
+                for (EdsUInt32 v = 0; v < volCount; v++) {
+                    EdsVolumeRef volRef = nullptr;
+                    if (EdsGetChildAtIndex(modelPtr->getCameraObject(), v, &volRef) != EDS_ERR_OK || !volRef)
+                        continue;
+                    EdsUInt32 deletedSoFar = 0;
+                    deleteAllItemsInDirectory(volRef, deletedSoFar);
+                    if (deletedSoFar > 0) {
+                        logging::Logger::getInstance().info(
+                            "InitializeCameraCommand: Flushed volume " + std::to_string(v) + ": deleted " +
+                            std::to_string(deletedSoFar) + " item(s)");
+                    }
+                    EdsRelease(volRef);
+                }
+            }
+            err = EdsSetPropertyData(modelPtr->getCameraObject(), kEdsPropID_SaveTo, 0, sizeof(saveTo), &saveTo);
+        }
+    }
+    if (err != EDS_ERR_OK) {
+        logging::Logger::getInstance().error("InitializeCameraCommand: SaveTo Host FAILED: " + std::to_string(err) +
+            " (" + edsdkErrorToString(err) + ")");
         modelPtr->notifyError(err);
         EdsCloseSession(modelPtr->getCameraObject());
         adapter_->decrementSdkRefCountAndMaybeTerminate();
@@ -217,10 +311,25 @@ bool OpenSessionCommand::execute() {
         model_->notifyError(err);
         return true;
     }
-    
+
+    flushInternalMemoryVolumes(model_->getCameraObject());
+
     // (A) SaveTo Host - MUST succeed or transfer won't happen. Check return value.
     EdsUInt32 saveTo = kEdsSaveTo_Host;  // 1=Camera only, 2=Host(PC), 3=Both
     err = EdsSetPropertyData(model_->getCameraObject(), kEdsPropID_SaveTo, 0, sizeof(saveTo), &saveTo);
+    if (err != EDS_ERR_OK && (err & EDS_ERRORID_MASK) == EDS_ERR_DEVICE_BUSY) {
+        EdsUInt32 volCount = 0;
+        if (EdsGetChildCount(model_->getCameraObject(), &volCount) == EDS_ERR_OK) {
+            for (EdsUInt32 v = 0; v < volCount; v++) {
+                EdsVolumeRef volRef = nullptr;
+                if (EdsGetChildAtIndex(model_->getCameraObject(), v, &volRef) != EDS_ERR_OK || !volRef) continue;
+                EdsUInt32 deletedSoFar = 0;
+                deleteAllItemsInDirectory(volRef, deletedSoFar);
+                EdsRelease(volRef);
+            }
+        }
+        err = EdsSetPropertyData(model_->getCameraObject(), kEdsPropID_SaveTo, 0, sizeof(saveTo), &saveTo);
+    }
     if (err != EDS_ERR_OK) {
         logging::Logger::getInstance().error("OpenSessionCommand: SaveTo Host FAILED (required for transfer): " + std::to_string(err));
         model_->notifyError(err);
@@ -331,24 +440,11 @@ bool TakePictureCommand::execute() {
     }
 
     EdsCameraRef cam = model_->getCameraObject();
-    EdsUInt32 shutterCommand = kEdsCameraCommand_ShutterButton_Completely;
-    bool usedNonAfFallback = false;
 
-    // 1) Try with AF (normal shutter release)
+    // Recommended kiosk flow (EDSDK): Completely_NonAF — no AF trigger at shutter, use LiveView pre-focused state.
+    const EdsUInt32 shutterCommand = kEdsCameraCommand_ShutterButton_Completely_NonAF;
     EdsError err = EdsSendCommand(cam, kEdsCameraCommand_PressShutterButton, shutterCommand);
 
-    // 2) On AF failure (36097), retry once without waiting for AF (current/manual focus)
-    if (err != EDS_ERR_OK) {
-        EdsError errId = (err & EDS_ERRORID_MASK);
-        if (errId == EDS_ERR_TAKE_PICTURE_AF_NG) {
-            logging::Logger::getInstance().warn("TakePictureCommand: AF failed (36097), retrying without AF (current focus).");
-            shutterCommand = kEdsCameraCommand_ShutterButton_Completely_NonAF;
-            err = EdsSendCommand(cam, kEdsCameraCommand_PressShutterButton, shutterCommand);
-            usedNonAfFallback = (err == EDS_ERR_OK);
-        }
-    }
-
-    // Release shutter button after successful press
     if (err == EDS_ERR_OK) {
         err = EdsSendCommand(cam, kEdsCameraCommand_PressShutterButton, kEdsCameraCommand_ShutterButton_OFF);
     }
@@ -360,16 +456,12 @@ bool TakePictureCommand::execute() {
             return false; // Retry
         }
         std::string desc = edsdkErrorToString(err);
-        logging::Logger::getInstance().error("TakePictureCommand failed: " + std::to_string(err) + " (" + desc + "). Tip: For AF_NG try manual focus or ensure subject is in focus.");
+        logging::Logger::getInstance().error("TakePictureCommand failed: " + std::to_string(err) + " (" + desc + ").");
         model_->notifyError(err);
         return true;
     }
 
-    if (usedNonAfFallback) {
-        logging::Logger::getInstance().info("TakePictureCommand executed successfully (without AF, used current focus).");
-    } else {
-        logging::Logger::getInstance().info("TakePictureCommand executed successfully");
-    }
+    logging::Logger::getInstance().info("TakePictureCommand executed successfully (kiosk flow: NonAF, LiveView pre-focus).");
     return true;
 }
 
