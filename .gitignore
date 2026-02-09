@@ -65,6 +65,10 @@ Testing/
 # Install directories
 install/
 
+# Installer staging/output (빌드 산출물)
+installer/staging/
+installer/output/
+
 # Windows
 Thumbs.db
 ehthumbs.db
