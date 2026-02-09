@@ -45,7 +45,6 @@ void ConfigManager::initialize(const std::string& configPath) {
 }
 
 void ConfigManager::loadDefaults() {
-    // Default: user Documents/AiKiosk (override via config.ini camera.save_path)
     const char* userProfile = std::getenv("USERPROFILE");
 #ifdef _WIN32
     if (userProfile && userProfile[0]) {
@@ -63,6 +62,14 @@ void ConfigManager::loadDefaults() {
 #endif
     currentSessionId_.clear();
     sessionNextIndex_ = 0;
+    printerName_ = "Samsung CLS-6240 Series PS";
+    printerPaperSize_ = "A4";
+    printerMarginH_ = 0;
+    printerMarginV_ = 0;
+    paymentComPort_ = "COM3";
+    paymentEnabled_ = true;
+    cashComPort_ = "";
+    cashEnabled_ = false;
     ensureSaveDirectoryExists();
 }
 
@@ -131,10 +138,26 @@ void ConfigManager::loadFromFile(const std::string& configPath) {
             
             if (key == "camera.save_path") {
                 cameraSavePath_ = value;
+            } else if (key == "printer.name") {
+                printerName_ = value;
+            } else if (key == "printer.paper_size") {
+                printerPaperSize_ = value;
+            } else if (key == "printer.margin_h") {
+                try { printerMarginH_ = std::stoi(value); } catch (...) {}
+            } else if (key == "printer.margin_v") {
+                try { printerMarginV_ = std::stoi(value); } catch (...) {}
+            } else if (key == "payment.com_port") {
+                paymentComPort_ = value;
+            } else if (key == "payment.enabled") {
+                paymentEnabled_ = (value == "1" || value == "true" || value == "yes");
+            } else if (key == "cash.com_port") {
+                cashComPort_ = value;
+            } else if (key == "cash.enabled") {
+                cashEnabled_ = (value == "1" || value == "true" || value == "yes");
             }
         }
     }
-    
+
     file.close();
     
     // Migrate old default "photos" (relative or .../bin/.../photos) to Documents/AiKiosk
@@ -175,11 +198,18 @@ void ConfigManager::saveToFile(const std::string& configPath) {
     if (!file.is_open()) {
         throw std::runtime_error("Cannot create config file: " + configPath);
     }
-    
+
     file << "# Device Controller Service Configuration\n";
-    file << "# Camera settings\n";
     file << "camera.save_path=" << cameraSavePath_ << "\n";
-    
+    file << "printer.name=" << printerName_ << "\n";
+    file << "printer.paper_size=" << printerPaperSize_ << "\n";
+    file << "printer.margin_h=" << printerMarginH_ << "\n";
+    file << "printer.margin_v=" << printerMarginV_ << "\n";
+    file << "payment.com_port=" << paymentComPort_ << "\n";
+    file << "payment.enabled=" << (paymentEnabled_ ? "1" : "0") << "\n";
+    file << "cash.com_port=" << cashComPort_ << "\n";
+    file << "cash.enabled=" << (cashEnabled_ ? "1" : "0") << "\n";
+
     file.close();
 }
 
@@ -212,6 +242,55 @@ bool ConfigManager::ensureSaveDirectoryExists() const {
         return false;
     }
     return false;
+}
+
+void ConfigManager::setPrinterName(const std::string& name) { printerName_ = name; }
+void ConfigManager::setPrinterPaperSize(const std::string& size) { printerPaperSize_ = size; }
+void ConfigManager::setPrinterMarginH(int value) { printerMarginH_ = value; }
+void ConfigManager::setPrinterMarginV(int value) { printerMarginV_ = value; }
+void ConfigManager::setPaymentComPort(const std::string& port) { paymentComPort_ = port; }
+void ConfigManager::setPaymentEnabled(bool value) { paymentEnabled_ = value; }
+void ConfigManager::setCashComPort(const std::string& port) { cashComPort_ = port; }
+void ConfigManager::setCashEnabled(bool value) { cashEnabled_ = value; }
+
+std::map<std::string, std::string> ConfigManager::getAll() const {
+    std::map<std::string, std::string> m;
+    m["camera.save_path"] = cameraSavePath_;
+    m["printer.name"] = printerName_;
+    m["printer.paper_size"] = printerPaperSize_;
+    m["printer.margin_h"] = std::to_string(printerMarginH_);
+    m["printer.margin_v"] = std::to_string(printerMarginV_);
+    m["payment.com_port"] = paymentComPort_;
+    m["payment.enabled"] = paymentEnabled_ ? "1" : "0";
+    m["cash.com_port"] = cashComPort_;
+    m["cash.enabled"] = cashEnabled_ ? "1" : "0";
+    return m;
+}
+
+void ConfigManager::setFromMap(const std::map<std::string, std::string>& kv) {
+    for (const auto& entry : kv) {
+        const std::string& k = entry.first;
+        const std::string& v = entry.second;
+        if (k == "camera.save_path") setCameraSavePath(v);
+        else if (k == "printer.name") printerName_ = v;
+        else if (k == "printer.paper_size") printerPaperSize_ = v;
+        else if (k == "printer.margin_h") try { printerMarginH_ = std::stoi(v); } catch (...) {}
+        else if (k == "printer.margin_v") try { printerMarginV_ = std::stoi(v); } catch (...) {}
+        else if (k == "payment.com_port") paymentComPort_ = v;
+        else if (k == "payment.enabled") paymentEnabled_ = (v == "1" || v == "true" || v == "yes");
+        else if (k == "cash.com_port") cashComPort_ = v;
+        else if (k == "cash.enabled") cashEnabled_ = (v == "1" || v == "true" || v == "yes");
+    }
+}
+
+void ConfigManager::saveIfInitialized() {
+    if (!configFilePath_.empty()) {
+        try {
+            saveToFile(configFilePath_);
+        } catch (const std::exception& e) {
+            logging::Logger::getInstance().warn("Failed to save config: " + std::string(e.what()));
+        }
+    }
 }
 
 } // namespace config

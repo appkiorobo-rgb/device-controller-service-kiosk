@@ -31,6 +31,9 @@ public:
     bool reset() override;
     bool checkDevice() override;
     
+    // Get COM port
+    std::string getComPort() const { return comPort_; }
+
     // Additional Smartro-specific methods
     bool readCardUid(smartro::CardUidReadResponse& response);
     bool getLastApproval(smartro::LastApprovalResponse& response);

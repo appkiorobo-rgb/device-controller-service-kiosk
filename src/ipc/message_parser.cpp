@@ -34,6 +34,29 @@ int64_t MessageParser::getJsonInt64(const std::string& json, const std::string& 
     return 0;
 }
 
+namespace {
+/// JSON 문자열 값에서 이스케이프 해제 (payload 경로 등). \\ -> \ 등.
+std::string unescapeJsonStringValue(std::string value) {
+    std::string out;
+    out.reserve(value.size());
+    for (size_t i = 0; i < value.size(); ++i) {
+        if (value[i] == '\\' && i + 1 < value.size()) {
+            switch (value[i + 1]) {
+                case '\\': out += '\\'; ++i; break;
+                case '"':  out += '"';  ++i; break;
+                case 'n':  out += '\n'; ++i; break;
+                case 'r':  out += '\r'; ++i; break;
+                case 't':  out += '\t'; ++i; break;
+                default:   out += value[i]; break;
+            }
+        } else {
+            out += value[i];
+        }
+    }
+    return out;
+}
+} // namespace
+
 std::map<std::string, std::string> MessageParser::getJsonObject(const std::string& json, const std::string& key) {
     std::map<std::string, std::string> result;
     
@@ -63,13 +86,13 @@ std::map<std::string, std::string> MessageParser::getJsonObject(const std::strin
     
     std::string objStr = json.substr(startPos, endPos - startPos);
     
-    // Parse key-value pairs
+    // Parse key-value pairs; value may contain JSON escapes (e.g. \\ in Windows path)
     std::regex pairRegex("\"([^\"]+)\"\\s*:\\s*\"([^\"]+)\"");
     std::sregex_iterator iter(objStr.begin(), objStr.end(), pairRegex);
     std::sregex_iterator end;
     
     for (; iter != end; ++iter) {
-        result[iter->str(1)] = iter->str(2);
+        result[iter->str(1)] = unescapeJsonStringValue(iter->str(2));
     }
     
     return result;
@@ -102,7 +125,7 @@ std::shared_ptr<Response> MessageParser::parseResponse(const std::string& json) 
         response->commandId = getJsonString(json, "commandId");
         response->status = stringToResponseStatus(getJsonString(json, "status"));
         response->timestampMs = getJsonInt64(json, "timestampMs");
-        response->result = getJsonObject(json, "result");
+        response->responseMap = getJsonObject(json, "result");
         
         // Parse error if present
         std::string errorCode = getJsonString(json, "errorCode");
@@ -170,9 +193,9 @@ std::string MessageParser::buildJsonObject(const std::map<std::string, std::stri
     std::ostringstream oss;
     oss << "{";
     bool first = true;
-    for (const auto& [key, value] : obj) {
+    for (const auto& p : obj) {
         if (!first) oss << ",";
-        oss << "\"" << escapeJsonString(key) << "\":\"" << escapeJsonString(value) << "\"";
+        oss << "\"" << escapeJsonString(p.first) << "\":\"" << escapeJsonString(p.second) << "\"";
         first = false;
     }
     oss << "}";
@@ -201,8 +224,8 @@ std::string MessageParser::serializeResponse(const Response& response) {
         << "\"status\":\"" << responseStatusToString(response.status) << "\","
         << "\"timestampMs\":" << response.timestampMs << ",";
     
-    if (!response.result.empty()) {
-        oss << "\"result\":" << buildJsonObject(response.result) << ",";
+    if (!response.responseMap.empty()) {
+        oss << "\"result\":" << buildJsonObject(response.responseMap) << ",";
     }
     
     if (response.error) {

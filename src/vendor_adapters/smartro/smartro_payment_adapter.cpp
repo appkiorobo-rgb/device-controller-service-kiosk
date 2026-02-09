@@ -230,12 +230,18 @@ bool SmartroPaymentAdapter::checkDevice() {
         monitorThread_ = std::thread(&SmartroPaymentAdapter::eventMonitorThread, this);
     }
     
-    // Send device check request
+    // Send device check request (스캔: COM 포트 하나씩 시도 후 성공한 포트에 연결 유지)
     DeviceCheckResponse response;
     if (!smartroComm_->sendDeviceCheckRequest(terminalId_, response, 3000)) {
         lastError_ = "Device check failed: " + smartroComm_->getLastError();
         updateState(devices::DeviceState::STATE_ERROR);
         return false;
+    }
+    
+    // 실제로 연결된 COM 포트로 어댑터 상태 동기화 (스캔 결과 반영)
+    std::string detectedPort = serialPort_->getPortName();
+    if (!detectedPort.empty()) {
+        comPort_ = detectedPort;
     }
     
     // Check response

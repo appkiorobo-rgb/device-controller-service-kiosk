@@ -1,21 +1,60 @@
 // src/core/service_core.cpp
-// logger.h? ?? include?? Windows SDK ?? ??
+// Include message_types.h FIRST, before any header that pulls in Windows (e.g. edsdk).
+// Windows macros (ERROR, result, response, Response) would otherwise corrupt ipc::Response/Event.
+#ifdef _WIN32
+#ifdef ERROR
+#undef ERROR
+#endif
+#ifdef result
+#undef result
+#endif
+#ifdef response
+#undef response
+#endif
+#ifdef Response
+#undef Response
+#endif
+#endif
+
+#include "ipc/message_types.h"
+#include <sstream>
 #include "logging/logger.h"
 #include "core/service_core.h"
 #include "config/config_manager.h"
 #include "devices/device_types.h"
 #include "devices/icamera.h"
-#include "ipc/message_types.h"
 #include "vendor_adapters/canon/edsdk_camera_adapter.h"
 #include "ipc/message_parser.h"
 #include "vendor_adapters/smartro/smartro_payment_adapter.h"
+#include "vendor_adapters/smartro/serial_port.h"
 #include "vendor_adapters/smartro/smartro_protocol.h"
-#include <sstream>
+#include "vendor_adapters/windows/windows_gdi_printer_adapter.h"
+
 #include <chrono>
+#include <filesystem>
+#include <fstream>
 #include <random>
+#include <thread>
 #include <iomanip>
 #include <thread>
 #include <map>
+#include <vector>
+
+// Undef Windows macros again after includes (edsdk, serial_port, etc. may pull winerror.h)
+#ifdef _WIN32
+#ifdef ERROR
+#undef ERROR
+#endif
+#ifdef result
+#undef result
+#endif
+#ifdef response
+#undef response
+#endif
+#ifdef Response
+#undef Response
+#endif
+#endif
 
 namespace core {
 
@@ -36,12 +75,8 @@ bool ServiceCore::start() {
     // Start task worker thread (for reset/device check only)
     startTaskWorker();
     
-    // Setup client connected callback - perform system status check
-    ipcServer_.getPipeServer().setClientConnectedCallback([this]() {
-        logging::Logger::getInstance().info("Client connected - performing system status check");
-        performSystemStatusCheck();
-    });
-    
+    // No automatic system status check on connect; client requests get_state_snapshot or detect_hardware when needed (avoids duplicate probe + 0-client broadcasts).
+
     // Setup client disconnected callback - reset all: cancel payment, stop liveview, etc.
     ipcServer_.getPipeServer().setClientDisconnectedCallback([this]() {
         logging::Logger::getInstance().info("Pipe disconnected - resetting (payment cancel, stop liveview)");
@@ -77,7 +112,18 @@ void ServiceCore::registerCommandHandlers() {
     ipcServer_.registerHandler(ipc::CommandType::GET_DEVICE_LIST, [this](const ipc::Command& cmd) {
         return handleGetDeviceList(cmd);
     });
-    
+
+    // Config (admin)
+    ipcServer_.registerHandler(ipc::CommandType::GET_CONFIG, [this](const ipc::Command& cmd) {
+        return handleGetConfig(cmd);
+    });
+    ipcServer_.registerHandler(ipc::CommandType::SET_CONFIG, [this](const ipc::Command& cmd) {
+        return handleSetConfig(cmd);
+    });
+    ipcServer_.registerHandler(ipc::CommandType::PRINTER_PRINT, [this](const ipc::Command& cmd) {
+        return handlePrinterPrint(cmd);
+    });
+
     // Payment terminal commands
     ipcServer_.registerHandler(ipc::CommandType::PAYMENT_START, [this](const ipc::Command& cmd) {
         return handlePaymentStart(cmd);
@@ -145,6 +191,19 @@ void ServiceCore::registerCommandHandlers() {
     ipcServer_.registerHandler(ipc::CommandType::CAMERA_RECONNECT, [this](const ipc::Command& cmd) {
         return handleCameraReconnect(cmd);
     });
+
+    // Detect Hardware: probe=true(또는 생략)일 때만 재연결 시도. probe=false면 현재 상태만 수집 (빠름).
+    ipcServer_.registerHandler(ipc::CommandType::DETECT_HARDWARE, [this](const ipc::Command& cmd) {
+        auto it = cmd.payload.find("probe");
+        bool doProbe = (it == cmd.payload.end() || it->second != "false");
+        if (doProbe) {
+            tryReconnectDevicesBeforeDetect();
+        }
+        return handleDetectHardware(cmd);
+    });
+    ipcServer_.registerHandler(ipc::CommandType::GET_AVAILABLE_PRINTERS, [this](const ipc::Command& cmd) {
+        return handleGetAvailablePrinters(cmd);
+    });
 }
 
 ipc::Response ServiceCore::handleGetStateSnapshot(const ipc::Command& cmd) {
@@ -155,18 +214,34 @@ ipc::Response ServiceCore::handleGetStateSnapshot(const ipc::Command& cmd) {
     resp.status = ipc::ResponseStatus::OK;
     resp.timestampMs = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::system_clock::now().time_since_epoch()).count();
-    
-    // Collect all device information
+
+    // Collect all device information (fast; no probe)
     auto devices = deviceManager_.getAllDeviceInfo();
-    
+
+    bool anyNotReady = false;
     for (const auto& device : devices) {
-        resp.result[device.deviceId + ".deviceType"] = devices::deviceTypeToString(device.deviceType);
-        resp.result[device.deviceId + ".deviceName"] = device.deviceName;
-        resp.result[device.deviceId + ".state"] = std::to_string(static_cast<int>(device.state));
-        resp.result[device.deviceId + ".stateString"] = devices::deviceStateToString(device.state);
-        resp.result[device.deviceId + ".lastError"] = device.lastError;
+        if (device.state != devices::DeviceState::STATE_READY) {
+            anyNotReady = true;
+        }
+        resp.responseMap[device.deviceId + ".deviceType"] = devices::deviceTypeToString(device.deviceType);
+        resp.responseMap[device.deviceId + ".deviceName"] = device.deviceName;
+        resp.responseMap[device.deviceId + ".state"] = std::to_string(static_cast<int>(device.state));
+        resp.responseMap[device.deviceId + ".stateString"] = devices::deviceStateToString(device.state);
+        resp.responseMap[device.deviceId + ".lastError"] = device.lastError;
     }
-    
+
+    // READY가 아닌 장치가 있으면 백그라운드에서 재연결 시도 (응답은 즉시 반환)
+    if (anyNotReady) {
+        std::thread([this]() {
+            try {
+                logging::Logger::getInstance().info("State snapshot had non-READY device(s), starting background reconnect");
+                tryReconnectDevicesBeforeDetect();
+            } catch (const std::exception& e) {
+                logging::Logger::getInstance().error("Background reconnect failed: " + std::string(e.what()));
+            }
+        }).detach();
+    }
+
     return resp;
 }
 
@@ -190,7 +265,7 @@ ipc::Response ServiceCore::handleGetDeviceList(const ipc::Command& cmd) {
         if (i > 0) oss << ",";
         oss << paymentIds[i];
     }
-    resp.result["payment"] = oss.str();
+    resp.responseMap["payment"] = oss.str();
     
     oss.str("");
     oss << "printer:";
@@ -198,7 +273,7 @@ ipc::Response ServiceCore::handleGetDeviceList(const ipc::Command& cmd) {
         if (i > 0) oss << ",";
         oss << printerIds[i];
     }
-    resp.result["printer"] = oss.str();
+    resp.responseMap["printer"] = oss.str();
     
     oss.str("");
     oss << "camera:";
@@ -206,8 +281,165 @@ ipc::Response ServiceCore::handleGetDeviceList(const ipc::Command& cmd) {
         if (i > 0) oss << ",";
         oss << cameraIds[i];
     }
-    resp.result["camera"] = oss.str();
+    resp.responseMap["camera"] = oss.str();
     
+    return resp;
+}
+
+ipc::Response ServiceCore::handleGetConfig(const ipc::Command& cmd) {
+    ipc::Response resp;
+    resp.protocolVersion = cmd.protocolVersion;
+    resp.kind = ipc::MessageKind::RESPONSE;
+    resp.commandId = cmd.commandId;
+    resp.status = ipc::ResponseStatus::OK;
+    resp.timestampMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count();
+    auto all = config::ConfigManager::getInstance().getAll();
+    for (const auto& kv : all) {
+        resp.responseMap[kv.first] = kv.second;
+    }
+    return resp;
+}
+
+ipc::Response ServiceCore::handleGetAvailablePrinters(const ipc::Command& cmd) {
+    ipc::Response resp;
+    resp.protocolVersion = cmd.protocolVersion;
+    resp.kind = ipc::MessageKind::RESPONSE;
+    resp.commandId = cmd.commandId;
+    resp.status = ipc::ResponseStatus::OK;
+    resp.timestampMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count();
+    std::vector<std::string> names = windows::WindowsGdiPrinterAdapter::getAvailablePrinterNames();
+    std::ostringstream oss;
+    for (size_t i = 0; i < names.size(); ++i) {
+        if (i > 0) oss << "\n";
+        oss << names[i];
+    }
+    resp.responseMap["available_printers"] = oss.str();
+    return resp;
+}
+
+ipc::Response ServiceCore::handleSetConfig(const ipc::Command& cmd) {
+    ipc::Response resp;
+    resp.protocolVersion = cmd.protocolVersion;
+    resp.kind = ipc::MessageKind::RESPONSE;
+    resp.commandId = cmd.commandId;
+    resp.timestampMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count();
+    try {
+        config::ConfigManager::getInstance().setFromMap(cmd.payload);
+        config::ConfigManager::getInstance().saveIfInitialized();
+        auto it = cmd.payload.find("printer.name");
+        if (it != cmd.payload.end()) {
+            auto printer = deviceManager_.getDefaultPrinter();
+            auto* gdi = dynamic_cast<windows::WindowsGdiPrinterAdapter*>(printer.get());
+            if (gdi) gdi->setPrinterName(it->second);
+        }
+        resp.status = ipc::ResponseStatus::OK;
+        resp.responseMap["restart_required"] = "0";
+    } catch (const std::exception& e) {
+        resp.status = ipc::ResponseStatus::FAILED;
+        auto err = std::make_shared<ipc::Error>();
+        err->code = "CONFIG_SAVE_FAILED";
+        err->message = e.what();
+        resp.error = err;
+    }
+    return resp;
+}
+
+namespace {
+    bool base64Decode(const std::string& in, std::vector<uint8_t>& out) {
+        static const std::string kChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+        out.clear();
+        std::vector<int> T(256, -1);
+        for (size_t i = 0; i < kChars.size(); ++i) T[static_cast<unsigned char>(kChars[i])] = static_cast<int>(i);
+        int val = 0, valb = -8;
+        for (unsigned char c : in) {
+            if (T[c] == -1) break;
+            val = (val << 6) + T[c];
+            valb += 6;
+            if (valb >= 0) {
+                out.push_back(static_cast<uint8_t>((val >> valb) & 0xFF));
+                valb -= 8;
+            }
+        }
+        return !out.empty() || in.empty();
+    }
+}
+
+ipc::Response ServiceCore::handlePrinterPrint(const ipc::Command& cmd) {
+    ipc::Response resp;
+    resp.protocolVersion = cmd.protocolVersion;
+    resp.kind = ipc::MessageKind::RESPONSE;
+    resp.commandId = cmd.commandId;
+    resp.timestampMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count();
+
+    auto printer = deviceManager_.getDefaultPrinter();
+    if (!printer) {
+        resp.status = ipc::ResponseStatus::REJECTED;
+        auto err = std::make_shared<ipc::Error>();
+        err->code = "DEVICE_NOT_FOUND";
+        err->message = "No printer registered";
+        resp.error = err;
+        return resp;
+    }
+    auto itJob = cmd.payload.find("jobId");
+    if (itJob == cmd.payload.end()) {
+        resp.status = ipc::ResponseStatus::REJECTED;
+        auto err = std::make_shared<ipc::Error>();
+        err->code = "INVALID_PAYLOAD";
+        err->message = "Missing jobId";
+        resp.error = err;
+        return resp;
+    }
+    const std::string jobId = itJob->second;
+    auto itPath = cmd.payload.find("filePath");
+    if (itPath != cmd.payload.end() && !itPath->second.empty()) {
+        // filePath: print from file in background (Bitmap::FromFile; no stream/corrupt JPEG)
+        std::string path = itPath->second;
+        std::string orientation = "portrait";
+        auto itOri = cmd.payload.find("orientation");
+        if (itOri != cmd.payload.end() && (itOri->second == "portrait" || itOri->second == "landscape"))
+            orientation = itOri->second;
+        logging::Logger::getInstance().info("printer_print: file path=" + path + " orientation=" + orientation + " (print in background)");
+        bool pathExists = std::filesystem::exists(std::filesystem::path(path));
+        logging::Logger::getInstance().info("printer_print: file exists=" + std::string(pathExists ? "yes" : "no"));
+        resp.status = ipc::ResponseStatus::OK;
+        resp.responseMap["jobId"] = jobId;
+        resp.responseMap["deviceId"] = printer->getDeviceInfo().deviceId;
+        std::shared_ptr<devices::IPrinter> pr = printer;
+        std::thread([pr, jobId, path, orientation]() {
+            pr->printFromFile(jobId, path, orientation);
+        }).detach();
+        return resp;
+    }
+    auto itData = cmd.payload.find("data");
+    if (itData != cmd.payload.end() && !itData->second.empty()) {
+        // base64 data: decode then print in background
+        std::vector<uint8_t> data;
+        if (!base64Decode(itData->second, data)) {
+            resp.status = ipc::ResponseStatus::REJECTED;
+            auto err = std::make_shared<ipc::Error>();
+            err->code = "INVALID_PAYLOAD";
+            err->message = "Invalid base64 data";
+            resp.error = err;
+            return resp;
+        }
+        resp.status = ipc::ResponseStatus::OK;
+        resp.responseMap["jobId"] = jobId;
+        resp.responseMap["deviceId"] = printer->getDeviceInfo().deviceId;
+        std::shared_ptr<devices::IPrinter> pr = printer;
+        std::thread([pr, jobId, data]() {
+            pr->print(jobId, data);
+        }).detach();
+        return resp;
+    }
+    resp.status = ipc::ResponseStatus::REJECTED;
+    auto err = std::make_shared<ipc::Error>();
+    err->code = "INVALID_PAYLOAD";
+    err->message = "Missing filePath or data";
+    resp.error = err;
     return resp;
 }
 
@@ -252,10 +484,10 @@ ipc::Response ServiceCore::handlePaymentStart(const ipc::Command& cmd) {
     if (terminal->startPayment(amount)) {
         resp.status = ipc::ResponseStatus::OK;
         auto info = terminal->getDeviceInfo();
-        resp.result["commandId"] = cmd.commandId;
-        resp.result["deviceId"] = info.deviceId;
-        resp.result["state"] = std::to_string(static_cast<int>(info.state));
-        resp.result["stateString"] = devices::deviceStateToString(info.state);
+        resp.responseMap["commandId"] = cmd.commandId;
+        resp.responseMap["deviceId"] = info.deviceId;
+        resp.responseMap["state"] = std::to_string(static_cast<int>(info.state));
+        resp.responseMap["stateString"] = devices::deviceStateToString(info.state);
         logging::Logger::getInstance().info("Payment start command sent successfully");
     } else {
         resp.status = ipc::ResponseStatus::FAILED;
@@ -298,10 +530,10 @@ ipc::Response ServiceCore::handlePaymentCancel(const ipc::Command& cmd) {
     if (terminal->cancelPayment()) {
         resp.status = ipc::ResponseStatus::OK;
         auto info = terminal->getDeviceInfo();
-        resp.result["commandId"] = cmd.commandId;
-        resp.result["deviceId"] = info.deviceId;
-        resp.result["state"] = std::to_string(static_cast<int>(info.state));
-        resp.result["stateString"] = devices::deviceStateToString(info.state);
+        resp.responseMap["commandId"] = cmd.commandId;
+        resp.responseMap["deviceId"] = info.deviceId;
+        resp.responseMap["state"] = std::to_string(static_cast<int>(info.state));
+        resp.responseMap["stateString"] = devices::deviceStateToString(info.state);
         logging::Logger::getInstance().info("Payment cancel command sent successfully");
     } else {
         resp.status = ipc::ResponseStatus::FAILED;
@@ -336,11 +568,11 @@ ipc::Response ServiceCore::handlePaymentStatusCheck(const ipc::Command& cmd) {
     }
     
     auto info = terminal->getDeviceInfo();
-    resp.result["deviceId"] = info.deviceId;
-    resp.result["state"] = std::to_string(static_cast<int>(info.state));
-    resp.result["stateString"] = devices::deviceStateToString(info.state);
-    resp.result["deviceName"] = info.deviceName;
-    resp.result["lastError"] = info.lastError;
+    resp.responseMap["deviceId"] = info.deviceId;
+    resp.responseMap["state"] = std::to_string(static_cast<int>(info.state));
+    resp.responseMap["stateString"] = devices::deviceStateToString(info.state);
+    resp.responseMap["deviceName"] = info.deviceName;
+    resp.responseMap["lastError"] = info.lastError;
     
     return resp;
 }
@@ -368,10 +600,10 @@ ipc::Response ServiceCore::handlePaymentReset(const ipc::Command& cmd) {
     if (terminal->reset()) {
         resp.status = ipc::ResponseStatus::OK;
         auto info = terminal->getDeviceInfo();
-        resp.result["commandId"] = cmd.commandId;
-        resp.result["deviceId"] = info.deviceId;
-        resp.result["state"] = std::to_string(static_cast<int>(info.state));
-        resp.result["stateString"] = devices::deviceStateToString(info.state);
+        resp.responseMap["commandId"] = cmd.commandId;
+        resp.responseMap["deviceId"] = info.deviceId;
+        resp.responseMap["state"] = std::to_string(static_cast<int>(info.state));
+        resp.responseMap["stateString"] = devices::deviceStateToString(info.state);
     } else {
         resp.status = ipc::ResponseStatus::FAILED;
         auto info = terminal->getDeviceInfo();
@@ -407,10 +639,10 @@ ipc::Response ServiceCore::handlePaymentDeviceCheck(const ipc::Command& cmd) {
     if (terminal->checkDevice()) {
         resp.status = ipc::ResponseStatus::OK;
         auto info = terminal->getDeviceInfo();
-        resp.result["commandId"] = cmd.commandId;
-        resp.result["deviceId"] = info.deviceId;
-        resp.result["state"] = std::to_string(static_cast<int>(info.state));
-        resp.result["stateString"] = devices::deviceStateToString(info.state);
+        resp.responseMap["commandId"] = cmd.commandId;
+        resp.responseMap["deviceId"] = info.deviceId;
+        resp.responseMap["state"] = std::to_string(static_cast<int>(info.state));
+        resp.responseMap["stateString"] = devices::deviceStateToString(info.state);
     } else {
         resp.status = ipc::ResponseStatus::FAILED;
         auto info = terminal->getDeviceInfo();
@@ -472,8 +704,8 @@ ipc::Response ServiceCore::handlePaymentCardUidRead(const ipc::Command& cmd) {
         uidHex += hex;
         if (i < cardResponse.uid.size() - 1) uidHex += " ";
     }
-    resp.result["uid"] = uidHex;
-    resp.result["uidLength"] = std::to_string(cardResponse.uid.size());
+    resp.responseMap["uid"] = uidHex;
+    resp.responseMap["uidLength"] = std::to_string(cardResponse.uid.size());
     
     return resp;
 }
@@ -527,8 +759,8 @@ ipc::Response ServiceCore::handlePaymentLastApproval(const ipc::Command& cmd) {
         snprintf(hex, sizeof(hex), "%02X", lastApproval.data[i]);
         dataHex += hex;
     }
-    resp.result["data"] = dataHex;
-    resp.result["dataLength"] = std::to_string(lastApproval.data.size());
+    resp.responseMap["data"] = dataHex;
+    resp.responseMap["dataLength"] = std::to_string(lastApproval.data.size());
     
     return resp;
 }
@@ -574,8 +806,8 @@ ipc::Response ServiceCore::handlePaymentIcCardCheck(const ipc::Command& cmd) {
     }
     
     resp.status = ipc::ResponseStatus::OK;
-    resp.result["cardStatus"] = std::string(1, icResponse.cardStatus);
-    resp.result["cardInserted"] = (icResponse.cardStatus == 'O') ? "true" : "false";
+    resp.responseMap["cardStatus"] = std::string(1, icResponse.cardStatus);
+    resp.responseMap["cardInserted"] = (icResponse.cardStatus == 'O') ? "true" : "false";
     
     return resp;
 }
@@ -649,9 +881,9 @@ ipc::Response ServiceCore::handlePaymentScreenSoundSetting(const ipc::Command& c
     }
     
     resp.status = ipc::ResponseStatus::OK;
-    resp.result["screenBrightness"] = std::to_string(settingResponse.screenBrightness);
-    resp.result["soundVolume"] = std::to_string(settingResponse.soundVolume);
-    resp.result["touchSoundVolume"] = std::to_string(settingResponse.touchSoundVolume);
+    resp.responseMap["screenBrightness"] = std::to_string(settingResponse.screenBrightness);
+    resp.responseMap["soundVolume"] = std::to_string(settingResponse.soundVolume);
+    resp.responseMap["touchSoundVolume"] = std::to_string(settingResponse.touchSoundVolume);
     
     return resp;
 }
@@ -741,16 +973,16 @@ ipc::Response ServiceCore::handlePaymentTransactionCancel(const ipc::Command& cm
     }
     
     resp.status = ipc::ResponseStatus::OK;
-    resp.result["transactionType"] = std::string(1, cancelResponse.transactionType);
-    resp.result["transactionMedium"] = std::string(1, cancelResponse.transactionMedium);
-    resp.result["cardNumber"] = cancelResponse.cardNumber;
-    resp.result["approvalAmount"] = cancelResponse.approvalAmount;
-    resp.result["approvalNumber"] = cancelResponse.approvalNumber;
-    resp.result["salesDate"] = cancelResponse.salesDate;
-    resp.result["salesTime"] = cancelResponse.salesTime;
-    resp.result["transactionId"] = cancelResponse.transactionId;
-    resp.result["isRejected"] = cancelResponse.isRejected() ? "true" : "false";
-    resp.result["isSuccess"] = cancelResponse.isSuccess() ? "true" : "false";
+    resp.responseMap["transactionType"] = std::string(1, cancelResponse.transactionType);
+    resp.responseMap["transactionMedium"] = std::string(1, cancelResponse.transactionMedium);
+    resp.responseMap["cardNumber"] = cancelResponse.cardNumber;
+    resp.responseMap["approvalAmount"] = cancelResponse.approvalAmount;
+    resp.responseMap["approvalNumber"] = cancelResponse.approvalNumber;
+    resp.responseMap["salesDate"] = cancelResponse.salesDate;
+    resp.responseMap["salesTime"] = cancelResponse.salesTime;
+    resp.responseMap["transactionId"] = cancelResponse.transactionId;
+    resp.responseMap["isRejected"] = cancelResponse.isRejected() ? "true" : "false";
+    resp.responseMap["isSuccess"] = cancelResponse.isSuccess() ? "true" : "false";
     
     return resp;
 }
@@ -793,6 +1025,33 @@ void ServiceCore::setupEventCallbacks() {
     } else {
         logging::Logger::getInstance().warn("setupEventCallbacks: no camera available, capture_complete will not be sent");
     }
+
+    // Setup printer event callback
+    auto printer = deviceManager_.getDefaultPrinter();
+    if (printer) {
+        printer->setPrintJobCompleteCallback([this](const devices::PrintJobCompleteEvent& event) {
+            publishPrinterJobCompleteEvent(event);
+        });
+        printer->setStateChangedCallback([this](devices::DeviceState state) {
+            publishDeviceStateChangedEvent("printer", state);
+        });
+    }
+}
+
+void ServiceCore::publishPrinterJobCompleteEvent(const devices::PrintJobCompleteEvent& event) {
+    ipc::Event ipcEvent;
+    ipcEvent.protocolVersion = ipc::PROTOCOL_VERSION;
+    ipcEvent.kind = ipc::MessageKind::EVENT;
+    ipcEvent.eventId = generateUUID();
+    ipcEvent.eventType = ipc::EventType::PRINTER_JOB_COMPLETE;
+    ipcEvent.timestampMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count();
+    ipcEvent.deviceType = "printer";
+    ipcEvent.data["jobId"] = event.jobId;
+    ipcEvent.data["success"] = event.success ? "true" : "false";
+    ipcEvent.data["errorMessage"] = event.errorMessage;
+    ipcEvent.data["state"] = std::to_string(static_cast<int>(event.state));
+    ipcServer_.broadcastEvent(ipcEvent);
 }
 
 void ServiceCore::publishPaymentCompleteEvent(const devices::PaymentCompleteEvent& event) {
@@ -1010,7 +1269,9 @@ void ServiceCore::publishSystemStatusCheckEvent(const std::map<std::string, devi
     
     // Add device statuses
     int index = 0;
-    for (const auto& [deviceId, info] : deviceStatuses) {
+    for (const auto& pair : deviceStatuses) {
+        const std::string& deviceId = pair.first;
+        const devices::DeviceInfo& info = pair.second;
         std::string prefix = "devices[" + std::to_string(index) + "].";
         ipcEvent.data[prefix + "deviceId"] = deviceId;
         ipcEvent.data[prefix + "deviceType"] = devices::deviceTypeToString(info.deviceType);
@@ -1247,7 +1508,7 @@ ipc::Response ServiceCore::handleCameraSetSession(const ipc::Command& cmd) {
     }
     config::ConfigManager::getInstance().setSessionId(it->second);
     resp.status = ipc::ResponseStatus::OK;
-    resp.result["sessionId"] = it->second;
+    resp.responseMap["sessionId"] = it->second;
     return resp;
 }
 
@@ -1300,11 +1561,11 @@ ipc::Response ServiceCore::handleCameraCapture(const ipc::Command& cmd) {
     if (camera->capture(captureId)) {
         resp.status = ipc::ResponseStatus::OK;
         auto info = camera->getDeviceInfo();
-        resp.result["commandId"] = cmd.commandId;
-        resp.result["captureId"] = captureId;
-        resp.result["deviceId"] = info.deviceId;
-        resp.result["state"] = std::to_string(static_cast<int>(info.state));
-        resp.result["stateString"] = devices::deviceStateToString(info.state);
+        resp.responseMap["commandId"] = cmd.commandId;
+        resp.responseMap["captureId"] = captureId;
+        resp.responseMap["deviceId"] = info.deviceId;
+        resp.responseMap["state"] = std::to_string(static_cast<int>(info.state));
+        resp.responseMap["stateString"] = devices::deviceStateToString(info.state);
     } else {
         resp.status = ipc::ResponseStatus::FAILED;
         auto info = camera->getDeviceInfo();
@@ -1337,11 +1598,11 @@ ipc::Response ServiceCore::handleCameraStatus(const ipc::Command& cmd) {
     }
     
     auto info = camera->getDeviceInfo();
-    resp.result["deviceId"] = info.deviceId;
-    resp.result["state"] = std::to_string(static_cast<int>(info.state));
-    resp.result["stateString"] = devices::deviceStateToString(info.state);
-    resp.result["deviceName"] = info.deviceName;
-    resp.result["lastError"] = info.lastError;
+    resp.responseMap["deviceId"] = info.deviceId;
+    resp.responseMap["state"] = std::to_string(static_cast<int>(info.state));
+    resp.responseMap["stateString"] = devices::deviceStateToString(info.state);
+    resp.responseMap["deviceName"] = info.deviceName;
+    resp.responseMap["lastError"] = info.lastError;
     
     return resp;
 }
@@ -1368,7 +1629,7 @@ ipc::Response ServiceCore::handleCameraStartPreview(const ipc::Command& cmd) {
         resp.status = ipc::ResponseStatus::OK;
         auto* edsdkCam = dynamic_cast<canon::EdsdkCameraAdapter*>(camera.get());
         if (edsdkCam)
-            resp.result["liveview_url"] = edsdkCam->getLiveviewUrl();
+            resp.responseMap["liveview_url"] = edsdkCam->getLiveviewUrl();
     } else {
         resp.status = ipc::ResponseStatus::FAILED;
         auto error = std::make_shared<ipc::Error>();
@@ -1455,11 +1716,11 @@ ipc::Response ServiceCore::handleCameraSetSettings(const ipc::Command& cmd) {
     
     if (camera->setSettings(settings)) {
         resp.status = ipc::ResponseStatus::OK;
-        resp.result["resolutionWidth"] = std::to_string(settings.resolutionWidth);
-        resp.result["resolutionHeight"] = std::to_string(settings.resolutionHeight);
-        resp.result["imageFormat"] = settings.imageFormat;
-        resp.result["quality"] = std::to_string(settings.quality);
-        resp.result["autoFocus"] = settings.autoFocus ? "true" : "false";
+        resp.responseMap["resolutionWidth"] = std::to_string(settings.resolutionWidth);
+        resp.responseMap["resolutionHeight"] = std::to_string(settings.resolutionHeight);
+        resp.responseMap["imageFormat"] = settings.imageFormat;
+        resp.responseMap["quality"] = std::to_string(settings.quality);
+        resp.responseMap["autoFocus"] = settings.autoFocus ? "true" : "false";
     } else {
         resp.status = ipc::ResponseStatus::FAILED;
         auto error = std::make_shared<ipc::Error>();
@@ -1469,6 +1730,44 @@ ipc::Response ServiceCore::handleCameraSetSettings(const ipc::Command& cmd) {
     }
     
     return resp;
+}
+
+void ServiceCore::tryReconnectDevicesBeforeDetect() {
+    using namespace devices;
+
+    // 자동탐지 시 항상 재연결(프로브)하여 실제 연결 상태 반영. (꺼져 있어도 READY로 캐시된 상태가 갱신됨)
+
+    // 1. Camera — 항상 shutdown + initialize로 실제 연결 여부 확인 (EDSDK만 지원)
+    auto camera = deviceManager_.getDefaultCamera();
+    if (camera) {
+        auto* edsdkCam = dynamic_cast<canon::EdsdkCameraAdapter*>(camera.get());
+        if (edsdkCam) {
+            logging::Logger::getInstance().info("Detect hardware: probing camera (shutdown + re-init)");
+            edsdkCam->shutdown();
+            bool ok = edsdkCam->initialize();
+            if (ok) {
+                logging::Logger::getInstance().info("Detect hardware: camera probe succeeded (READY)");
+            } else {
+                logging::Logger::getInstance().info("Detect hardware: camera probe failed (disconnected/error), will report current state");
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(300));
+        }
+    }
+
+    // 2. Payment — 항상 checkDevice()로 실제 연결 상태 확인
+    auto payment = deviceManager_.getDefaultPaymentTerminal();
+    if (payment) {
+        auto* smartro = dynamic_cast<smartro::SmartroPaymentAdapter*>(payment.get());
+        if (smartro) {
+            logging::Logger::getInstance().info("Detect hardware: probing payment terminal");
+            bool ok = smartro->checkDevice();
+            if (ok) {
+                logging::Logger::getInstance().info("Detect hardware: payment probe succeeded");
+            } else {
+                logging::Logger::getInstance().info("Detect hardware: payment probe failed, will report current state");
+            }
+        }
+    }
 }
 
 ipc::Response ServiceCore::handleCameraReconnect(const ipc::Command& cmd) {
@@ -1504,7 +1803,7 @@ ipc::Response ServiceCore::handleCameraReconnect(const ipc::Command& cmd) {
     bool ok = edsdkCam->initialize();
     if (ok) {
         resp.status = ipc::ResponseStatus::OK;
-        resp.result["status"] = "ok";
+        resp.responseMap["status"] = "ok";
         logging::Logger::getInstance().info("Camera reconnect completed successfully");
     } else {
         resp.status = ipc::ResponseStatus::FAILED;

@@ -4,15 +4,20 @@
 // Include logger.h first to prevent Windows SDK conflicts
 #include "logging/logger.h"
 #include "core/service_core.h"
+#include "config/config_manager.h"
 #include "vendor_adapters/smartro/smartro_payment_adapter.h"
 #include "vendor_adapters/canon/edsdk_camera_adapter.h"
-#include "config/config_manager.h"
+#include "vendor_adapters/windows/windows_gdi_printer_adapter.h"
 #include <iostream>
 #include <string>
 #include <thread>
 #include <chrono>
 #include <csignal>
 #include <atomic>
+#include <filesystem>
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
 namespace {
     std::atomic<bool> g_running(true);
@@ -38,47 +43,56 @@ int main(int argc, char* argv[]) {
     std::signal(SIGTERM, SignalHandler);
     
     try {
-        // Initialize configuration
-        config::ConfigManager::getInstance().initialize();
-        
+        // config.ini: exe와 같은 폴더에 생성 (찾기 쉽게). 실패 시 CWD 사용.
+        std::string configPath;
+#ifdef _WIN32
+        wchar_t exePath[MAX_PATH] = {};
+        if (GetModuleFileNameW(nullptr, exePath, MAX_PATH) != 0) {
+            std::filesystem::path p(exePath);
+            configPath = (p.parent_path() / "config.ini").string();
+        }
+#endif
+        config::ConfigManager::getInstance().initialize(configPath);
+        auto& config = config::ConfigManager::getInstance();
+
         // Create and start service core
         core::ServiceCore serviceCore;
         g_serviceCore = &serviceCore;
-        
-        // Register payment terminal (Smartro)
-        // TODO: COM port and terminal ID should come from config file or command line
-        std::string comPort = "COM3";  // Default, should be configurable
+
+        // Register printer (Windows GDI only; no external app required). Config: printer.name
+        std::string printerName = config.getPrinterName();
+        std::string printerDeviceId = "windows_printer_001";
+        logging::Logger::getInstance().info("Registering printer: " + printerDeviceId + " (" + printerName + ")");
+        auto printerAdapter = std::make_shared<windows::WindowsGdiPrinterAdapter>(printerDeviceId, printerName);
+        serviceCore.getDeviceManager().registerPrinter(printerDeviceId, printerAdapter);
+
+        // Register payment terminal (Smartro) — config: payment.com_port, payment.enabled
+        std::string comPort = config.getPaymentComPort();
+        if (argc > 1) comPort = argv[1];
         std::string terminalId = "DEFAULT_TERM";
+        if (argc > 2) terminalId = argv[2];
         std::string deviceId = "smartro_terminal_001";
-        
-        // Check if COM port is provided as argument
-        if (argc > 1) {
-            comPort = argv[1];
+        if (config.getPaymentEnabled()) {
+            logging::Logger::getInstance().info("Registering payment terminal: " + deviceId + " on " + comPort);
+            auto paymentAdapter = std::make_shared<smartro::SmartroPaymentAdapter>(
+                deviceId, comPort, terminalId
+            );
+            serviceCore.getDeviceManager().registerPaymentTerminal(deviceId, paymentAdapter);
+        } else {
+            logging::Logger::getInstance().info("Payment terminal disabled in config");
         }
-        if (argc > 2) {
-            terminalId = argv[2];
-        }
         
-        logging::Logger::getInstance().info("Registering payment terminal: " + deviceId + " on " + comPort);
-        
-        auto paymentAdapter = std::make_shared<smartro::SmartroPaymentAdapter>(
-            deviceId, comPort, terminalId
-        );
-        
-        serviceCore.getDeviceManager().registerPaymentTerminal(deviceId, paymentAdapter);
-        
-        // Register camera (EDSDK)
+        // Register camera (EDSDK) — 초기화 실패해도 항상 등록. 자동감지 시 재연결 시도 가능.
         std::string cameraDeviceId = "canon_camera_001";
         logging::Logger::getInstance().info("Initializing EDSDK camera adapter: " + cameraDeviceId);
         
         auto cameraAdapter = std::make_shared<canon::EdsdkCameraAdapter>(cameraDeviceId);
-        
         if (cameraAdapter->initialize()) {
-            serviceCore.getDeviceManager().registerCamera(cameraDeviceId, cameraAdapter);
             logging::Logger::getInstance().info("Camera registered successfully: " + cameraDeviceId);
         } else {
-            logging::Logger::getInstance().warn("Failed to initialize camera adapter. Camera features will not be available.");
+            logging::Logger::getInstance().warn("Camera not connected at startup. Use auto-detect after turning camera on.");
         }
+        serviceCore.getDeviceManager().registerCamera(cameraDeviceId, cameraAdapter);
 
         // Setup event callbacks (capture_complete etc.) before starting IPC so they are set on the registered camera
         serviceCore.prepareEventCallbacks();

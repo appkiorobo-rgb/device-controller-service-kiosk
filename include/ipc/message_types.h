@@ -39,13 +39,18 @@ enum class CommandType {
     PAYMENT_SCREEN_SOUND_SETTING,
     GET_DEVICE_LIST,
     GET_STATE_SNAPSHOT,
+    GET_CONFIG,
+    SET_CONFIG,
+    PRINTER_PRINT,
     CAMERA_CAPTURE,
     CAMERA_SET_SESSION,
     CAMERA_STATUS,
     CAMERA_START_PREVIEW,
     CAMERA_STOP_PREVIEW,
     CAMERA_SET_SETTINGS,
-    CAMERA_RECONNECT
+    CAMERA_RECONNECT,
+    DETECT_HARDWARE,
+    GET_AVAILABLE_PRINTERS
 };
 
 // Event types
@@ -56,7 +61,8 @@ enum class EventType {
     DEVICE_STATE_CHANGED,
     SYSTEM_STATUS_CHECK,
     CAMERA_CAPTURE_COMPLETE,
-    CAMERA_STATE_CHANGED
+    CAMERA_STATE_CHANGED,
+    PRINTER_JOB_COMPLETE
 };
 
 // Error structure
@@ -75,6 +81,20 @@ struct Command {
     std::map<std::string, std::string> payload;
 };
 
+// Undef common Windows macros that can break member names (winres.h, winerror.h, etc.)
+#ifdef result
+#undef result
+#endif
+#ifdef response
+#undef response
+#endif
+#ifdef Data
+#undef Data
+#endif
+#ifdef ERROR
+#undef ERROR
+#endif
+
 // Response message structure
 struct Response {
     std::string protocolVersion;
@@ -82,7 +102,7 @@ struct Response {
     std::string commandId;
     ResponseStatus status;
     int64_t timestampMs;
-    std::map<std::string, std::string> result;
+    std::map<std::string, std::string> responseMap;
     std::shared_ptr<Error> error;
 };
 
@@ -112,6 +132,9 @@ inline std::string commandTypeToString(CommandType type) {
         case CommandType::PAYMENT_SCREEN_SOUND_SETTING: return "payment_screen_sound_setting";
         case CommandType::GET_DEVICE_LIST: return "get_device_list";
         case CommandType::GET_STATE_SNAPSHOT: return "get_state_snapshot";
+        case CommandType::GET_CONFIG: return "get_config";
+        case CommandType::SET_CONFIG: return "set_config";
+        case CommandType::PRINTER_PRINT: return "printer_print";
         case CommandType::CAMERA_CAPTURE: return "camera_capture";
         case CommandType::CAMERA_SET_SESSION: return "camera_set_session";
         case CommandType::CAMERA_STATUS: return "camera_status";
@@ -119,6 +142,8 @@ inline std::string commandTypeToString(CommandType type) {
         case CommandType::CAMERA_STOP_PREVIEW: return "camera_stop_preview";
         case CommandType::CAMERA_SET_SETTINGS: return "camera_set_settings";
         case CommandType::CAMERA_RECONNECT: return "camera_reconnect";
+        case CommandType::DETECT_HARDWARE: return "detect_hardware";
+        case CommandType::GET_AVAILABLE_PRINTERS: return "get_available_printers";
         default: return "unknown";
     }
 }
@@ -136,6 +161,9 @@ inline CommandType stringToCommandType(const std::string& str) {
     if (str == "payment_screen_sound_setting") return CommandType::PAYMENT_SCREEN_SOUND_SETTING;
     if (str == "get_device_list") return CommandType::GET_DEVICE_LIST;
     if (str == "get_state_snapshot") return CommandType::GET_STATE_SNAPSHOT;
+    if (str == "get_config") return CommandType::GET_CONFIG;
+    if (str == "set_config") return CommandType::SET_CONFIG;
+    if (str == "printer_print") return CommandType::PRINTER_PRINT;
     if (str == "camera_capture") return CommandType::CAMERA_CAPTURE;
     if (str == "camera_set_session") return CommandType::CAMERA_SET_SESSION;
     if (str == "camera_status") return CommandType::CAMERA_STATUS;
@@ -143,6 +171,8 @@ inline CommandType stringToCommandType(const std::string& str) {
     if (str == "camera_stop_preview") return CommandType::CAMERA_STOP_PREVIEW;
     if (str == "camera_set_settings") return CommandType::CAMERA_SET_SETTINGS;
     if (str == "camera_reconnect") return CommandType::CAMERA_RECONNECT;
+    if (str == "detect_hardware") return CommandType::DETECT_HARDWARE;
+    if (str == "get_available_printers") return CommandType::GET_AVAILABLE_PRINTERS;
     return CommandType::PAYMENT_START; // Default
 }
 
@@ -171,6 +201,7 @@ inline std::string eventTypeToString(EventType type) {
         case EventType::SYSTEM_STATUS_CHECK: return "system_status_check";
         case EventType::CAMERA_CAPTURE_COMPLETE: return "camera_capture_complete";
         case EventType::CAMERA_STATE_CHANGED: return "camera_state_changed";
+        case EventType::PRINTER_JOB_COMPLETE: return "printer_job_complete";
         default: return "unknown";
     }
 }
@@ -183,6 +214,7 @@ inline EventType stringToEventType(const std::string& str) {
     if (str == "system_status_check") return EventType::SYSTEM_STATUS_CHECK;
     if (str == "camera_capture_complete") return EventType::CAMERA_CAPTURE_COMPLETE;
     if (str == "camera_state_changed") return EventType::CAMERA_STATE_CHANGED;
+    if (str == "printer_job_complete") return EventType::PRINTER_JOB_COMPLETE;
     return EventType::PAYMENT_COMPLETE; // Default
 }
 

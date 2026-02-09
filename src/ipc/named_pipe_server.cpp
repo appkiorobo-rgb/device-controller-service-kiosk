@@ -421,6 +421,7 @@ void NamedPipeServer::broadcast(const std::string& message) {
         clients_.end()
     );
     
+    // Note: 0 clients here means no subscriber for this event; the command response is still sent to the requesting client in the message handler.
     logging::Logger::getInstance().debug("Broadcasting message to " + std::to_string(clients_.size()) + " client(s)");
     
     // Broadcast to all connected clients

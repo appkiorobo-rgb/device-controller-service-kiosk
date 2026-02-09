@@ -25,6 +25,8 @@ public:
     bool reset() override;
     bool checkDevice() override;
 
+    std::string getComPort() const { return comPort_; }
+
     void setPaymentCompleteCallback(std::function<void(const devices::PaymentCompleteEvent&)> callback) override;
     void setPaymentFailedCallback(std::function<void(const devices::PaymentFailedEvent&)> callback) override;
     void setPaymentCancelledCallback(std::function<void(const devices::PaymentCancelledEvent&)> callback) override;

@@ -10,6 +10,19 @@
 #include "vendor_adapters/smartro/smartro_protocol.h"
 #include "logging/logger.h"
 
+// Undef Windows macros that conflict with variable names (response, result, ERROR, etc.)
+#ifdef _WIN32
+#ifdef ERROR
+#undef ERROR
+#endif
+#ifdef result
+#undef result
+#endif
+#ifdef response
+#undef response
+#endif
+#endif
+
 using namespace smartro;
 
 void printMenu() {

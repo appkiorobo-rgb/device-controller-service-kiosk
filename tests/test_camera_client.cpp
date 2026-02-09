@@ -151,9 +151,9 @@ std::string createCommand(const std::string& commandType, const std::string& com
          << R"(,"payload":{)";
     
     bool first = true;
-    for (const auto& [key, value] : payload) {
+    for (const auto& p : payload) {
         if (!first) json << ",";
-        json << "\"" << key << "\":\"" << value << "\"";
+        json << "\"" << p.first << "\":\"" << p.second << "\"";
         first = false;
     }
     

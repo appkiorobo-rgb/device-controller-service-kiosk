@@ -2,6 +2,7 @@
 #pragma once
 
 #include "core/device_manager.h"
+#include "devices/iprinter.h"
 #include "ipc/ipc_server.h"
 #include <memory>
 #include <queue>
@@ -79,6 +80,9 @@ private:
     // Command handler implementations (synchronous - immediate response)
     ipc::Response handleGetStateSnapshot(const ipc::Command& cmd);
     ipc::Response handleGetDeviceList(const ipc::Command& cmd);
+    ipc::Response handleGetConfig(const ipc::Command& cmd);
+    ipc::Response handleSetConfig(const ipc::Command& cmd);
+    ipc::Response handlePrinterPrint(const ipc::Command& cmd);
     ipc::Response handlePaymentStart(const ipc::Command& cmd);
     ipc::Response handlePaymentCancel(const ipc::Command& cmd);
     ipc::Response handlePaymentTransactionCancel(const ipc::Command& cmd);
@@ -98,7 +102,12 @@ private:
     ipc::Response handleCameraStopPreview(const ipc::Command& cmd);
     ipc::Response handleCameraSetSettings(const ipc::Command& cmd);
     ipc::Response handleCameraReconnect(const ipc::Command& cmd);
-    
+    ipc::Response handleDetectHardware(const ipc::Command& cmd);
+    ipc::Response handleGetAvailablePrinters(const ipc::Command& cmd);
+
+    /// 자동감지(detect_hardware) 전에 READY가 아닌 장치에 대해 재연결 시도. 호출 후 handleDetectHardware로 상태 수집.
+    void tryReconnectDevicesBeforeDetect();
+
     // Async task implementations (executed in worker thread)
     void executePaymentStart(const DeviceTask& task);
     void executePaymentCancel(const DeviceTask& task);
@@ -112,7 +121,8 @@ private:
     void publishDeviceStateChangedEvent(const std::string& deviceType, devices::DeviceState state);
     void publishSystemStatusCheckEvent(const std::map<std::string, devices::DeviceInfo>& deviceStatuses, bool allHealthy);
     void publishCameraCaptureCompleteEvent(const devices::CaptureCompleteEvent& event);
-    
+    void publishPrinterJobCompleteEvent(const devices::PrintJobCompleteEvent& event);
+
     // Status check on client connection
     void performSystemStatusCheck();
     

@@ -52,8 +52,9 @@ public:
     // Get baud rate
     uint32_t getBaudRate() const { return baudRate_; }
     
-    // Get list of available COM ports
-    static std::vector<std::string> getAvailablePorts();
+    // Get list of available COM ports.
+    // registryOnly: if true, only read registry (fast). If false, fallback to CreateFile on COM1..COM20 (can block ~10s).
+    static std::vector<std::string> getAvailablePorts(bool registryOnly = false);
     
     // Save working COM port
     static bool saveWorkingPort(const std::string& portName);

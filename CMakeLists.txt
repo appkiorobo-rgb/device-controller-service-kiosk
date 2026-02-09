@@ -135,10 +135,12 @@ set(IPC_SOURCES
 set(CORE_SOURCES
     src/core/device_manager.cpp
     src/core/service_core.cpp
+    src/core/service_core_detect_hardware.cpp
 )
 
 set(VENDOR_ADAPTER_SOURCES
     src/vendor_adapters/smartro/smartro_payment_adapter.cpp
+    src/vendor_adapters/windows/windows_gdi_printer_adapter.cpp
 )
 
 set(LV77_SOURCES
@@ -307,7 +309,7 @@ endif()
 # Windows 설정
 # =========================
 if(WIN32)
-    target_link_libraries(device_controller_service PRIVATE ws2_32)
+    target_link_libraries(device_controller_service PRIVATE ws2_32 gdiplus)
     # Windows API 레벨 고정 (Windows 10 기준)
     target_compile_definitions(device_controller_service PRIVATE _WIN32_WINNT=0x0A00)
     target_compile_definitions(test_integrated          PRIVATE _WIN32_WINNT=0x0A00)
@@ -325,38 +327,44 @@ set_target_properties(test_integrated PROPERTIES
 )
 
 # =========================
-# 컴파일러 옵션
+# 컴파일러 옵션 (C++17 필수: structured binding 등 사용)
 # =========================
 if(MSVC)
     target_compile_options(device_controller_service PRIVATE
         /W4
         /permissive-
         /Zc:__cplusplus
+        /std:c++17
     )
     target_compile_options(test_integrated PRIVATE
         /W4
         /permissive-
         /Zc:__cplusplus
+        /std:c++17
     )
     target_compile_options(test_pipe_client PRIVATE
         /W4
         /permissive-
         /Zc:__cplusplus
+        /std:c++17
     )
     target_compile_options(test_camera_client PRIVATE
         /W4
         /permissive-
         /Zc:__cplusplus
+        /std:c++17
     )
     target_compile_options(test_edsdk_camera PRIVATE
         /W4
         /permissive-
         /Zc:__cplusplus
+        /std:c++17
     )
     target_compile_options(test_lv77_client PRIVATE
         /W4
         /permissive-
         /Zc:__cplusplus
+        /std:c++17
     )
 else()
         target_compile_options(device_controller_service PRIVATE -Wall -Wextra -Wpedantic)

@@ -79,16 +79,16 @@ std::vector<devices::DeviceInfo> DeviceManager::getAllDeviceInfo() const {
     std::lock_guard<std::mutex> lock(mutex_);
     std::vector<devices::DeviceInfo> result;
     
-    for (const auto& [deviceId, terminal] : paymentTerminals_) {
-        result.push_back(terminal->getDeviceInfo());
+    for (const auto& pair : paymentTerminals_) {
+        result.push_back(pair.second->getDeviceInfo());
     }
     
-    for (const auto& [deviceId, printer] : printers_) {
-        result.push_back(printer->getDeviceInfo());
+    for (const auto& pair : printers_) {
+        result.push_back(pair.second->getDeviceInfo());
     }
     
-    for (const auto& [deviceId, camera] : cameras_) {
-        result.push_back(camera->getDeviceInfo());
+    for (const auto& pair : cameras_) {
+        result.push_back(pair.second->getDeviceInfo());
     }
     
     return result;
@@ -100,18 +100,18 @@ std::vector<std::string> DeviceManager::getDeviceIds(devices::DeviceType type) c
     
     switch (type) {
         case devices::DeviceType::PAYMENT_TERMINAL:
-            for (const auto& [deviceId, _] : paymentTerminals_) {
-                result.push_back(deviceId);
+            for (const auto& pair : paymentTerminals_) {
+                result.push_back(pair.first);
             }
             break;
         case devices::DeviceType::PRINTER:
-            for (const auto& [deviceId, _] : printers_) {
-                result.push_back(deviceId);
+            for (const auto& pair : printers_) {
+                result.push_back(pair.first);
             }
             break;
         case devices::DeviceType::CAMERA:
-            for (const auto& [deviceId, _] : cameras_) {
-                result.push_back(deviceId);
+            for (const auto& pair : cameras_) {
+                result.push_back(pair.first);
             }
             break;
     }

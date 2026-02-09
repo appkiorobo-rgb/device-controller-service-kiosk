@@ -295,7 +295,7 @@ void SerialPort::logError(const std::string& operation) {
     logging::Logger::getInstance().error(errorMsg);
 }
 
-std::vector<std::string> SerialPort::getAvailablePorts() {
+std::vector<std::string> SerialPort::getAvailablePorts(bool registryOnly) {
     std::vector<std::string> ports;
     
     // ?��??�트리에??COM ?�트 목록 ?�기
@@ -340,7 +340,7 @@ std::vector<std::string> SerialPort::getAvailablePorts() {
     }
     
     // ?��??�트리에??찾�? 못한 경우, COM1~COM20까�? ?�도
-    if (ports.empty()) {
+    if (!registryOnly && ports.empty()) {
         for (int i = 1; i <= 20; ++i) {
             std::string portName = "COM" + std::to_string(i);
             std::string fullPortName = "\\\\.\\" + portName;
