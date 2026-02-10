@@ -100,7 +100,7 @@ void EdsdkLiveviewServer::run() {
                     {
                         std::lock_guard<std::mutex> lock(frameMutex_);
                         if (frame_.empty()) {
-                            std::this_thread::sleep_for(std::chrono::milliseconds(33));
+                            std::this_thread::sleep_for(std::chrono::milliseconds(66));
                             continue;
                         }
                         copy = frame_;
@@ -111,7 +111,7 @@ void EdsdkLiveviewServer::run() {
                         copy.size());
                     if (send(client, partHeader, partLen, 0) <= 0) break;
                     if (send(client, reinterpret_cast<const char*>(copy.data()), static_cast<int>(copy.size()), 0) <= 0) break;
-                    std::this_thread::sleep_for(std::chrono::milliseconds(33));
+                    std::this_thread::sleep_for(std::chrono::milliseconds(66));
                 }
             }
         }

@@ -661,7 +661,7 @@ bool StartEvfCommand::execute() {
         return true;
     }
     EdsCameraRef cam = model_->getCameraObject();
-    EdsUInt32 outDevice = kEdsEvfOutputDevice_PC;
+    EdsUInt32 outDevice = kEdsEvfOutputDevice_PC_Small;
     EdsError err = EdsSetPropertyData(cam, kEdsPropID_Evf_OutputDevice, 0, sizeof(outDevice), &outDevice);
     if (err != EDS_ERR_OK) {
         logging::Logger::getInstance().error("StartEvfCommand: Set Evf_OutputDevice PC failed: " + std::to_string(err));

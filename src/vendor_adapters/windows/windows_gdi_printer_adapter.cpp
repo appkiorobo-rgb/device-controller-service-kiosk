@@ -21,8 +21,8 @@ namespace windows {
 
 #ifdef _WIN32
 namespace {
-    /// 용지 크기는 config (printer.paper_size): A4 / 4x6. 방향은 landscape로 세로/가로.
-    /// 그리기는 항상 비율 맞춤(fit)이라 용지만 바꾸면 됨.
+    /// 용지 크기는 config (printer.paper_size): A4 / 4x6.
+    /// 4x6일 때는 DEVMODE를 건드리지 않고, 윈도우에 설정된 해당 프린터 기본값(세로·6×4)을 그대로 사용.
     std::pair<HDC, std::vector<BYTE>> createPrinterDC(const std::wstring& printerNameW, bool landscape = false) {
         HDC hdc = nullptr;
         std::vector<BYTE> buf;
@@ -41,17 +41,12 @@ namespace {
             return { nullptr, {} };
         }
         std::string paperSize = config::ConfigManager::getInstance().getPrinterPaperSize();
-        if (paperSize == "4x6") {
-            pDM->dmFields |= DM_PAPERWIDTH | DM_PAPERLENGTH;
-            pDM->dmPaperSize = 0;  // custom
-            pDM->dmPaperWidth = 1016;   // 4 inch = 101.6 mm, in 0.1mm
-            pDM->dmPaperLength = 1524;   // 6 inch = 152.4 mm
-        } else {
+        if (paperSize != "4x6") {
             pDM->dmFields |= DM_PAPERSIZE;
             pDM->dmPaperSize = DMPAPER_A4;
+            pDM->dmFields |= DM_ORIENTATION;
+            pDM->dmOrientation = landscape ? DMORIENT_LANDSCAPE : DMORIENT_PORTRAIT;
         }
-        pDM->dmFields |= DM_ORIENTATION;
-        pDM->dmOrientation = landscape ? DMORIENT_LANDSCAPE : DMORIENT_PORTRAIT;
         hdc = CreateDCW(nullptr, printerNameW.c_str(), nullptr, pDM);
         ClosePrinter(hPrinter);
         return { hdc, std::move(buf) };
@@ -241,13 +236,18 @@ bool WindowsGdiPrinterAdapter::doPrint(const std::string& jobId,
         outEvent.errorMessage = "Bitmap::FromStream failed";
         return false;
     }
-    const int bmpW = static_cast<int>(pBitmap->GetWidth());
-    const int bmpH = static_cast<int>(pBitmap->GetHeight());
+    int bmpW = static_cast<int>(pBitmap->GetWidth());
+    int bmpH = static_cast<int>(pBitmap->GetHeight());
     if (bmpW <= 0 || bmpH <= 0) {
         delete pBitmap;
         DeleteDC(hdc);
         outEvent.errorMessage = "Bitmap has invalid dimensions";
         return false;
+    }
+    std::string paperSize = config::ConfigManager::getInstance().getPrinterPaperSize();
+    if (paperSize == "4x6" && bmpW > bmpH) {
+        pBitmap->RotateFlip(Gdiplus::Rotate90FlipNone);
+        std::swap(bmpW, bmpH);
     }
 
     DOCINFOW di = {};
@@ -269,7 +269,6 @@ bool WindowsGdiPrinterAdapter::doPrint(const std::string& jobId,
 
     {
         Gdiplus::Graphics graphics(hdc);
-        // Ensure coordinates match printer device pixels (MSDN/CodeProject: printer HDC needs explicit unit).
         graphics.SetPageUnit(Gdiplus::UnitPixel);
         int pageW = GetDeviceCaps(hdc, HORZRES);
         int pageH = GetDeviceCaps(hdc, VERTRES);
@@ -278,7 +277,6 @@ bool WindowsGdiPrinterAdapter::doPrint(const std::string& jobId,
             pageW = bmpW;
             pageH = bmpH;
         }
-        // Fit whole image inside page (aspect ratio preserved; may letterbox)
         double scale = (std::min)(static_cast<double>(pageW) / bmpW, static_cast<double>(pageH) / bmpH);
         int drawW = static_cast<int>(bmpW * scale + 0.5);
         int drawH = static_cast<int>(bmpH * scale + 0.5);
@@ -350,13 +348,18 @@ bool WindowsGdiPrinterAdapter::doPrintFromFile(const std::string& jobId,
         outEvent.errorMessage = "Bitmap::FromFile failed (invalid or corrupt image file)";
         return false;
     }
-    const int bmpW = static_cast<int>(pBitmap->GetWidth());
-    const int bmpH = static_cast<int>(pBitmap->GetHeight());
+    int bmpW = static_cast<int>(pBitmap->GetWidth());
+    int bmpH = static_cast<int>(pBitmap->GetHeight());
     logging::Logger::getInstance().info("printer_print from file: bitmap loaded " + std::to_string(bmpW) + "x" + std::to_string(bmpH));
     if (bmpW <= 0 || bmpH <= 0) {
         delete pBitmap;
         outEvent.errorMessage = "Bitmap has invalid dimensions";
         return false;
+    }
+    std::string paperSize = config::ConfigManager::getInstance().getPrinterPaperSize();
+    if (paperSize == "4x6" && bmpW > bmpH) {
+        pBitmap->RotateFlip(Gdiplus::Rotate90FlipNone);
+        std::swap(bmpW, bmpH);
     }
 
     bool landscape = (orientation == "landscape");
@@ -386,7 +389,6 @@ bool WindowsGdiPrinterAdapter::doPrintFromFile(const std::string& jobId,
 
     {
         Gdiplus::Graphics graphics(hdc);
-        // Ensure coordinates match printer device pixels (MSDN/CodeProject: printer HDC needs explicit unit).
         graphics.SetPageUnit(Gdiplus::UnitPixel);
         int pageW = GetDeviceCaps(hdc, HORZRES);
         int pageH = GetDeviceCaps(hdc, VERTRES);
@@ -394,7 +396,6 @@ bool WindowsGdiPrinterAdapter::doPrintFromFile(const std::string& jobId,
             pageW = bmpW;
             pageH = bmpH;
         }
-        // Fit whole image inside page (aspect ratio preserved; may letterbox)
         double scale = (std::min)(static_cast<double>(pageW) / bmpW, static_cast<double>(pageH) / bmpH);
         int drawW = static_cast<int>(bmpW * scale + 0.5);
         int drawH = static_cast<int>(bmpH * scale + 0.5);
