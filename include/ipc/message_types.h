@@ -50,7 +50,9 @@ enum class CommandType {
     CAMERA_SET_SETTINGS,
     CAMERA_RECONNECT,
     DETECT_HARDWARE,
-    GET_AVAILABLE_PRINTERS
+    GET_AVAILABLE_PRINTERS,
+    CASH_TEST_START,
+    CASH_PAYMENT_START
 };
 
 // Event types
@@ -62,7 +64,10 @@ enum class EventType {
     SYSTEM_STATUS_CHECK,
     CAMERA_CAPTURE_COMPLETE,
     CAMERA_STATE_CHANGED,
-    PRINTER_JOB_COMPLETE
+    PRINTER_JOB_COMPLETE,
+    CASH_TEST_AMOUNT,
+    CASH_PAYMENT_TARGET_REACHED,
+    CASH_BILL_STACKED
 };
 
 // Error structure
@@ -144,6 +149,8 @@ inline std::string commandTypeToString(CommandType type) {
         case CommandType::CAMERA_RECONNECT: return "camera_reconnect";
         case CommandType::DETECT_HARDWARE: return "detect_hardware";
         case CommandType::GET_AVAILABLE_PRINTERS: return "get_available_printers";
+        case CommandType::CASH_TEST_START: return "cash_test_start";
+        case CommandType::CASH_PAYMENT_START: return "cash_payment_start";
         default: return "unknown";
     }
 }
@@ -173,6 +180,8 @@ inline CommandType stringToCommandType(const std::string& str) {
     if (str == "camera_reconnect") return CommandType::CAMERA_RECONNECT;
     if (str == "detect_hardware") return CommandType::DETECT_HARDWARE;
     if (str == "get_available_printers") return CommandType::GET_AVAILABLE_PRINTERS;
+    if (str == "cash_test_start") return CommandType::CASH_TEST_START;
+    if (str == "cash_payment_start") return CommandType::CASH_PAYMENT_START;
     return CommandType::PAYMENT_START; // Default
 }
 
@@ -202,6 +211,9 @@ inline std::string eventTypeToString(EventType type) {
         case EventType::CAMERA_CAPTURE_COMPLETE: return "camera_capture_complete";
         case EventType::CAMERA_STATE_CHANGED: return "camera_state_changed";
         case EventType::PRINTER_JOB_COMPLETE: return "printer_job_complete";
+        case EventType::CASH_TEST_AMOUNT: return "cash_test_amount";
+        case EventType::CASH_PAYMENT_TARGET_REACHED: return "cash_payment_target_reached";
+        case EventType::CASH_BILL_STACKED: return "cash_bill_stacked";
         default: return "unknown";
     }
 }
@@ -215,6 +227,9 @@ inline EventType stringToEventType(const std::string& str) {
     if (str == "camera_capture_complete") return EventType::CAMERA_CAPTURE_COMPLETE;
     if (str == "camera_state_changed") return EventType::CAMERA_STATE_CHANGED;
     if (str == "printer_job_complete") return EventType::PRINTER_JOB_COMPLETE;
+    if (str == "cash_test_amount") return EventType::CASH_TEST_AMOUNT;
+    if (str == "cash_payment_target_reached") return EventType::CASH_PAYMENT_TARGET_REACHED;
+    if (str == "cash_bill_stacked") return EventType::CASH_BILL_STACKED;
     return EventType::PAYMENT_COMPLETE; // Default
 }
 

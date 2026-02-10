@@ -29,6 +29,7 @@
 #include "vendor_adapters/smartro/serial_port.h"
 #include "vendor_adapters/smartro/smartro_protocol.h"
 #include "vendor_adapters/windows/windows_gdi_printer_adapter.h"
+#include "vendor_adapters/lv77/lv77_bill_adapter.h"
 
 #include <chrono>
 #include <filesystem>
@@ -58,10 +59,14 @@
 
 namespace core {
 
+static const char* kCashDeviceId = "lv77_cash_001";
+
 ServiceCore::ServiceCore()
     : ipcServer_(deviceManager_)
     , running_(false)
-    , taskQueueRunning_(false) {
+    , taskQueueRunning_(false)
+    , cashTestMode_(false)
+    , cashTestTotal_(0) {
 }
 
 ServiceCore::~ServiceCore() {
@@ -204,6 +209,12 @@ void ServiceCore::registerCommandHandlers() {
     ipcServer_.registerHandler(ipc::CommandType::GET_AVAILABLE_PRINTERS, [this](const ipc::Command& cmd) {
         return handleGetAvailablePrinters(cmd);
     });
+    ipcServer_.registerHandler(ipc::CommandType::CASH_TEST_START, [this](const ipc::Command& cmd) {
+        return handleCashTestStart(cmd);
+    });
+    ipcServer_.registerHandler(ipc::CommandType::CASH_PAYMENT_START, [this](const ipc::Command& cmd) {
+        return handleCashPaymentStart(cmd);
+    });
 }
 
 ipc::Response ServiceCore::handleGetStateSnapshot(const ipc::Command& cmd) {
@@ -319,6 +330,84 @@ ipc::Response ServiceCore::handleGetAvailablePrinters(const ipc::Command& cmd) {
     return resp;
 }
 
+ipc::Response ServiceCore::handleCashTestStart(const ipc::Command& cmd) {
+    ipc::Response resp;
+    resp.protocolVersion = cmd.protocolVersion;
+    resp.kind = ipc::MessageKind::RESPONSE;
+    resp.commandId = cmd.commandId;
+    resp.timestampMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count();
+    auto cashTerminal = deviceManager_.getPaymentTerminal(kCashDeviceId);
+    if (!cashTerminal) {
+        resp.status = ipc::ResponseStatus::REJECTED;
+        auto error = std::make_shared<ipc::Error>();
+        error->code = "DEVICE_NOT_FOUND";
+        error->message = "Cash device (LV77) not registered";
+        resp.error = error;
+        return resp;
+    }
+    cashTestMode_ = true;
+    cashTestTotal_ = 0;
+    if (cashTerminal->startPayment(0)) {
+        resp.status = ipc::ResponseStatus::OK;
+        auto info = cashTerminal->getDeviceInfo();
+        resp.responseMap["deviceId"] = info.deviceId;
+        resp.responseMap["state"] = std::to_string(static_cast<int>(info.state));
+        logging::Logger::getInstance().info("[LV77] Cash test started");
+    } else {
+        cashTestMode_ = false;
+        resp.status = ipc::ResponseStatus::FAILED;
+        auto error = std::make_shared<ipc::Error>();
+        error->code = "CASH_TEST_START_FAILED";
+        error->message = cashTerminal->getDeviceInfo().lastError;
+        resp.error = error;
+    }
+    return resp;
+}
+
+ipc::Response ServiceCore::handleCashPaymentStart(const ipc::Command& cmd) {
+    ipc::Response resp;
+    resp.protocolVersion = cmd.protocolVersion;
+    resp.kind = ipc::MessageKind::RESPONSE;
+    resp.commandId = cmd.commandId;
+    resp.timestampMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count();
+    auto it = cmd.payload.find("amount");
+    if (it == cmd.payload.end()) {
+        resp.status = ipc::ResponseStatus::REJECTED;
+        auto err = std::make_shared<ipc::Error>();
+        err->code = "INVALID_PAYLOAD";
+        err->message = "Missing 'amount' parameter";
+        resp.error = err;
+        return resp;
+    }
+    auto cashTerminal = deviceManager_.getPaymentTerminal(kCashDeviceId);
+    if (!cashTerminal) {
+        resp.status = ipc::ResponseStatus::REJECTED;
+        auto err = std::make_shared<ipc::Error>();
+        err->code = "DEVICE_NOT_FOUND";
+        err->message = "Cash device (LV77) not registered";
+        resp.error = err;
+        return resp;
+    }
+    uint32_t amount = std::stoul(it->second);
+    if (cashTerminal->startPayment(amount)) {
+        resp.status = ipc::ResponseStatus::OK;
+        auto info = cashTerminal->getDeviceInfo();
+        resp.responseMap["deviceId"] = info.deviceId;
+        resp.responseMap["state"] = std::to_string(static_cast<int>(info.state));
+        resp.responseMap["amount"] = it->second;
+        logging::Logger::getInstance().info("[LV77] Cash payment started, target amount: " + it->second + " KRW");
+    } else {
+        resp.status = ipc::ResponseStatus::FAILED;
+        auto err = std::make_shared<ipc::Error>();
+        err->code = "CASH_PAYMENT_START_FAILED";
+        err->message = cashTerminal->getDeviceInfo().lastError;
+        resp.error = err;
+    }
+    return resp;
+}
+
 ipc::Response ServiceCore::handleSetConfig(const ipc::Command& cmd) {
     ipc::Response resp;
     resp.protocolVersion = cmd.protocolVersion;
@@ -329,11 +418,33 @@ ipc::Response ServiceCore::handleSetConfig(const ipc::Command& cmd) {
     try {
         config::ConfigManager::getInstance().setFromMap(cmd.payload);
         config::ConfigManager::getInstance().saveIfInitialized();
-        auto it = cmd.payload.find("printer.name");
-        if (it != cmd.payload.end()) {
+        auto itPrinter = cmd.payload.find("printer.name");
+        if (itPrinter != cmd.payload.end()) {
             auto printer = deviceManager_.getDefaultPrinter();
             auto* gdi = dynamic_cast<windows::WindowsGdiPrinterAdapter*>(printer.get());
-            if (gdi) gdi->setPrinterName(it->second);
+            if (gdi) gdi->setPrinterName(itPrinter->second);
+        }
+        auto itPaymentPort = cmd.payload.find("payment.com_port");
+        if (itPaymentPort != cmd.payload.end() && !itPaymentPort->second.empty()) {
+            auto payment = deviceManager_.getDefaultPaymentTerminal();
+            auto* smartro = dynamic_cast<smartro::SmartroPaymentAdapter*>(payment.get());
+            if (smartro) {
+                std::string newPort = config::ConfigManager::getInstance().getPaymentComPort();
+                if (!newPort.empty() && smartro->reconnect(newPort)) {
+                    logging::Logger::getInstance().info("Payment terminal reconnected to " + newPort + " (no restart needed)");
+                }
+            }
+        }
+        auto itCashPort = cmd.payload.find("cash.com_port");
+        if (itCashPort != cmd.payload.end() && !itCashPort->second.empty()) {
+            auto cashTerminal = deviceManager_.getPaymentTerminal(kCashDeviceId);
+            auto lv77 = std::dynamic_pointer_cast<lv77::Lv77BillAdapter>(cashTerminal);
+            if (lv77) {
+                std::string newCashPort = config::ConfigManager::getInstance().getCashComPort();
+                if (!newCashPort.empty() && lv77->reconnect(newCashPort)) {
+                    logging::Logger::getInstance().info("Cash device (LV77) reconnected to " + newCashPort + " (no restart needed)");
+                }
+            }
         }
         resp.status = ipc::ResponseStatus::OK;
         resp.responseMap["restart_required"] = "0";
@@ -512,8 +623,10 @@ ipc::Response ServiceCore::handlePaymentCancel(const ipc::Command& cmd) {
     resp.timestampMs = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::system_clock::now().time_since_epoch()).count();
     
-    // Validate device exists
-    auto terminal = deviceManager_.getDefaultPaymentTerminal();
+    // When in cash test mode, cancel the cash device; otherwise default payment terminal
+    auto terminal = cashTestMode_
+        ? deviceManager_.getPaymentTerminal(kCashDeviceId)
+        : deviceManager_.getDefaultPaymentTerminal();
     if (!terminal) {
         logging::Logger::getInstance().warn("Payment cancel failed: No payment terminal registered");
         resp.status = ipc::ResponseStatus::REJECTED;
@@ -524,10 +637,10 @@ ipc::Response ServiceCore::handlePaymentCancel(const ipc::Command& cmd) {
         return resp;
     }
     
-    // Execute immediately - no queue needed
     logging::Logger::getInstance().info("Executing payment cancel immediately: " + cmd.commandId);
     
     if (terminal->cancelPayment()) {
+        if (cashTestMode_) cashTestMode_ = false;
         resp.status = ipc::ResponseStatus::OK;
         auto info = terminal->getDeviceInfo();
         resp.responseMap["commandId"] = cmd.commandId;
@@ -992,26 +1105,37 @@ void ServiceCore::prepareEventCallbacks() {
 }
 
 void ServiceCore::setupEventCallbacks() {
-    // Setup payment terminal event callbacks (for IPC event broadcasting)
-    auto terminal = deviceManager_.getDefaultPaymentTerminal();
-    if (terminal) {
-        terminal->setPaymentCompleteCallback([this](const devices::PaymentCompleteEvent& event) {
-            publishPaymentCompleteEvent(event);
+    // Setup payment terminal event callbacks for all registered terminals (card + cash)
+    auto terminalIds = deviceManager_.getDeviceIds(devices::DeviceType::PAYMENT_TERMINAL);
+    for (const auto& id : terminalIds) {
+        auto terminal = deviceManager_.getPaymentTerminal(id);
+        if (terminal) {
+            terminal->setPaymentCompleteCallback([this](const devices::PaymentCompleteEvent& event) {
+                publishPaymentCompleteEvent(event);
+            });
+            terminal->setPaymentFailedCallback([this](const devices::PaymentFailedEvent& event) {
+                publishPaymentFailedEvent(event);
+            });
+            terminal->setPaymentCancelledCallback([this](const devices::PaymentCancelledEvent& event) {
+                publishPaymentCancelledEvent(event);
+            });
+            terminal->setStateChangedCallback([this](devices::DeviceState state) {
+                publishDeviceStateChangedEvent("payment", state);
+            });
+        }
+    }
+    // 현금결제(LV77) 목표 금액 도달 시 0x5E(DISABLE) 후 cash_payment_target_reached 이벤트 전송
+    auto cashTerminal = deviceManager_.getPaymentTerminal(kCashDeviceId);
+    auto lv77 = std::dynamic_pointer_cast<lv77::Lv77BillAdapter>(cashTerminal);
+    if (lv77) {
+        lv77->setPaymentTargetReachedCallback([this](uint32_t totalAmount) {
+            publishCashPaymentTargetReachedEvent(totalAmount);
         });
-        
-        terminal->setPaymentFailedCallback([this](const devices::PaymentFailedEvent& event) {
-            publishPaymentFailedEvent(event);
-        });
-        
-        terminal->setPaymentCancelledCallback([this](const devices::PaymentCancelledEvent& event) {
-            publishPaymentCancelledEvent(event);
-        });
-        
-        terminal->setStateChangedCallback([this](devices::DeviceState state) {
-            publishDeviceStateChangedEvent("payment", state);
+        lv77->setCashBillStackedCallback([this](uint32_t amount, uint32_t currentTotal) {
+            publishCashBillStackedEvent(amount, currentTotal);
         });
     }
-    
+
     // Setup camera event callbacks
     auto camera = deviceManager_.getDefaultCamera();
     if (camera) {
@@ -1055,6 +1179,13 @@ void ServiceCore::publishPrinterJobCompleteEvent(const devices::PrintJobComplete
 }
 
 void ServiceCore::publishPaymentCompleteEvent(const devices::PaymentCompleteEvent& event) {
+    // Cash test mode: accumulate amount and send CASH_TEST_AMOUNT instead of PAYMENT_COMPLETE
+    if (cashTestMode_ && event.transactionMedium == "CASH") {
+        cashTestTotal_ += event.amount;
+        publishCashTestAmountEvent(cashTestTotal_);
+        logging::Logger::getInstance().info("[LV77] Cash test: bill " + std::to_string(event.amount) + " KRW, total " + std::to_string(cashTestTotal_));
+        return;
+    }
     logging::Logger::getInstance().info("=== Publishing PAYMENT_COMPLETE event ===");
     logging::Logger::getInstance().info("Transaction ID: " + event.transactionId);
     logging::Logger::getInstance().info("Amount: " + std::to_string(event.amount));
@@ -1091,6 +1222,52 @@ void ServiceCore::publishPaymentCompleteEvent(const devices::PaymentCompleteEven
     logging::Logger::getInstance().info("Broadcasting PAYMENT_COMPLETE event to IPC clients");
     ipcServer_.broadcastEvent(ipcEvent);
     logging::Logger::getInstance().info("PAYMENT_COMPLETE event broadcasted");
+}
+
+void ServiceCore::publishCashTestAmountEvent(uint32_t totalAmount) {
+    ipc::Event ipcEvent;
+    ipcEvent.protocolVersion = ipc::PROTOCOL_VERSION;
+    ipcEvent.kind = ipc::MessageKind::EVENT;
+    ipcEvent.eventId = generateUUID();
+    ipcEvent.eventType = ipc::EventType::CASH_TEST_AMOUNT;
+    ipcEvent.timestampMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count();
+    ipcEvent.deviceType = "cash";
+    ipcEvent.data["totalAmount"] = std::to_string(totalAmount);
+    ipcServer_.broadcastEvent(ipcEvent);
+}
+
+void ServiceCore::publishCashPaymentTargetReachedEvent(uint32_t totalAmount) {
+    ipc::Event ipcEvent;
+    ipcEvent.protocolVersion = ipc::PROTOCOL_VERSION;
+    ipcEvent.kind = ipc::MessageKind::EVENT;
+    ipcEvent.eventId = generateUUID();
+    ipcEvent.eventType = ipc::EventType::CASH_PAYMENT_TARGET_REACHED;
+    ipcEvent.timestampMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count();
+    ipcEvent.deviceType = "cash";
+    ipcEvent.data["totalAmount"] = std::to_string(totalAmount);
+    ipcServer_.broadcastEvent(ipcEvent);
+    logging::Logger::getInstance().info("[LV77] cash_payment_target_reached event sent, total=" + std::to_string(totalAmount));
+}
+
+void ServiceCore::publishCashBillStackedEvent(uint32_t amount, uint32_t currentTotal) {
+    if (cashTestMode_) {
+        cashTestTotal_ = currentTotal;
+        publishCashTestAmountEvent(cashTestTotal_);
+        return;
+    }
+    ipc::Event ipcEvent;
+    ipcEvent.protocolVersion = ipc::PROTOCOL_VERSION;
+    ipcEvent.kind = ipc::MessageKind::EVENT;
+    ipcEvent.eventId = generateUUID();
+    ipcEvent.eventType = ipc::EventType::CASH_BILL_STACKED;
+    ipcEvent.timestampMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count();
+    ipcEvent.deviceType = "cash";
+    ipcEvent.data["amount"] = std::to_string(amount);
+    ipcEvent.data["currentTotal"] = std::to_string(currentTotal);
+    ipcServer_.broadcastEvent(ipcEvent);
 }
 
 void ServiceCore::publishPaymentFailedEvent(const devices::PaymentFailedEvent& event) {

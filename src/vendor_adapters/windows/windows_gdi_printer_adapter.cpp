@@ -66,6 +66,44 @@ namespace {
             return {};
         return out;
     }
+
+    std::wstring utf8ToWide(const std::string& str) {
+        if (str.empty()) return {};
+        int wlen = MultiByteToWideChar(CP_UTF8, 0, str.c_str(), static_cast<int>(str.size()), nullptr, 0);
+        if (wlen <= 0) return {};
+        std::wstring out(static_cast<size_t>(wlen), 0);
+        if (MultiByteToWideChar(CP_UTF8, 0, str.c_str(), static_cast<int>(str.size()), &out[0], wlen) <= 0)
+            return {};
+        return out;
+    }
+
+    // Resolve printer name: exact match first (UTF-8), then partial match (config name contained in Windows name or vice versa).
+    std::wstring resolvePrinterNameW(const std::string& configuredName) {
+        if (configuredName.empty()) return {};
+        std::wstring wExact = utf8ToWide(configuredName);
+        if (wExact.empty()) wExact = std::wstring(configuredName.begin(), configuredName.end());
+        HANDLE hPrinter = nullptr;
+        if (OpenPrinterW(const_cast<LPWSTR>(wExact.c_str()), &hPrinter, nullptr)) {
+            ClosePrinter(hPrinter);
+            return wExact;
+        }
+        std::string lowerConfig(configuredName);
+        for (auto& c : lowerConfig) if (c >= 'A' && c <= 'Z') c = static_cast<char>(c + 32);
+        std::vector<std::string> available = WindowsGdiPrinterAdapter::getAvailablePrinterNames();
+        for (const std::string& name : available) {
+            std::string lowerName(name);
+            for (auto& c : lowerName) if (c >= 'A' && c <= 'Z') c = static_cast<char>(c + 32);
+            if (lowerName.find(lowerConfig) != std::string::npos || lowerConfig.find(lowerName) != std::string::npos) {
+                std::wstring wMatch = utf8ToWide(name);
+                if (!wMatch.empty() && OpenPrinterW(const_cast<LPWSTR>(wMatch.c_str()), &hPrinter, nullptr)) {
+                    ClosePrinter(hPrinter);
+                    logging::Logger::getInstance().info("Printer resolved: \"" + configuredName + "\" -> \"" + name + "\"");
+                    return wMatch;
+                }
+            }
+        }
+        return wExact;
+    }
     ULONG_PTR g_gdiplusToken = 0;
     bool g_gdiplusStarted = false;
     std::once_flag g_gdiplusInitFlag;
@@ -114,7 +152,7 @@ devices::DeviceInfo WindowsGdiPrinterAdapter::getDeviceInfo() const {
     devices::DeviceInfo info;
     info.deviceId = deviceId_;
     info.deviceType = devices::DeviceType::PRINTER;
-    info.deviceName = "Windows GDI Printer (" + printerName_ + ")";
+    info.deviceName =  printerName_;
     info.state = getState();
     info.lastError = "";
     info.lastUpdateTime = std::chrono::system_clock::now();
@@ -124,7 +162,8 @@ devices::DeviceInfo WindowsGdiPrinterAdapter::getDeviceInfo() const {
 devices::DeviceState WindowsGdiPrinterAdapter::getState() const {
 #ifdef _WIN32
     if (printerName_.empty()) return devices::DeviceState::DISCONNECTED;
-    std::wstring wname(printerName_.begin(), printerName_.end());
+    std::wstring wname = resolvePrinterNameW(printerName_);
+    if (wname.empty()) return devices::DeviceState::DISCONNECTED;
     HDC hdc = CreateDCW(nullptr, wname.c_str(), nullptr, nullptr);
     if (!hdc) return devices::DeviceState::DISCONNECTED;
     DeleteDC(hdc);
@@ -157,10 +196,14 @@ bool WindowsGdiPrinterAdapter::doPrint(const std::string& jobId,
         outEvent.errorMessage = "No printer name";
         return false;
     }
-    std::wstring wname(printerName_.begin(), printerName_.end());
+    std::wstring wname = resolvePrinterNameW(printerName_);
+    if (wname.empty()) {
+        outEvent.errorMessage = "Printer not found: \"" + printerName_ + "\" (check name or add network printer in Windows)";
+        return false;
+    }
     auto [hdc, devModeBuf] = createPrinterDC(wname);
     if (!hdc) {
-        outEvent.errorMessage = "CreateDC failed (printer not found or A4 not supported?)";
+        outEvent.errorMessage = "CreateDC failed (printer not found or A4/4x6 not supported?)";
         return false;
     }
 
@@ -284,6 +327,11 @@ bool WindowsGdiPrinterAdapter::doPrintFromFile(const std::string& jobId,
         outEvent.errorMessage = "No printer name";
         return false;
     }
+    std::wstring wname = resolvePrinterNameW(printerName_);
+    if (wname.empty()) {
+        outEvent.errorMessage = "Printer not found: \"" + printerName_ + "\"";
+        return false;
+    }
     // UTF-8 path -> wstring for GDI+
     std::wstring wpath;
     int n = MultiByteToWideChar(CP_UTF8, 0, filePath.c_str(), static_cast<int>(filePath.size()), nullptr, 0);
@@ -312,11 +360,10 @@ bool WindowsGdiPrinterAdapter::doPrintFromFile(const std::string& jobId,
     }
 
     bool landscape = (orientation == "landscape");
-    std::wstring wname(printerName_.begin(), printerName_.end());
     auto [hdc, devModeBuf] = createPrinterDC(wname, landscape);
     if (!hdc) {
         delete pBitmap;
-        outEvent.errorMessage = "CreateDC failed (printer not found or A4 not supported?)";
+        outEvent.errorMessage = "CreateDC failed (printer not found or paper size not supported?)";
         return false;
     }
 

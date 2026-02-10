@@ -9,10 +9,13 @@
 #include "ipc/message_types.h"
 #include "vendor_adapters/smartro/smartro_payment_adapter.h"
 #include "vendor_adapters/smartro/serial_port.h"
+#include "vendor_adapters/lv77/lv77_bill_adapter.h"
+#include "logging/logger.h"
 
 #include <sstream>
 #include <chrono>
 #include <map>
+#include <vector>
 
 namespace core {
 
@@ -30,6 +33,9 @@ ipc::Response ServiceCore::handleDetectHardware(const ipc::Command& cmd) {
     // probe=false: 현재 상태만 수집 (checkDevice/COM 스캔 생략 → 빠름)
     auto it = cmd.payload.find("probe");
     bool doProbe = (it == cmd.payload.end() || it->second != "false");
+    std::vector<std::string> availablePorts;
+    if (doProbe)
+        availablePorts = smartro::SerialPort::getAvailablePorts(true);
 
     // 1. Camera — 모델명 + 상태(메모리 상 현재 값)
     auto camera = deviceManager_.getDefaultCamera();
@@ -41,7 +47,7 @@ ipc::Response ServiceCore::handleDetectHardware(const ipc::Command& cmd) {
         resp.responseMap["camera.lastError"] = info.lastError;
     }
 
-    // 2. Printer — 모델명 + 상태(메모리 상 현재 값)
+    // 2. Printer — name + state (checked via getState(); no COM port, printer is name-based)
     auto printer = deviceManager_.getDefaultPrinter();
     if (printer) {
         auto info = printer->getDeviceInfo();
@@ -49,6 +55,7 @@ ipc::Response ServiceCore::handleDetectHardware(const ipc::Command& cmd) {
         resp.responseMap["printer.state"] = std::to_string(static_cast<int>(info.state));
         resp.responseMap["printer.stateString"] = devices::deviceStateToString(info.state);
         resp.responseMap["printer.lastError"] = info.lastError;
+        logging::Logger::getInstance().debug("Detect hardware: printer \"" + info.deviceName + "\" state=" + devices::deviceStateToString(info.state));
     }
 
     // 3. Payment — probe=true일 때만 checkDevice() (시리얼 통신·타임아웃 발생)
@@ -76,17 +83,35 @@ ipc::Response ServiceCore::handleDetectHardware(const ipc::Command& cmd) {
     if (resp.responseMap.find("payment.com_port") == resp.responseMap.end() && config.count("payment.com_port"))
         resp.responseMap["payment.com_port"] = config["payment.com_port"];
 
-    // 4. Cash
-    if (config.count("cash.com_port"))
-        resp.responseMap["cash.com_port"] = config["cash.com_port"];
+    // 4. Cash — probe 시 payment와 다른 COM에서 LV77 탐지, 사용자가 COM 번호를 몰라도 자동으로 카드/현금 구분
+    std::string paymentCom;
+    if (resp.responseMap.count("payment.com_port")) paymentCom = resp.responseMap["payment.com_port"];
+    else if (config.count("payment.com_port")) paymentCom = config["payment.com_port"];
+    if (doProbe && !availablePorts.empty()) {
+        for (const auto& port : availablePorts) {
+            if (!paymentCom.empty() && port == paymentCom) continue;
+            if (lv77::Lv77BillAdapter::tryPort(port)) {
+                resp.responseMap["cash.com_port"] = port;
+                logging::Logger::getInstance().info("Detect hardware: LV77 (cash) found on " + port + " (payment on " + paymentCom + ")");
+                break;
+            }
+        }
+    }
+    if (resp.responseMap.find("cash.com_port") == resp.responseMap.end()) {
+        auto cashTerminal = deviceManager_.getPaymentTerminal("lv77_cash_001");
+        auto lv77 = std::dynamic_pointer_cast<lv77::Lv77BillAdapter>(cashTerminal);
+        if (lv77 && !lv77->getComPort().empty())
+            resp.responseMap["cash.com_port"] = lv77->getComPort();
+        else if (config.count("cash.com_port"))
+            resp.responseMap["cash.com_port"] = config["cash.com_port"];
+    }
 
-    // 5. Available COM ports — probe=true일 때 레지스트리만 사용 (CreateFile 스캔 생략으로 10초+ 지연 방지)
+    // 5. Available COM ports — probe=true일 때 위에서 구한 목록 사용
     if (doProbe) {
-        auto ports = smartro::SerialPort::getAvailablePorts(true);
         std::ostringstream oss;
-        for (size_t i = 0; i < ports.size(); ++i) {
+        for (size_t i = 0; i < availablePorts.size(); ++i) {
             if (i > 0) oss << ",";
-            oss << ports[i];
+            oss << availablePorts[i];
         }
         resp.responseMap["available_ports"] = oss.str();
     } else {

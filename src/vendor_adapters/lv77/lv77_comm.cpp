@@ -99,11 +99,12 @@ bool Lv77Comm::enable() {
 bool Lv77Comm::disable() {
     std::lock_guard<std::mutex> lock(mutex_);
     lastError_.clear();
-    uint8_t cmd = CMD_DISABLE;
+    uint8_t cmd = CMD_DISABLE;  // 0x5E — 현금결제기 DISABLE (다음 사용 시 enable 0x3E 전송)
     if (!port_.write(&cmd, 1)) {
         setError("Failed to send disable 0x5E");
         return false;
     }
+    logging::Logger::getInstance().info("[LV77] Disable (0x5E) sent");
     return true;
 }
 
@@ -175,47 +176,70 @@ bool Lv77Comm::rejectBill() {
 }
 
 void Lv77Comm::pollLoopThread() {
+    const auto pollInterval = std::chrono::milliseconds(pollIntervalMs_);
+    int noResponseCount = 0;
     while (pollLoopRunning_) {
         uint8_t resp = 0;
+        auto loopStart = std::chrono::steady_clock::now();
         {
             std::lock_guard<std::mutex> lock(mutex_);
             if (!port_.isOpen()) break;
             uint8_t cmd = CMD_POLL_STATUS;
             port_.write(&cmd, 1);
         }
+        std::this_thread::sleep_for(std::chrono::milliseconds(3));
         size_t n = 0;
         if (!port_.read(&resp, 1, n, pollIntervalMs_)) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(pollIntervalMs_));
+            noResponseCount++;
+            if (noResponseCount == 10) {
+                logging::Logger::getInstance().warn("[LV77] No response to poll (check COM/cable). Slowing poll to 2s.");
+            } else if (noResponseCount > 10) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(1500));
+            }
+            std::this_thread::sleep_for(pollInterval);
             continue;
         }
+        noResponseCount = 0;
         if (n == 0) continue;
 
+        // 3.2 Escrow: 0x81 수신 → 지폐코드 읽기 → 수락/반환 결정 → 0x02 또는 0x0F 전송 (초과 반환 확실히 동작)
         if (resp == RSP_BILL_VALIDATED) {
             uint8_t billType = 0;
-            if (readByte(billType, 1000) && isBillTypeCode(billType)) {
-                uint32_t amount = billCodeToAmount(billType);
-                escrowAmount_ = amount;
-                escrowState_ = EscrowState::WaitingAcceptReject;
-                bool accept = true;
-                if (escrowCallback_) accept = escrowCallback_(amount);
-                if (accept) {
-                    std::lock_guard<std::mutex> lock(mutex_);
-                    uint8_t cmd = CMD_ACCEPT_STACK;
-                    port_.write(&cmd, 1);
-                } else {
-                    std::lock_guard<std::mutex> lock(mutex_);
-                    uint8_t cmd = CMD_REJECT_BILL;
-                    port_.write(&cmd, 1);
-                }
+            if (!readByte(billType, 500) || !isBillTypeCode(billType)) {
+                logging::Logger::getInstance().warn("[LV77] Escrow: failed to read bill type after 0x81, sending reject");
+                std::lock_guard<std::mutex> lock(mutex_);
+                uint8_t cmd = CMD_REJECT_BILL;  // 0x0F
+                port_.write(&cmd, 1);
                 escrowState_ = EscrowState::Idle;
+                continue;
             }
+            uint32_t amount = billCodeToAmount(billType);
+            escrowAmount_ = amount;
+            escrowState_ = EscrowState::WaitingAcceptReject;
+            bool accept = true;
+            if (escrowCallback_) accept = escrowCallback_(amount);
+            {
+                std::lock_guard<std::mutex> lock(mutex_);
+                uint8_t cmd = accept ? CMD_SYNC_ACK : CMD_REJECT_BILL;  // 0x02 or 0x0F
+                port_.write(&cmd, 1);
+            }
+            if (accept) {
+                logging::Logger::getInstance().info("[LV77] Escrow accept (0x02): " + std::to_string(amount) + " KRW");
+            } else {
+                logging::Logger::getInstance().info("[LV77] Escrow reject (0x0F): " + std::to_string(amount) + " KRW");
+            }
+            escrowState_ = EscrowState::Idle;
             continue;
         }
         if (resp == RSP_STACKING && billStackedCallback_) {
             billStackedCallback_(escrowAmount_);
-            continue;
+        } else if (statusCallback_) {
+            statusCallback_(resp);
         }
-        if (statusCallback_) statusCallback_(resp);
+        auto elapsed = std::chrono::steady_clock::now() - loopStart;
+        if (elapsed < pollInterval) {
+            std::this_thread::sleep_for(pollInterval - elapsed);
+        }
     }
 }
 

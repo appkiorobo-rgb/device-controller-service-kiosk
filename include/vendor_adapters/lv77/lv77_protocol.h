@@ -71,6 +71,11 @@ inline bool isBillTypeCode(uint8_t code) {
     return code >= RSP_BILL_TYPE_FIRST && code <= RSP_BILL_TYPE_FIFTH;
 }
 
+// Only first three bill types accepted (40H=1000, 41H=5000, 42H=10000 KRW)
+inline bool isAcceptedBillType(uint8_t code) {
+    return code == RSP_BILL_TYPE_FIRST || code == RSP_BILL_TYPE_SECOND || code == RSP_BILL_TYPE_THIRD;
+}
+
 inline std::string statusCodeToString(uint8_t code) {
     switch (code) {
         case STATUS_RESTART_BA:     return "Restart BA";

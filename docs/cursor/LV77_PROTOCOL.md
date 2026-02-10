@@ -8,10 +8,10 @@
 
 | 코드 | 설명                                                 |
 | ---- | ---------------------------------------------------- |
-| 0x02 | Sync ACK (전원 인가 후 2초 이내 전송 시 장비 Enable) |
+| 0x02 | Sync ACK (전원 인가 후 2초 이내 전송 시 장비 Enable) / **3.2 Escrow 수락 시에도 02H 전송** |
 | 0x0C | 상태 폴링 (5초 이내 주기적으로 전송 필요)            |
 | 0x0F | 에스크로 지폐 반환(Reject)                           |
-| 0x10 | 에스크로 지폐 수락(Stack)                            |
+| 0x10 | 스택 명령 (일부 규격; ICT104U 3.2 Escrow 수락은 0x02 사용) |
 | 0x11 | 반환(Reject)                                         |
 | 0x18 | 에스크로 홀드                                        |
 | 0x30 | 리셋                                                 |
@@ -39,6 +39,13 @@
 - `include/vendor_adapters/lv77/lv77_protocol.h` – 상수·유틸
 - `include/vendor_adapters/lv77/lv77_comm.h` / `src/.../lv77_comm.cpp` – 시리얼 통신·폴 루프
 - `include/vendor_adapters/lv77/lv77_bill_adapter.h` / `src/.../lv77_bill_adapter.cpp` – IPaymentTerminal 어댑터
+
+## 3.2 Escrow 구현
+
+- **흐름**: 폴 수신 시 장비가 `0x81`(지폐 검증) + 지폐코드(`0x40~0x44`) 전송 → 호스트가 **02H**(0x02, 수락) 또는 **0x0F**(반환) 전송. 02H를 보내야 지폐가 수락되고, 안 보내면 지폐가 그대로 나온다.
+- **구현**: `lv77_comm.cpp` 폴 루프에서 `RSP_BILL_VALIDATED` 수신 시 다음 바이트 읽어 지폐 종류 확인 후 수락 시 `CMD_SYNC_ACK`(0x02), 반환 시 `CMD_REJECT_BILL`(0x0F) 전송.
+- **테스트 모드**: `startPayment(0)` 시 목표 0원 → 전 수락.
+- **잔돈 없음**: `startPayment(target)` 시 `currentTotal + 지폐액 <= target`이면 수락, 초과면 해당 지폐 반환(0x0F) 후 `payment_failed` 이벤트로 Flutter 전달 (`errorCode`: `CASH_BILL_RETURNED`, `amount`: 반환된 지폐 액면).
 
 ## 테스트 클라이언트 (exe)
 

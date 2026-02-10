@@ -4,6 +4,7 @@
 #include <chrono>
 #include <sstream>
 #include <iomanip>
+#include <thread>
 
 namespace lv77 {
 
@@ -52,11 +53,18 @@ devices::DeviceInfo Lv77BillAdapter::getDeviceInfo() const {
     return info;
 }
 
-bool Lv77BillAdapter::startPayment(uint32_t /*amount*/) {
+bool Lv77BillAdapter::startPayment(uint32_t amount) {
     if (!comm_->isOpen()) {
-        lastError_ = "Device not connected";
-        logging::Logger::getInstance().warn("[LV77] startPayment: " + lastError_);
-        return false;
+        if (!comm_->open(comPort_)) {
+            lastError_ = "Failed to open " + comPort_;
+            logging::Logger::getInstance().warn("[LV77] startPayment: " + lastError_);
+            return false;
+        }
+        if (!comm_->syncAfterPowerUp(2000)) {
+            comm_->close();
+            lastError_ = "Sync failed";
+            return false;
+        }
     }
     if (paymentInProgress_) {
         lastError_ = "Payment already in progress";
@@ -64,15 +72,32 @@ bool Lv77BillAdapter::startPayment(uint32_t /*amount*/) {
     }
     paymentCancelled_ = false;
     paymentInProgress_ = true;
+    targetAmount_ = amount;
+    currentTotal_ = 0;
     updateState(devices::DeviceState::STATE_PROCESSING);
-    comm_->setBillStackedCallback([this](uint32_t amount) { onBillStacked(amount); });
+    comm_->setBillStackedCallback([this](uint32_t amt) { onBillStacked(amt); });
+    // 잔돈 없음: 남은 금액보다 큰 지폐 들어오면 반환 + Flutter에 전달
+    comm_->setEscrowCallback([this](uint32_t billAmount) {
+        uint32_t target = targetAmount_.load();
+        uint32_t current = currentTotal_.load();
+        if (target == 0) return true;  // 테스트 모드(0원 결제): 전 수락
+        if (current + billAmount <= target) return true;
+        devices::PaymentFailedEvent ev;
+        ev.errorCode = "CASH_BILL_RETURNED";
+        ev.errorMessage = "Exceed target amount (no change); bill returned";
+        ev.amount = billAmount;
+        ev.state = devices::DeviceState::STATE_PROCESSING;
+        if (paymentFailedCallback_) paymentFailedCallback_(ev);
+        logging::Logger::getInstance().info("[LV77] Bill returned (exceed target): " + std::to_string(billAmount) + " KRW, target=" + std::to_string(target) + " current=" + std::to_string(current));
+        return false;
+    });
     if (!comm_->enable()) {
         lastError_ = comm_->getLastError();
         paymentInProgress_ = false;
         updateState(devices::DeviceState::STATE_ERROR);
         return false;
     }
-    comm_->startPollLoop(500);
+    comm_->startPollLoop(100);
     logging::Logger::getInstance().info("[LV77] Payment started (accepting bills)");
     return true;
 }
@@ -115,6 +140,19 @@ bool Lv77BillAdapter::reset() {
     return true;
 }
 
+bool Lv77BillAdapter::reconnect(const std::string& port) {
+    if (port.empty()) return false;
+    if (paymentInProgress_) {
+        cancelPayment();
+    }
+    comm_->stopPollLoop();
+    comm_->close();
+    comPort_ = port;
+    updateState(devices::DeviceState::DISCONNECTED);
+    logging::Logger::getInstance().info("[LV77] Reconnected to " + port + " (next startPayment will use this port)");
+    return true;
+}
+
 bool Lv77BillAdapter::checkDevice() {
     lastError_.clear();
     if (comm_->isOpen()) comm_->close();
@@ -145,6 +183,22 @@ bool Lv77BillAdapter::checkDevice() {
     return false;
 }
 
+bool Lv77BillAdapter::tryPort(const std::string& port) {
+    if (port.empty()) return false;
+    smartro::SerialPort sp;
+    Lv77Comm comm(sp);
+    if (!comm.open(port)) return false;
+    bool ok = false;
+    if (comm.syncAfterPowerUp(2000)) {
+        comm.enable();
+        uint8_t status = 0;
+        if (comm.poll(status, 500))
+            ok = (status == STATUS_ENABLE || status == STATUS_INHIBIT);
+    }
+    comm.close();
+    return ok;
+}
+
 void Lv77BillAdapter::setPaymentCompleteCallback(std::function<void(const devices::PaymentCompleteEvent&)> callback) {
     paymentCompleteCallback_ = std::move(callback);
 }
@@ -163,27 +217,56 @@ void Lv77BillAdapter::setStateChangedCallback(std::function<void(devices::Device
 
 void Lv77BillAdapter::onBillStacked(uint32_t amount) {
     if (paymentCancelled_ || !paymentInProgress_) return;
-    devices::PaymentCompleteEvent ev;
-    ev.transactionId = makeTransactionId();
-    ev.amount = amount;
-    ev.cardNumber = "";
-    ev.approvalNumber = "";
-    ev.salesDate = "";
-    ev.salesTime = "";
-    ev.transactionMedium = "CASH";
-    ev.state = devices::DeviceState::STATE_READY;
-    ev.status = "SUCCESS";
-    ev.transactionType = "Cash";
-    ev.approvalAmount = std::to_string(amount);
-    ev.tax = "";
-    ev.serviceCharge = "";
-    ev.installments = "";
-    ev.merchantNumber = "";
-    ev.terminalNumber = "";
-    ev.issuer = "";
-    ev.acquirer = "";
-    if (paymentCompleteCallback_) paymentCompleteCallback_(ev);
-    logging::Logger::getInstance().info("[LV77] Bill accepted: " + std::to_string(amount) + " KRW");
+    currentTotal_ += amount;
+    uint32_t currentTotal = currentTotal_.load();
+    if (cashBillStackedCallback_) {
+        cashBillStackedCallback_(amount, currentTotal);
+    } else if (paymentCompleteCallback_) {
+        devices::PaymentCompleteEvent ev;
+        ev.transactionId = makeTransactionId();
+        ev.amount = amount;
+        ev.cardNumber = "";
+        ev.approvalNumber = "";
+        ev.salesDate = "";
+        ev.salesTime = "";
+        ev.transactionMedium = "CASH";
+        ev.state = devices::DeviceState::STATE_READY;
+        ev.status = "SUCCESS";
+        ev.transactionType = "Cash";
+        ev.approvalAmount = std::to_string(amount);
+        ev.tax = "";
+        ev.serviceCharge = "";
+        ev.installments = "";
+        ev.merchantNumber = "";
+        ev.terminalNumber = "";
+        ev.issuer = "";
+        ev.acquirer = "";
+        paymentCompleteCallback_(ev);
+    }
+    logging::Logger::getInstance().info("[LV77] Bill accepted: " + std::to_string(amount) + " KRW (total " + std::to_string(currentTotal) + ")");
+
+    // 목표 금액 도달: 폴 스레드에서는 stopPollLoop 호출 금지(자기 join → deadlock/abort). 디테치 스레드에서 처리.
+    uint32_t target = targetAmount_.load();
+    if (target > 0 && currentTotal_.load() >= target) {
+        paymentInProgress_ = false;
+        updateState(devices::DeviceState::STATE_READY);
+        uint32_t total = currentTotal_.load();
+        logging::Logger::getInstance().info("[LV77] Target reached: " + std::to_string(total) + " KRW, deferring stopPollLoop/disable to worker thread");
+        std::thread([this, total]() {
+            comm_->stopPollLoop();
+            comm_->disable();  // 0x5E → 현금결제기 DISABLE
+            if (paymentTargetReachedCallback_) paymentTargetReachedCallback_(total);
+            logging::Logger::getInstance().info("[LV77] DISABLE (0x5E) sent, cash_payment_target_reached event sent");
+        }).detach();
+    }
+}
+
+void Lv77BillAdapter::setPaymentTargetReachedCallback(std::function<void(uint32_t totalAmount)> callback) {
+    paymentTargetReachedCallback_ = std::move(callback);
+}
+
+void Lv77BillAdapter::setCashBillStackedCallback(std::function<void(uint32_t amount, uint32_t currentTotal)> callback) {
+    cashBillStackedCallback_ = std::move(callback);
 }
 
 } // namespace lv77

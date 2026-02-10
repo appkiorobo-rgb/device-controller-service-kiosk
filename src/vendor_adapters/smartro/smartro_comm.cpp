@@ -18,31 +18,36 @@ SmartroComm::~SmartroComm() {
     stopResponseReceiver();
 }
 
-bool SmartroComm::sendDeviceCheckRequest(const std::string& terminalId, 
+bool SmartroComm::sendDeviceCheckRequest(const std::string& terminalId,
                                          DeviceCheckResponse& response,
-                                         uint32_t /*timeoutMs*/) {
+                                         uint32_t /*timeoutMs*/,
+                                         const std::string& preferredPort) {
     std::lock_guard<std::mutex> lock(commMutex_);
     state_ = CommState::IDLE;
     lastError_.clear();
-    
-    // ??? ????????? ?????????? ?? ???? COM ??????????
-    // ?????????????????????????? ???
-    
-    // ??? ???? ???????????
+
     if (serialPort_.isOpen()) {
         serialPort_.close();
     }
-    
-    // ??? ???? ?? ??? ??????(????? ??? ??)
+
     std::vector<std::string> availablePorts = SerialPort::getAvailablePorts();
-    
+
     if (availablePorts.empty()) {
         setError("No COM ports available");
         state_ = CommState::ERROR;
         return false;
     }
-    
-    logging::Logger::getInstance().info("Device check: Testing all available COM ports (ignoring saved port)");
+
+    if (!preferredPort.empty()) {
+        auto it = std::find(availablePorts.begin(), availablePorts.end(), preferredPort);
+        if (it != availablePorts.end()) {
+            std::rotate(availablePorts.begin(), it, it + 1);
+            logging::Logger::getInstance().info("Device check: Trying preferred port " + preferredPort + " first");
+        }
+    }
+    if (preferredPort.empty()) {
+        logging::Logger::getInstance().info("Device check: Testing all available COM ports");
+    }
     
     // ??????????????????
     std::string currentPort;

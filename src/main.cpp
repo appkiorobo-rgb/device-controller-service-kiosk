@@ -6,6 +6,7 @@
 #include "core/service_core.h"
 #include "config/config_manager.h"
 #include "vendor_adapters/smartro/smartro_payment_adapter.h"
+#include "vendor_adapters/lv77/lv77_bill_adapter.h"
 #include "vendor_adapters/canon/edsdk_camera_adapter.h"
 #include "vendor_adapters/windows/windows_gdi_printer_adapter.h"
 #include <iostream>
@@ -59,27 +60,53 @@ int main(int argc, char* argv[]) {
         core::ServiceCore serviceCore;
         g_serviceCore = &serviceCore;
 
-        // Register printer (Windows GDI only; no external app required). Config: printer.name
+        // Register printer: Admin 자동감지 목록에서 사용자가 선택한 프린터만 등록 (config에 저장된 이름)
         std::string printerName = config.getPrinterName();
         std::string printerDeviceId = "windows_printer_001";
-        logging::Logger::getInstance().info("Registering printer: " + printerDeviceId + " (" + printerName + ")");
-        auto printerAdapter = std::make_shared<windows::WindowsGdiPrinterAdapter>(printerDeviceId, printerName);
-        serviceCore.getDeviceManager().registerPrinter(printerDeviceId, printerAdapter);
+        if (!printerName.empty()) {
+            logging::Logger::getInstance().info("Registering printer: " + printerDeviceId + " (" + printerName + ")");
+            auto printerAdapter = std::make_shared<windows::WindowsGdiPrinterAdapter>(printerDeviceId, printerName);
+            serviceCore.getDeviceManager().registerPrinter(printerDeviceId, printerAdapter);
+        } else {
+            logging::Logger::getInstance().info("No printer selected in config (use Admin auto-detect to select one)");
+        }
 
-        // Register payment terminal (Smartro) — config: payment.com_port, payment.enabled
+        // Register payment terminal: 자동감지로 찾은 COM 포트가 config에 있을 때만 등록
         std::string comPort = config.getPaymentComPort();
         if (argc > 1) comPort = argv[1];
         std::string terminalId = "DEFAULT_TERM";
         if (argc > 2) terminalId = argv[2];
-        std::string deviceId = "smartro_terminal_001";
-        if (config.getPaymentEnabled()) {
-            logging::Logger::getInstance().info("Registering payment terminal: " + deviceId + " on " + comPort);
+        // deviceId must sort before "lv77_cash_001" so getDefaultPaymentTerminal() returns card (Smartro), not cash
+        std::string deviceId = "card_terminal_001";
+        if (config.getPaymentEnabled() && !comPort.empty()) {
+            logging::Logger::getInstance().info("Registering payment terminal: " + deviceId + " on COM port \"" + comPort + "\" (from config)");
             auto paymentAdapter = std::make_shared<smartro::SmartroPaymentAdapter>(
                 deviceId, comPort, terminalId
             );
             serviceCore.getDeviceManager().registerPaymentTerminal(deviceId, paymentAdapter);
         } else {
-            logging::Logger::getInstance().info("Payment terminal disabled in config");
+            if (!config.getPaymentEnabled()) {
+                logging::Logger::getInstance().info("Payment terminal disabled in config");
+            } else {
+                logging::Logger::getInstance().info("No payment COM port in config (use Admin auto-detect to find port)");
+            }
+        }
+
+        // Register cash device (LV77 bill validator) when enabled — 반드시 카드와 다른 COM 사용
+        std::string cashComPort = config.getCashComPort();
+        if (config.getCashEnabled() && !cashComPort.empty()) {
+            if (cashComPort == comPort) {
+                logging::Logger::getInstance().warn(
+                    "Cash and card both set to " + comPort + ". LV77 not registered. Use Admin auto-detect to set cash to a different COM."
+                );
+            } else {
+                const std::string cashDeviceId = "lv77_cash_001";
+                logging::Logger::getInstance().info("Registering cash device: " + cashDeviceId + " on COM port \"" + cashComPort + "\" (card on " + comPort + ")");
+                auto cashAdapter = std::make_shared<lv77::Lv77BillAdapter>(cashDeviceId, cashComPort);
+                serviceCore.getDeviceManager().registerPaymentTerminal(cashDeviceId, cashAdapter);
+            }
+        } else if (config.getCashEnabled()) {
+            logging::Logger::getInstance().info("Cash enabled but no cash.com_port in config (set in Admin)");
         }
         
         // Register camera (EDSDK) — 초기화 실패해도 항상 등록. 자동감지 시 재연결 시도 가능.

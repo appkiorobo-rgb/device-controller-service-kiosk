@@ -62,12 +62,13 @@ void ConfigManager::loadDefaults() {
 #endif
     currentSessionId_.clear();
     sessionNextIndex_ = 0;
-    printerName_ = "Samsung CLS-6240 Series PS";
+    // 프린터/결제/현금: Flutter Admin 자동감지 후 사용자가 선택한 값이 config에 저장됨. 기본은 빈 값.
+    printerName_ = "";
     printerPaperSize_ = "A4";
     printerMarginH_ = 0;
     printerMarginV_ = 0;
-    paymentComPort_ = "COM3";
-    paymentEnabled_ = true;
+    paymentComPort_ = "";
+    paymentEnabled_ = false;
     cashComPort_ = "";
     cashEnabled_ = false;
     ensureSaveDirectoryExists();
@@ -108,34 +109,58 @@ std::string ConfigManager::getNextImagePath() {
     return (std::filesystem::path(folder) / (std::to_string(index) + ".jpg")).string();
 }
 
+namespace {
+    // Strip UTF-8 BOM and trim whitespace/carriage return (Admin may save as UTF-8)
+    void normalizeIniValue(std::string& s) {
+        if (s.size() >= 3 &&
+            static_cast<unsigned char>(s[0]) == 0xEF &&
+            static_cast<unsigned char>(s[1]) == 0xBB &&
+            static_cast<unsigned char>(s[2]) == 0xBF) {
+            s.erase(0, 3);
+        }
+        while (!s.empty() && (s.back() == '\r' || s.back() == ' ' || s.back() == '\t')) s.pop_back();
+        size_t start = s.find_first_not_of(" \t\r\n");
+        if (start != std::string::npos) s.erase(0, start);
+    }
+    // Normalize COM port to "COMn" (uppercase, no spaces)
+    std::string normalizeComPort(const std::string& s) {
+        std::string v = s;
+        normalizeIniValue(v);
+        if (v.empty()) return v;
+        for (size_t i = 0; i < v.size(); ++i) {
+            if (v[i] >= 'a' && v[i] <= 'z') v[i] = static_cast<char>(v[i] - 32);
+        }
+        return v;
+    }
+}
+
 void ConfigManager::loadFromFile(const std::string& configPath) {
     currentSessionId_.clear();
     sessionNextIndex_ = 0;
 
-    std::ifstream file(configPath);
+    std::ifstream file(configPath, std::ios::binary);
     if (!file.is_open()) {
         throw std::runtime_error("Cannot open config file: " + configPath);
     }
 
     std::string line;
     while (std::getline(file, line)) {
-        // Skip comments and empty lines
-        if (line.empty() || line[0] == '#' || line[0] == ';') {
+        if (!line.empty() && line.back() == '\r') line.pop_back();
+        if (line.size() >= 3 &&
+            static_cast<unsigned char>(line[0]) == 0xEF &&
+            static_cast<unsigned char>(line[1]) == 0xBB &&
+            static_cast<unsigned char>(line[2]) == 0xBF)
+            line = line.substr(3);
+        if (line.empty() || line[0] == '#' || line[0] == ';')
             continue;
-        }
-        
-        // Simple INI parsing: key=value
+
         size_t eqPos = line.find('=');
         if (eqPos != std::string::npos) {
             std::string key = line.substr(0, eqPos);
             std::string value = line.substr(eqPos + 1);
-            
-            // Trim whitespace
-            key.erase(0, key.find_first_not_of(" \t"));
-            key.erase(key.find_last_not_of(" \t") + 1);
-            value.erase(0, value.find_first_not_of(" \t"));
-            value.erase(value.find_last_not_of(" \t") + 1);
-            
+            normalizeIniValue(key);
+            normalizeIniValue(value);
+
             if (key == "camera.save_path") {
                 cameraSavePath_ = value;
             } else if (key == "printer.name") {
@@ -147,11 +172,11 @@ void ConfigManager::loadFromFile(const std::string& configPath) {
             } else if (key == "printer.margin_v") {
                 try { printerMarginV_ = std::stoi(value); } catch (...) {}
             } else if (key == "payment.com_port") {
-                paymentComPort_ = value;
+                paymentComPort_ = normalizeComPort(value);
             } else if (key == "payment.enabled") {
                 paymentEnabled_ = (value == "1" || value == "true" || value == "yes");
             } else if (key == "cash.com_port") {
-                cashComPort_ = value;
+                cashComPort_ = normalizeComPort(value);
             } else if (key == "cash.enabled") {
                 cashEnabled_ = (value == "1" || value == "true" || value == "yes");
             }
@@ -200,13 +225,17 @@ void ConfigManager::saveToFile(const std::string& configPath) {
     }
 
     file << "# Device Controller Service Configuration\n";
+    file << "# camera.save_path: photo save directory\n";
     file << "camera.save_path=" << cameraSavePath_ << "\n";
+    file << "# printer.name: selected from Admin auto-detect printer list\n";
     file << "printer.name=" << printerName_ << "\n";
     file << "printer.paper_size=" << printerPaperSize_ << "\n";
     file << "printer.margin_h=" << printerMarginH_ << "\n";
     file << "printer.margin_v=" << printerMarginV_ << "\n";
+    file << "# payment.com_port: COM port from Admin auto-detect (card reader)\n";
     file << "payment.com_port=" << paymentComPort_ << "\n";
     file << "payment.enabled=" << (paymentEnabled_ ? "1" : "0") << "\n";
+    file << "# cash.com_port: COM port from Admin auto-detect (cash acceptor)\n";
     file << "cash.com_port=" << cashComPort_ << "\n";
     file << "cash.enabled=" << (cashEnabled_ ? "1" : "0") << "\n";
 
@@ -270,15 +299,16 @@ std::map<std::string, std::string> ConfigManager::getAll() const {
 void ConfigManager::setFromMap(const std::map<std::string, std::string>& kv) {
     for (const auto& entry : kv) {
         const std::string& k = entry.first;
-        const std::string& v = entry.second;
+        std::string v = entry.second;
+        normalizeIniValue(v);
         if (k == "camera.save_path") setCameraSavePath(v);
         else if (k == "printer.name") printerName_ = v;
         else if (k == "printer.paper_size") printerPaperSize_ = v;
         else if (k == "printer.margin_h") try { printerMarginH_ = std::stoi(v); } catch (...) {}
         else if (k == "printer.margin_v") try { printerMarginV_ = std::stoi(v); } catch (...) {}
-        else if (k == "payment.com_port") paymentComPort_ = v;
+        else if (k == "payment.com_port") paymentComPort_ = normalizeComPort(v);
         else if (k == "payment.enabled") paymentEnabled_ = (v == "1" || v == "true" || v == "yes");
-        else if (k == "cash.com_port") cashComPort_ = v;
+        else if (k == "cash.com_port") cashComPort_ = normalizeComPort(v);
         else if (k == "cash.enabled") cashEnabled_ = (v == "1" || v == "true" || v == "yes");
     }
 }

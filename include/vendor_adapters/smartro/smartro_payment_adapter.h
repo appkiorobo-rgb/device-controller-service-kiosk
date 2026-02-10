@@ -34,6 +34,9 @@ public:
     // Get COM port
     std::string getComPort() const { return comPort_; }
 
+    /** Reconnect to a different COM port (e.g. after Admin set_config). Closes current port and runs device check on new port. */
+    bool reconnect(const std::string& port);
+
     // Additional Smartro-specific methods
     bool readCardUid(smartro::CardUidReadResponse& response);
     bool getLastApproval(smartro::LastApprovalResponse& response);

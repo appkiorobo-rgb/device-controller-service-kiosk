@@ -64,6 +64,10 @@ private:
     std::condition_variable taskQueueCondition_;
     std::atomic<bool> taskQueueRunning_;
     std::thread taskWorkerThread_;
+
+    // Cash test mode (debug): accept bills and report total via CASH_TEST_AMOUNT event
+    bool cashTestMode_;
+    uint32_t cashTestTotal_;
     
     // Register IPC command handlers
     void registerCommandHandlers();
@@ -104,6 +108,8 @@ private:
     ipc::Response handleCameraReconnect(const ipc::Command& cmd);
     ipc::Response handleDetectHardware(const ipc::Command& cmd);
     ipc::Response handleGetAvailablePrinters(const ipc::Command& cmd);
+    ipc::Response handleCashTestStart(const ipc::Command& cmd);
+    ipc::Response handleCashPaymentStart(const ipc::Command& cmd);
 
     /// 자동감지(detect_hardware) 전에 READY가 아닌 장치에 대해 재연결 시도. 호출 후 handleDetectHardware로 상태 수집.
     void tryReconnectDevicesBeforeDetect();
@@ -122,6 +128,9 @@ private:
     void publishSystemStatusCheckEvent(const std::map<std::string, devices::DeviceInfo>& deviceStatuses, bool allHealthy);
     void publishCameraCaptureCompleteEvent(const devices::CaptureCompleteEvent& event);
     void publishPrinterJobCompleteEvent(const devices::PrintJobCompleteEvent& event);
+    void publishCashTestAmountEvent(uint32_t totalAmount);
+    void publishCashPaymentTargetReachedEvent(uint32_t totalAmount);
+    void publishCashBillStackedEvent(uint32_t amount, uint32_t currentTotal);
 
     // Status check on client connection
     void performSystemStatusCheck();

@@ -81,9 +81,10 @@ public:
     
     // Legacy synchronous functions (for backward compatibility)
     // Send device check request and receive response
-    bool sendDeviceCheckRequest(const std::string& terminalId, 
+    bool sendDeviceCheckRequest(const std::string& terminalId,
                                 DeviceCheckResponse& response,
-                                uint32_t timeoutMs = 3000);
+                                uint32_t timeoutMs = 3000,
+                                const std::string& preferredPort = "");
     
     // Send payment wait request and receive response
     bool sendPaymentWaitRequest(const std::string& terminalId, 

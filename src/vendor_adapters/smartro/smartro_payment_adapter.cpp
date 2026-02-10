@@ -1,5 +1,6 @@
 // src/vendor_adapters/smartro/smartro_payment_adapter.cpp
 #include "logging/logger.h"
+#include "config/config_manager.h"
 #include "vendor_adapters/smartro/smartro_payment_adapter.h"
 #include "vendor_adapters/smartro/smartro_protocol.h"
 #include <sstream>
@@ -230,20 +231,23 @@ bool SmartroPaymentAdapter::checkDevice() {
         monitorThread_ = std::thread(&SmartroPaymentAdapter::eventMonitorThread, this);
     }
     
-    // Send device check request (스캔: COM 포트 하나씩 시도 후 성공한 포트에 연결 유지)
+    // Send device check (tries comPort_ first if set, then other ports)
     DeviceCheckResponse response;
-    if (!smartroComm_->sendDeviceCheckRequest(terminalId_, response, 3000)) {
+    if (!smartroComm_->sendDeviceCheckRequest(terminalId_, response, 3000, comPort_)) {
         lastError_ = "Device check failed: " + smartroComm_->getLastError();
         updateState(devices::DeviceState::STATE_ERROR);
         return false;
     }
     
-    // 실제로 연결된 COM 포트로 어댑터 상태 동기화 (스캔 결과 반영)
+    // Sync adapter to the port we actually connected to (scan result)
     std::string detectedPort = serialPort_->getPortName();
     if (!detectedPort.empty()) {
         comPort_ = detectedPort;
+        config::ConfigManager::getInstance().setPaymentComPort(detectedPort);
+        config::ConfigManager::getInstance().saveIfInitialized();
+        logging::Logger::getInstance().info("Payment terminal detected on " + detectedPort + ", config updated");
     }
-    
+
     // Check response
     bool allOk = (response.cardModuleStatus == 'O' || response.cardModuleStatus == 'N') &&
                  (response.rfModuleStatus == 'O' || response.rfModuleStatus == 'N') &&
@@ -264,6 +268,23 @@ bool SmartroPaymentAdapter::checkDevice() {
         updateState(devices::DeviceState::STATE_ERROR);
         return false;
     }
+}
+
+bool SmartroPaymentAdapter::reconnect(const std::string& port) {
+    if (port.empty()) return false;
+    {
+        std::lock_guard<std::mutex> lock(stateMutex_);
+        if (serialPort_->isOpen()) serialPort_->close();
+        monitorRunning_ = false;
+    }
+    if (monitorThread_.joinable()) monitorThread_.join();
+    {
+        std::lock_guard<std::mutex> lock(stateMutex_);
+        smartroComm_->stopResponseReceiver();
+        comPort_ = port;
+    }
+    logging::Logger::getInstance().info("Payment terminal reconnecting to " + port);
+    return checkDevice();
 }
 
 void SmartroPaymentAdapter::setPaymentCompleteCallback(std::function<void(const devices::PaymentCompleteEvent&)> callback) {
