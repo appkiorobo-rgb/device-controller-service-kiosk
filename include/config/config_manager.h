@@ -53,6 +53,9 @@ public:
     void setFromMap(const std::map<std::string, std::string>& kv);
     void saveIfInitialized();
 
+    /// detect_hardware 등에서 최신 config.ini 반영 (수동 편집·다른 프로세스 저장 대비)
+    void reloadFromFileIfExists();
+
 private:
     ConfigManager() = default;
     ~ConfigManager() = default;

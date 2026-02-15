@@ -18,6 +18,9 @@ EdsdkLiveviewServer::~EdsdkLiveviewServer() {
 
 void EdsdkLiveviewServer::setFrame(const uint8_t* data, size_t len) {
     if (!data || len == 0) return;
+    // EVF JPEG 상한: 일부 기기는 1MB 풀 버퍼로 전달함 (EdsCreateMemoryStream(1MB)와 일치).
+    static constexpr size_t kMaxFrameSize = 1536 * 1024;  // 1.5MB (1MB 프레임 수용)
+    if (len > kMaxFrameSize) return;
     std::lock_guard<std::mutex> lock(frameMutex_);
     frame_.assign(data, data + len);
 }
@@ -95,15 +98,22 @@ void EdsdkLiveviewServer::run() {
                     "\r\n";
                 send(client, headers, static_cast<int>(std::strlen(headers)), 0);
 
+                bool firstFrameSent = false;
+                auto lastLogTime = std::chrono::steady_clock::now();
                 while (running_) {
                     std::vector<uint8_t> copy;
                     {
                         std::lock_guard<std::mutex> lock(frameMutex_);
                         if (frame_.empty()) {
-                            std::this_thread::sleep_for(std::chrono::milliseconds(66));
+                            auto now = std::chrono::steady_clock::now();
+                            if (!firstFrameSent && std::chrono::duration_cast<std::chrono::seconds>(now - lastLogTime).count() >= 3) {
+                                logging::Logger::getInstance().info("LiveView: waiting for first EVF frame from camera...");
+                                lastLogTime = now;
+                            }
+                            std::this_thread::sleep_for(std::chrono::milliseconds(16));
                             continue;
                         }
-                        copy = frame_;
+                        copy.swap(frame_);
                     }
                     char partHeader[128];
                     int partLen = snprintf(partHeader, sizeof(partHeader),
@@ -111,7 +121,11 @@ void EdsdkLiveviewServer::run() {
                         copy.size());
                     if (send(client, partHeader, partLen, 0) <= 0) break;
                     if (send(client, reinterpret_cast<const char*>(copy.data()), static_cast<int>(copy.size()), 0) <= 0) break;
-                    std::this_thread::sleep_for(std::chrono::milliseconds(66));
+                    if (!firstFrameSent) {
+                        logging::Logger::getInstance().info("LiveView: first frame sent to client (" + std::to_string(copy.size()) + " bytes)");
+                        firstFrameSent = true;
+                    }
+                    // No sleep after send: next frame sent as soon as available (TCP backpressure limits rate).
                 }
             }
         }

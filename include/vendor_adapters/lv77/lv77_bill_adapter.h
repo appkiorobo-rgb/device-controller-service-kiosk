@@ -24,14 +24,12 @@ public:
     devices::DeviceState getState() const override;
     bool reset() override;
     bool checkDevice() override;
+    std::string getVendorName() const override { return "lv77"; }
+    std::string getComPort() const override { return comPort_; }
+    bool reconnect(const std::string& newPort) override;
 
     /// Single-port probe for auto-detect: returns true if LV77 responds on the given port (opens/closes internally).
     static bool tryPort(const std::string& port);
-
-    /// Close current port and set new COM for next startPayment (set_config 시 현금 COM 변경 반영).
-    bool reconnect(const std::string& port);
-
-    std::string getComPort() const { return comPort_; }
 
     void setPaymentCompleteCallback(std::function<void(const devices::PaymentCompleteEvent&)> callback) override;
     void setPaymentFailedCallback(std::function<void(const devices::PaymentFailedEvent&)> callback) override;

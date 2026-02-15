@@ -140,16 +140,16 @@ bool Lv77BillAdapter::reset() {
     return true;
 }
 
-bool Lv77BillAdapter::reconnect(const std::string& port) {
-    if (port.empty()) return false;
+bool Lv77BillAdapter::reconnect(const std::string& newPort) {
+    if (newPort.empty()) return false;
     if (paymentInProgress_) {
         cancelPayment();
     }
     comm_->stopPollLoop();
     comm_->close();
-    comPort_ = port;
+    comPort_ = newPort;
     updateState(devices::DeviceState::DISCONNECTED);
-    logging::Logger::getInstance().info("[LV77] Reconnected to " + port + " (next startPayment will use this port)");
+    logging::Logger::getInstance().info("[LV77] Reconnected to " + newPort + " (next startPayment will use this port)");
     return true;
 }
 

@@ -23,26 +23,33 @@ public:
                          const std::string& terminalId);
     ~SmartroPaymentAdapter();
     
-    // IPaymentTerminal implementation
+    // IPaymentTerminal implementation (core)
     devices::DeviceInfo getDeviceInfo() const override;
     bool startPayment(uint32_t amount) override;
     bool cancelPayment() override;
     devices::DeviceState getState() const override;
     bool reset() override;
     bool checkDevice() override;
-    
-    // Get COM port
-    std::string getComPort() const { return comPort_; }
+    std::string getVendorName() const override { return "smartro"; }
+    std::string getComPort() const override { return comPort_; }
+    bool reconnect(const std::string& newPort) override;
 
-    /** Reconnect to a different COM port (e.g. after Admin set_config). Closes current port and runs device check on new port. */
-    bool reconnect(const std::string& port);
+    // IPaymentTerminal extended operations (vendor-agnostic interface)
+    devices::CardUidResult readCardUid() override;
+    devices::IcCardCheckResult checkIcCard() override;
+    bool setScreenSound(const devices::ScreenSoundSettings& request, devices::ScreenSoundSettings& response) override;
+    devices::TransactionCancelResult cancelTransaction(const devices::TransactionCancelRequest& request) override;
+    devices::PaymentCompleteEvent getLastApproval(const std::string& transactionType) override;
 
-    // Additional Smartro-specific methods
-    bool readCardUid(smartro::CardUidReadResponse& response);
-    bool getLastApproval(smartro::LastApprovalResponse& response);
-    bool checkIcCard(smartro::IcCardCheckResponse& response);
-    bool setScreenSound(const smartro::ScreenSoundSettingRequest& request, smartro::ScreenSoundSettingResponse& response);
-    bool cancelTransaction(const smartro::TransactionCancelRequest& request, smartro::TransactionCancelResponse& response);
+    // Smartro-specific methods (use vendor types directly; prefer interface methods above for new code)
+    bool readCardUidRaw(smartro::CardUidReadResponse& response);
+    bool getLastApprovalRaw(smartro::LastApprovalResponse& response);
+    bool checkIcCardRaw(smartro::IcCardCheckResponse& response);
+    bool setScreenSoundRaw(const smartro::ScreenSoundSettingRequest& request, smartro::ScreenSoundSettingResponse& response);
+    bool cancelTransactionRaw(const smartro::TransactionCancelRequest& request, smartro::TransactionCancelResponse& response);
+
+    /// Static port probe for auto-detect: returns true if a Smartro terminal responds on the given port.
+    static bool tryPort(const std::string& port);
     
     void setPaymentCompleteCallback(std::function<void(const devices::PaymentCompleteEvent&)> callback) override;
     void setPaymentFailedCallback(std::function<void(const devices::PaymentFailedEvent&)> callback) override;

@@ -16,6 +16,7 @@
 #include <filesystem>
 #include <sstream>
 #include <iomanip>
+#include <atomic>
 #include <chrono>
 #include <thread>
 
@@ -657,22 +658,30 @@ StartEvfCommand::StartEvfCommand(canon::EdsdkCameraAdapter* adapter)
 
 bool StartEvfCommand::execute() {
     if (!adapter_ || !model_ || !model_->getCameraObject()) {
-        if (adapter_) adapter_->onEvfStarted(false);
+        if (adapter_) {
+            adapter_->setLastError("EVF: camera or model not ready");
+            adapter_->onEvfStarted(false);
+        }
         return true;
     }
     EdsCameraRef cam = model_->getCameraObject();
     EdsUInt32 outDevice = kEdsEvfOutputDevice_PC_Small;
     EdsError err = EdsSetPropertyData(cam, kEdsPropID_Evf_OutputDevice, 0, sizeof(outDevice), &outDevice);
     if (err != EDS_ERR_OK) {
-        logging::Logger::getInstance().error("StartEvfCommand: Set Evf_OutputDevice PC failed: " + std::to_string(err));
+        std::string msg = "EVF_OutputDevice failed (EDS err 0x" + std::to_string(static_cast<unsigned>(err)) + "). Check camera is ON and not in playback.";
+        logging::Logger::getInstance().error("StartEvfCommand: " + msg);
         model_->notifyError(err);
+        adapter_->setLastError(msg);
         adapter_->onEvfStarted(false);
         return true;
     }
+    // 1MB: 저사양 키오스크 메모리 절약. EVF JPEG은 보통 수십~수백 KB.
     EdsStreamRef streamRef = nullptr;
-    err = EdsCreateMemoryStream(4 * 1024 * 1024, &streamRef);
+    err = EdsCreateMemoryStream(1 * 1024 * 1024, &streamRef);
     if (err != EDS_ERR_OK || !streamRef) {
-        logging::Logger::getInstance().error("StartEvfCommand: EdsCreateMemoryStream failed: " + std::to_string(err));
+        std::string msg = "EVF CreateMemoryStream failed (0x" + std::to_string(static_cast<unsigned>(err)) + ")";
+        logging::Logger::getInstance().error("StartEvfCommand: " + msg);
+        adapter_->setLastError(msg);
         adapter_->onEvfStarted(false);
         return true;
     }
@@ -680,7 +689,9 @@ bool StartEvfCommand::execute() {
     err = EdsCreateEvfImageRef(streamRef, &evfImageRef);
     if (err != EDS_ERR_OK || !evfImageRef) {
         EdsRelease(streamRef);
-        logging::Logger::getInstance().error("StartEvfCommand: EdsCreateEvfImageRef failed: " + std::to_string(err));
+        std::string msg = "EVF CreateEvfImageRef failed (0x" + std::to_string(static_cast<unsigned>(err)) + ")";
+        logging::Logger::getInstance().error("StartEvfCommand: " + msg);
+        adapter_->setLastError(msg);
         adapter_->onEvfStarted(false);
         return true;
     }
@@ -707,12 +718,17 @@ bool GetEvfFrameCommand::execute() {
     }
     EdsError err = EdsDownloadEvfImage(model_->getCameraObject(), static_cast<EdsEvfImageRef>(evfImageRef));
     if (err != EDS_ERR_OK) {
+        static std::atomic<int> s_failCount{0};
+        if (s_failCount++ < 5 || s_failCount % 60 == 0)
+            logging::Logger::getInstance().warn("GetEvfFrame: EdsDownloadEvfImage failed (0x" + std::to_string(static_cast<unsigned>(err)) + "), count=" + std::to_string(s_failCount.load()));
         adapter_->onEvfFrameProcessed();
         return true;
     }
     EdsUInt64 len = 0;
     err = EdsGetLength(streamRef, &len);
-    if (err != EDS_ERR_OK || len == 0 || len > 4 * 1024 * 1024) {
+    if (err != EDS_ERR_OK || len == 0 || len > 1 * 1024 * 1024) {
+        if (err != EDS_ERR_OK)
+            logging::Logger::getInstance().warn("GetEvfFrame: EdsGetLength failed (0x" + std::to_string(static_cast<unsigned>(err)) + ")");
         adapter_->onEvfFrameProcessed();
         return true;
     }
@@ -728,6 +744,10 @@ bool GetEvfFrameCommand::execute() {
         adapter_->onEvfFrameProcessed();
         return true;
     }
+    static std::atomic<int> s_frameCount{0};
+    int n = s_frameCount++;
+    if (n < 3)
+        logging::Logger::getInstance().info("GetEvfFrame: frame #" + std::to_string(n + 1) + " set (" + std::to_string(static_cast<size_t>(readSize)) + " bytes)");
     adapter_->getLiveViewServer()->setFrame(buf.data(), static_cast<size_t>(readSize));
     adapter_->onEvfFrameProcessed();
     return true;

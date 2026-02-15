@@ -323,4 +323,15 @@ void ConfigManager::saveIfInitialized() {
     }
 }
 
+void ConfigManager::reloadFromFileIfExists() {
+    if (configFilePath_.empty()) return;
+    if (!std::filesystem::exists(configFilePath_)) return;
+    try {
+        loadFromFile(configFilePath_);
+        logging::Logger::getInstance().debug("Config reloaded from file: " + configFilePath_);
+    } catch (const std::exception& e) {
+        logging::Logger::getInstance().warn("Failed to reload config: " + std::string(e.what()));
+    }
+}
+
 } // namespace config

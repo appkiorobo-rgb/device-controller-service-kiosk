@@ -20,9 +20,11 @@
 #include <sstream>
 #include "logging/logger.h"
 #include "core/service_core.h"
+#include "core/device_constants.h"
 #include "config/config_manager.h"
 #include "devices/device_types.h"
 #include "devices/icamera.h"
+#include "devices/payment_terminal_factory.h"
 #include "vendor_adapters/canon/edsdk_camera_adapter.h"
 #include "ipc/message_parser.h"
 #include "vendor_adapters/smartro/smartro_payment_adapter.h"
@@ -58,8 +60,6 @@
 #endif
 
 namespace core {
-
-static const char* kCashDeviceId = "lv77_cash_001";
 
 ServiceCore::ServiceCore()
     : ipcServer_(deviceManager_)
@@ -202,7 +202,7 @@ void ServiceCore::registerCommandHandlers() {
         auto it = cmd.payload.find("probe");
         bool doProbe = (it == cmd.payload.end() || it->second != "false");
         if (doProbe) {
-            tryReconnectDevicesBeforeDetect();
+            tryReconnectDevicesBeforeDetect(cmd.payload);
         }
         return handleDetectHardware(cmd);
     });
@@ -426,23 +426,21 @@ ipc::Response ServiceCore::handleSetConfig(const ipc::Command& cmd) {
         }
         auto itPaymentPort = cmd.payload.find("payment.com_port");
         if (itPaymentPort != cmd.payload.end() && !itPaymentPort->second.empty()) {
-            auto payment = deviceManager_.getDefaultPaymentTerminal();
-            auto* smartro = dynamic_cast<smartro::SmartroPaymentAdapter*>(payment.get());
-            if (smartro) {
+            auto payment = deviceManager_.getPaymentTerminal(kCardTerminalId);
+            if (payment) {
                 std::string newPort = config::ConfigManager::getInstance().getPaymentComPort();
-                if (!newPort.empty() && smartro->reconnect(newPort)) {
-                    logging::Logger::getInstance().info("Payment terminal reconnected to " + newPort + " (no restart needed)");
+                if (!newPort.empty() && payment->reconnect(newPort)) {
+                    logging::Logger::getInstance().info("Payment terminal (" + payment->getVendorName() + ") reconnected to " + newPort + " (no restart needed)");
                 }
             }
         }
         auto itCashPort = cmd.payload.find("cash.com_port");
         if (itCashPort != cmd.payload.end() && !itCashPort->second.empty()) {
             auto cashTerminal = deviceManager_.getPaymentTerminal(kCashDeviceId);
-            auto lv77 = std::dynamic_pointer_cast<lv77::Lv77BillAdapter>(cashTerminal);
-            if (lv77) {
+            if (cashTerminal) {
                 std::string newCashPort = config::ConfigManager::getInstance().getCashComPort();
-                if (!newCashPort.empty() && lv77->reconnect(newCashPort)) {
-                    logging::Logger::getInstance().info("Cash device (LV77) reconnected to " + newCashPort + " (no restart needed)");
+                if (!newCashPort.empty() && cashTerminal->reconnect(newCashPort)) {
+                    logging::Logger::getInstance().info("Cash device (" + cashTerminal->getVendorName() + ") reconnected to " + newCashPort + " (no restart needed)");
                 }
             }
         }
@@ -788,37 +786,26 @@ ipc::Response ServiceCore::handlePaymentCardUidRead(const ipc::Command& cmd) {
         return resp;
     }
     
-    // Cast to SmartroPaymentAdapter
-    auto smartroAdapter = std::dynamic_pointer_cast<smartro::SmartroPaymentAdapter>(terminal);
-    if (!smartroAdapter) {
-        resp.status = ipc::ResponseStatus::REJECTED;
-        auto error = std::make_shared<ipc::Error>();
-        error->code = "INVALID_DEVICE_TYPE";
-        error->message = "Payment terminal is not a Smartro device";
-        resp.error = error;
-        return resp;
-    }
-    
-    smartro::CardUidReadResponse cardResponse;
-    if (!smartroAdapter->readCardUid(cardResponse)) {
+    auto uidResult = terminal->readCardUid();
+    if (!uidResult.success) {
         resp.status = ipc::ResponseStatus::REJECTED;
         auto error = std::make_shared<ipc::Error>();
         error->code = "CARD_UID_READ_FAILED";
-        error->message = "Failed to read card UID";
+        error->message = uidResult.error.empty() ? "Failed to read card UID" : uidResult.error;
         resp.error = error;
         return resp;
     }
     
     resp.status = ipc::ResponseStatus::OK;
     std::string uidHex;
-    for (size_t i = 0; i < cardResponse.uid.size(); ++i) {
+    for (size_t i = 0; i < uidResult.uid.size(); ++i) {
         char hex[3];
-        snprintf(hex, sizeof(hex), "%02X", cardResponse.uid[i]);
+        snprintf(hex, sizeof(hex), "%02X", uidResult.uid[i]);
         uidHex += hex;
-        if (i < cardResponse.uid.size() - 1) uidHex += " ";
+        if (i < uidResult.uid.size() - 1) uidHex += " ";
     }
     resp.responseMap["uid"] = uidHex;
-    resp.responseMap["uidLength"] = std::to_string(cardResponse.uid.size());
+    resp.responseMap["uidLength"] = std::to_string(uidResult.uid.size());
     
     return resp;
 }
@@ -843,18 +830,8 @@ ipc::Response ServiceCore::handlePaymentLastApproval(const ipc::Command& cmd) {
         return resp;
     }
     
-    auto smartroAdapter = std::dynamic_pointer_cast<smartro::SmartroPaymentAdapter>(terminal);
-    if (!smartroAdapter) {
-        resp.status = ipc::ResponseStatus::REJECTED;
-        auto error = std::make_shared<ipc::Error>();
-        error->code = "INVALID_DEVICE_TYPE";
-        error->message = "Payment terminal is not a Smartro device";
-        resp.error = error;
-        return resp;
-    }
-    
-    smartro::LastApprovalResponse lastApproval;
-    if (!smartroAdapter->getLastApproval(lastApproval)) {
+    auto lastApproval = terminal->getLastApproval("");
+    if (lastApproval.status != "OK") {
         resp.status = ipc::ResponseStatus::REJECTED;
         auto error = std::make_shared<ipc::Error>();
         error->code = "LAST_APPROVAL_FAILED";
@@ -864,16 +841,9 @@ ipc::Response ServiceCore::handlePaymentLastApproval(const ipc::Command& cmd) {
     }
     
     resp.status = ipc::ResponseStatus::OK;
-    // LastApprovalResponse contains raw data (157 bytes, same as PaymentApprovalResponse)
-    // Parse it if needed, or return raw data
-    std::string dataHex;
-    for (size_t i = 0; i < lastApproval.data.size(); ++i) {
-        char hex[3];
-        snprintf(hex, sizeof(hex), "%02X", lastApproval.data[i]);
-        dataHex += hex;
-    }
-    resp.responseMap["data"] = dataHex;
-    resp.responseMap["dataLength"] = std::to_string(lastApproval.data.size());
+    // transactionId contains raw hex data from the terminal response
+    resp.responseMap["data"] = lastApproval.transactionId;
+    resp.responseMap["dataLength"] = std::to_string(lastApproval.transactionId.size() / 2);
     
     return resp;
 }
@@ -898,29 +868,19 @@ ipc::Response ServiceCore::handlePaymentIcCardCheck(const ipc::Command& cmd) {
         return resp;
     }
     
-    auto smartroAdapter = std::dynamic_pointer_cast<smartro::SmartroPaymentAdapter>(terminal);
-    if (!smartroAdapter) {
-        resp.status = ipc::ResponseStatus::REJECTED;
-        auto error = std::make_shared<ipc::Error>();
-        error->code = "INVALID_DEVICE_TYPE";
-        error->message = "Payment terminal is not a Smartro device";
-        resp.error = error;
-        return resp;
-    }
-    
-    smartro::IcCardCheckResponse icResponse;
-    if (!smartroAdapter->checkIcCard(icResponse)) {
+    auto icResult = terminal->checkIcCard();
+    if (!icResult.success) {
         resp.status = ipc::ResponseStatus::REJECTED;
         auto error = std::make_shared<ipc::Error>();
         error->code = "IC_CARD_CHECK_FAILED";
-        error->message = "Failed to check IC card";
+        error->message = icResult.error.empty() ? "Failed to check IC card" : icResult.error;
         resp.error = error;
         return resp;
     }
     
     resp.status = ipc::ResponseStatus::OK;
-    resp.responseMap["cardStatus"] = std::string(1, icResponse.cardStatus);
-    resp.responseMap["cardInserted"] = (icResponse.cardStatus == 'O') ? "true" : "false";
+    resp.responseMap["cardStatus"] = std::string(1, icResult.cardStatus);
+    resp.responseMap["cardInserted"] = icResult.cardInserted ? "true" : "false";
     
     return resp;
 }
@@ -959,17 +919,7 @@ ipc::Response ServiceCore::handlePaymentScreenSoundSetting(const ipc::Command& c
         return resp;
     }
     
-    auto smartroAdapter = std::dynamic_pointer_cast<smartro::SmartroPaymentAdapter>(terminal);
-    if (!smartroAdapter) {
-        resp.status = ipc::ResponseStatus::REJECTED;
-        auto error = std::make_shared<ipc::Error>();
-        error->code = "INVALID_DEVICE_TYPE";
-        error->message = "Payment terminal is not a Smartro device";
-        resp.error = error;
-        return resp;
-    }
-    
-    smartro::ScreenSoundSettingRequest request;
+    devices::ScreenSoundSettings request;
     try {
         request.screenBrightness = static_cast<uint8_t>(std::stoi(screenBrightnessIt->second));
         request.soundVolume = static_cast<uint8_t>(std::stoi(soundVolumeIt->second));
@@ -983,8 +933,8 @@ ipc::Response ServiceCore::handlePaymentScreenSoundSetting(const ipc::Command& c
         return resp;
     }
     
-    smartro::ScreenSoundSettingResponse settingResponse;
-    if (!smartroAdapter->setScreenSound(request, settingResponse)) {
+    devices::ScreenSoundSettings settingResponse;
+    if (!terminal->setScreenSound(request, settingResponse)) {
         resp.status = ipc::ResponseStatus::REJECTED;
         auto error = std::make_shared<ipc::Error>();
         error->code = "SCREEN_SOUND_SETTING_FAILED";
@@ -1021,16 +971,6 @@ ipc::Response ServiceCore::handlePaymentTransactionCancel(const ipc::Command& cm
         return resp;
     }
     
-    auto smartroAdapter = std::dynamic_pointer_cast<smartro::SmartroPaymentAdapter>(terminal);
-    if (!smartroAdapter) {
-        resp.status = ipc::ResponseStatus::REJECTED;
-        auto error = std::make_shared<ipc::Error>();
-        error->code = "INVALID_DEVICE_TYPE";
-        error->message = "Payment terminal is not a Smartro device";
-        resp.error = error;
-        return resp;
-    }
-    
     // Extract parameters
     auto cancelTypeIt = cmd.payload.find("cancelType");
     auto transactionTypeIt = cmd.payload.find("transactionType");
@@ -1054,17 +994,17 @@ ipc::Response ServiceCore::handlePaymentTransactionCancel(const ipc::Command& cm
         return resp;
     }
     
-    smartro::TransactionCancelRequest cancelRequest;
+    devices::TransactionCancelRequest cancelRequest;
     try {
-        cancelRequest.cancelType = cancelTypeIt->second[0];  // '1' or '2'
-        cancelRequest.transactionType = static_cast<uint8_t>(std::stoi(transactionTypeIt->second));
+        cancelRequest.cancelType = cancelTypeIt->second;
+        cancelRequest.transactionType = transactionTypeIt->second;
         cancelRequest.amount = std::stoul(amountIt->second);
         cancelRequest.approvalNumber = approvalNumberIt->second;
         cancelRequest.originalDate = originalDateIt->second;
         cancelRequest.originalTime = originalTimeIt->second;
-        cancelRequest.tax = (taxIt != cmd.payload.end()) ? std::stoul(taxIt->second) : 0;
-        cancelRequest.service = (serviceIt != cmd.payload.end()) ? std::stoul(serviceIt->second) : 0;
-        cancelRequest.installments = (installmentsIt != cmd.payload.end()) ? static_cast<uint8_t>(std::stoi(installmentsIt->second)) : 0;
+        cancelRequest.tax = (taxIt != cmd.payload.end()) ? taxIt->second : "0";
+        cancelRequest.service = (serviceIt != cmd.payload.end()) ? serviceIt->second : "0";
+        cancelRequest.installments = (installmentsIt != cmd.payload.end()) ? installmentsIt->second : "0";
         cancelRequest.additionalInfo = (additionalInfoIt != cmd.payload.end()) ? additionalInfoIt->second : "";
     } catch (const std::exception& e) {
         resp.status = ipc::ResponseStatus::REJECTED;
@@ -1075,27 +1015,26 @@ ipc::Response ServiceCore::handlePaymentTransactionCancel(const ipc::Command& cm
         return resp;
     }
     
-    smartro::TransactionCancelResponse cancelResponse;
-    if (!smartroAdapter->cancelTransaction(cancelRequest, cancelResponse)) {
+    auto cancelResult = terminal->cancelTransaction(cancelRequest);
+    if (!cancelResult.success) {
         resp.status = ipc::ResponseStatus::REJECTED;
         auto error = std::make_shared<ipc::Error>();
         error->code = "TRANSACTION_CANCEL_FAILED";
-        error->message = "Failed to cancel transaction";
+        error->message = cancelResult.error.empty() ? "Failed to cancel transaction" : cancelResult.error;
         resp.error = error;
         return resp;
     }
     
     resp.status = ipc::ResponseStatus::OK;
-    resp.responseMap["transactionType"] = std::string(1, cancelResponse.transactionType);
-    resp.responseMap["transactionMedium"] = std::string(1, cancelResponse.transactionMedium);
-    resp.responseMap["cardNumber"] = cancelResponse.cardNumber;
-    resp.responseMap["approvalAmount"] = cancelResponse.approvalAmount;
-    resp.responseMap["approvalNumber"] = cancelResponse.approvalNumber;
-    resp.responseMap["salesDate"] = cancelResponse.salesDate;
-    resp.responseMap["salesTime"] = cancelResponse.salesTime;
-    resp.responseMap["transactionId"] = cancelResponse.transactionId;
-    resp.responseMap["isRejected"] = cancelResponse.isRejected() ? "true" : "false";
-    resp.responseMap["isSuccess"] = cancelResponse.isSuccess() ? "true" : "false";
+    resp.responseMap["transactionType"] = cancelResult.transactionType;
+    resp.responseMap["transactionMedium"] = cancelResult.transactionMedium;
+    resp.responseMap["cardNumber"] = cancelResult.cardNumber;
+    resp.responseMap["approvalAmount"] = cancelResult.approvalAmount;
+    resp.responseMap["approvalNumber"] = cancelResult.approvalNumber;
+    resp.responseMap["salesDate"] = cancelResult.salesDate;
+    resp.responseMap["salesTime"] = cancelResult.salesTime;
+    resp.responseMap["isRejected"] = cancelResult.success ? "false" : "true";
+    resp.responseMap["isSuccess"] = cancelResult.success ? "true" : "false";
     
     return resp;
 }
@@ -1105,7 +1044,8 @@ void ServiceCore::prepareEventCallbacks() {
 }
 
 void ServiceCore::setupEventCallbacks() {
-    // Setup payment terminal event callbacks for all registered terminals (card + cash)
+    // Setup payment terminal event callbacks for all registered terminals (card + cash).
+    // Card terminals broadcast state as "payment"; cash terminals (LV77) broadcast as "cash".
     auto terminalIds = deviceManager_.getDeviceIds(devices::DeviceType::PAYMENT_TERMINAL);
     for (const auto& id : terminalIds) {
         auto terminal = deviceManager_.getPaymentTerminal(id);
@@ -1119,8 +1059,10 @@ void ServiceCore::setupEventCallbacks() {
             terminal->setPaymentCancelledCallback([this](const devices::PaymentCancelledEvent& event) {
                 publishPaymentCancelledEvent(event);
             });
-            terminal->setStateChangedCallback([this](devices::DeviceState state) {
-                publishDeviceStateChangedEvent("payment", state);
+            // Separate event deviceType: card terminal → "payment", cash device → "cash"
+            std::string eventDeviceType = (id == kCashDeviceId) ? "cash" : "payment";
+            terminal->setStateChangedCallback([this, eventDeviceType](devices::DeviceState state) {
+                publishDeviceStateChangedEvent(eventDeviceType, state);
             });
         }
     }
@@ -1811,7 +1753,8 @@ ipc::Response ServiceCore::handleCameraStartPreview(const ipc::Command& cmd) {
         resp.status = ipc::ResponseStatus::FAILED;
         auto error = std::make_shared<ipc::Error>();
         error->code = "PREVIEW_START_FAILED";
-        error->message = "Failed to start preview";
+        std::string detail = camera->getDeviceInfo().lastError;
+        error->message = detail.empty() ? "Failed to start preview" : detail;
         resp.error = error;
     }
     return resp;
@@ -1909,10 +1852,14 @@ ipc::Response ServiceCore::handleCameraSetSettings(const ipc::Command& cmd) {
     return resp;
 }
 
-void ServiceCore::tryReconnectDevicesBeforeDetect() {
+void ServiceCore::tryReconnectDevicesBeforeDetect(
+        const std::map<std::string, std::string>& payloadOverrides) {
     using namespace devices;
 
-    // 자동탐지 시 항상 재연결(프로브)하여 실제 연결 상태 반영. (꺼져 있어도 READY로 캐시된 상태가 갱신됨)
+    // Reload config so enable flags reflect the latest state (manual edit / other save).
+    config::ConfigManager::getInstance().reloadFromFileIfExists();
+    auto cfg = config::ConfigManager::getInstance().getAll();
+    bool paymentEnabled = isEnabled(payloadOverrides, cfg, "payment.enabled");
 
     // 1. Camera — 항상 shutdown + initialize로 실제 연결 여부 확인 (EDSDK만 지원)
     auto camera = deviceManager_.getDefaultCamera();
@@ -1931,20 +1878,51 @@ void ServiceCore::tryReconnectDevicesBeforeDetect() {
         }
     }
 
-    // 2. Payment — 항상 checkDevice()로 실제 연결 상태 확인
-    auto payment = deviceManager_.getDefaultPaymentTerminal();
-    if (payment) {
-        auto* smartro = dynamic_cast<smartro::SmartroPaymentAdapter*>(payment.get());
-        if (smartro) {
-            logging::Logger::getInstance().info("Detect hardware: probing payment terminal");
-            bool ok = smartro->checkDevice();
+    // 2. Payment (card terminal) — paymentEnabled일 때만 checkDevice()로 실제 연결 상태 확인
+    if (paymentEnabled) {
+        auto payment = deviceManager_.getPaymentTerminal(kCardTerminalId);
+        if (payment) {
+            logging::Logger::getInstance().info("Detect hardware: probing payment terminal (" + payment->getVendorName() + ")");
+            bool ok = payment->checkDevice();
             if (ok) {
                 logging::Logger::getInstance().info("Detect hardware: payment probe succeeded");
             } else {
                 logging::Logger::getInstance().info("Detect hardware: payment probe failed, will report current state");
             }
+        } else {
+            // No card terminal registered yet (e.g. payment was disabled at startup but enabled now).
+            // Try auto-detect via factory — scan available COM ports to find a payment terminal.
+            logging::Logger::getInstance().info("Detect hardware: no card terminal registered, trying factory auto-detect on COM ports");
+            auto ports = smartro::SerialPort::getAvailablePorts(true);
+            // Exclude the cash device port if known
+            std::string cashCom;
+            auto cashIt = cfg.find("cash.com_port");
+            if (cashIt != cfg.end()) cashCom = cashIt->second;
+            auto [vendor, adapter] = devices::PaymentTerminalFactory::detectOnPorts(kCardTerminalId, ports, cashCom, "card");
+            if (adapter) {
+                logging::Logger::getInstance().info("Detect hardware: factory detected payment terminal (" + vendor + ") on " + adapter->getComPort());
+                deviceManager_.registerPaymentTerminal(kCardTerminalId, adapter);
+                // Now run the event callback setup for the newly registered terminal
+                adapter->setPaymentCompleteCallback([this](const devices::PaymentCompleteEvent& event) {
+                    publishPaymentCompleteEvent(event);
+                });
+                adapter->setPaymentFailedCallback([this](const devices::PaymentFailedEvent& event) {
+                    publishPaymentFailedEvent(event);
+                });
+                adapter->setPaymentCancelledCallback([this](const devices::PaymentCancelledEvent& event) {
+                    publishPaymentCancelledEvent(event);
+                });
+                adapter->setStateChangedCallback([this](devices::DeviceState state) {
+                    publishDeviceStateChangedEvent("payment", state);
+                });
+            } else {
+                logging::Logger::getInstance().info("Detect hardware: factory could not find a payment terminal on any COM port");
+            }
         }
+    } else {
+        logging::Logger::getInstance().info("Detect hardware: payment terminal disabled, skipping probe");
     }
+    // Note: cash device (LV77) probing is handled inside handleDetectHardware via port scanning.
 }
 
 ipc::Response ServiceCore::handleCameraReconnect(const ipc::Command& cmd) {

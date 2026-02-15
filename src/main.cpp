@@ -4,7 +4,9 @@
 // Include logger.h first to prevent Windows SDK conflicts
 #include "logging/logger.h"
 #include "core/service_core.h"
+#include "core/device_constants.h"
 #include "config/config_manager.h"
+#include "devices/payment_terminal_factory.h"
 #include "vendor_adapters/smartro/smartro_payment_adapter.h"
 #include "vendor_adapters/lv77/lv77_bill_adapter.h"
 #include "vendor_adapters/canon/edsdk_camera_adapter.h"
@@ -71,19 +73,41 @@ int main(int argc, char* argv[]) {
             logging::Logger::getInstance().info("No printer selected in config (use Admin auto-detect to select one)");
         }
 
-        // Register payment terminal: 자동감지로 찾은 COM 포트가 config에 있을 때만 등록
+        // --- Register vendor probes for auto-detect (add new vendors here) ---
+        {
+            devices::PaymentTerminalFactory::VendorProbe smartroProbe;
+            smartroProbe.vendorName = "smartro";
+            smartroProbe.category   = "card";  // 카드 결제 단말기
+            smartroProbe.tryPort    = [](const std::string& port) { return smartro::SmartroPaymentAdapter::tryPort(port); };
+            smartroProbe.create     = [](const std::string& deviceId, const std::string& port) -> std::shared_ptr<devices::IPaymentTerminal> {
+                return std::make_shared<smartro::SmartroPaymentAdapter>(deviceId, port, "DEFAULT_TERM");
+            };
+            devices::PaymentTerminalFactory::registerVendor(std::move(smartroProbe));
+        }
+        {
+            devices::PaymentTerminalFactory::VendorProbe lv77Probe;
+            lv77Probe.vendorName = "lv77";
+            lv77Probe.category   = "cash";  // 현금결제기
+            lv77Probe.tryPort    = [](const std::string& port) { return lv77::Lv77BillAdapter::tryPort(port); };
+            lv77Probe.create     = [](const std::string& deviceId, const std::string& port) -> std::shared_ptr<devices::IPaymentTerminal> {
+                return std::make_shared<lv77::Lv77BillAdapter>(deviceId, port);
+            };
+            devices::PaymentTerminalFactory::registerVendor(std::move(lv77Probe));
+        }
+
+        // Register payment terminal (card): config의 COM 포트가 있으면 등록
         std::string comPort = config.getPaymentComPort();
         if (argc > 1) comPort = argv[1];
         std::string terminalId = "DEFAULT_TERM";
         if (argc > 2) terminalId = argv[2];
-        // deviceId must sort before "lv77_cash_001" so getDefaultPaymentTerminal() returns card (Smartro), not cash
-        std::string deviceId = "card_terminal_001";
+        const std::string cardDeviceId = core::kCardTerminalId;
         if (config.getPaymentEnabled() && !comPort.empty()) {
-            logging::Logger::getInstance().info("Registering payment terminal: " + deviceId + " on COM port \"" + comPort + "\" (from config)");
+            logging::Logger::getInstance().info("Registering payment terminal: " + cardDeviceId + " on COM port \"" + comPort + "\" (from config)");
+            // For now create Smartro directly (known port); auto-detect discovers vendor at runtime
             auto paymentAdapter = std::make_shared<smartro::SmartroPaymentAdapter>(
-                deviceId, comPort, terminalId
+                cardDeviceId, comPort, terminalId
             );
-            serviceCore.getDeviceManager().registerPaymentTerminal(deviceId, paymentAdapter);
+            serviceCore.getDeviceManager().registerPaymentTerminal(cardDeviceId, paymentAdapter);
         } else {
             if (!config.getPaymentEnabled()) {
                 logging::Logger::getInstance().info("Payment terminal disabled in config");
@@ -94,13 +118,13 @@ int main(int argc, char* argv[]) {
 
         // Register cash device (LV77 bill validator) when enabled — 반드시 카드와 다른 COM 사용
         std::string cashComPort = config.getCashComPort();
+        const std::string cashDeviceId = core::kCashDeviceId;
         if (config.getCashEnabled() && !cashComPort.empty()) {
             if (cashComPort == comPort) {
                 logging::Logger::getInstance().warn(
                     "Cash and card both set to " + comPort + ". LV77 not registered. Use Admin auto-detect to set cash to a different COM."
                 );
             } else {
-                const std::string cashDeviceId = "lv77_cash_001";
                 logging::Logger::getInstance().info("Registering cash device: " + cashDeviceId + " on COM port \"" + cashComPort + "\" (card on " + comPort + ")");
                 auto cashAdapter = std::make_shared<lv77::Lv77BillAdapter>(cashDeviceId, cashComPort);
                 serviceCore.getDeviceManager().registerPaymentTerminal(cashDeviceId, cashAdapter);

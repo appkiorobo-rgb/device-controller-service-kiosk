@@ -88,6 +88,8 @@ public:
     EdsdkLiveviewServer* getLiveViewServer() { return &liveViewServer_; }
     void onEvfStarted(bool success = true);
     std::string getLiveviewUrl() const { return liveViewServer_.getUrl(); }
+    /// EVF/미리보기 실패 시 원인 설정 (StartEvfCommand 등에서 호출). 클라이언트에 전달됨.
+    void setLastError(const std::string& error);
 
 private:
     void disconnectCamera();
@@ -101,7 +103,6 @@ private:
     
     // Helper methods
     void updateState(devices::DeviceState newState);
-    void setLastError(const std::string& error);
     std::vector<uint8_t> readImageFile(const std::string& filePath) const;
     
     std::string deviceId_;

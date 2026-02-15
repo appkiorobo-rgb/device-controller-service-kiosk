@@ -236,6 +236,7 @@ devices::DeviceState EdsdkCameraAdapter::getState() const {
 
 bool EdsdkCameraAdapter::startPreview() {
     if (!commandProcessor_ || !cameraModel_) {
+        setLastError("LiveView: camera not initialized");
         logging::Logger::getInstance().warn("LiveView: camera not initialized");
         return false;
     }
@@ -246,16 +247,19 @@ bool EdsdkCameraAdapter::startPreview() {
     try {
         ok = evfFut.get();
     } catch (...) {}
-    if (!ok) return false;
+    if (!ok) {
+        if (lastError_.empty())
+            setLastError("EVF start failed (see Device Controller Service log)");
+        return false;
+    }
     liveViewServer_.start(EdsdkLiveviewServer::DEFAULT_PORT);
     evfPumpRunning_ = true;
     pendingEvfFrames_ = 0;
+    // 이전 프레임 처리 완료 직후 다음 요청 (대기 없음) → 카메라가 줄 수 있는 최대 FPS(30 이상 목표).
     evfPumpThread_ = std::thread([this]() {
         while (evfPumpRunning_) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(33));
-            if (!evfPumpRunning_) break;
             while (evfPumpRunning_ && pendingEvfFrames_.load() > 0)
-                std::this_thread::sleep_for(std::chrono::milliseconds(5));
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
             if (!evfPumpRunning_) break;
             if (commandProcessor_) {
                 pendingEvfFrames_++;

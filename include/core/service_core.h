@@ -2,6 +2,7 @@
 #pragma once
 
 #include "core/device_manager.h"
+#include "core/device_constants.h"
 #include "devices/iprinter.h"
 #include "ipc/ipc_server.h"
 #include <memory>
@@ -112,7 +113,9 @@ private:
     ipc::Response handleCashPaymentStart(const ipc::Command& cmd);
 
     /// 자동감지(detect_hardware) 전에 READY가 아닌 장치에 대해 재연결 시도. 호출 후 handleDetectHardware로 상태 수집.
-    void tryReconnectDevicesBeforeDetect();
+    /// payloadOverrides: command payload로 enable 플래그 오버라이드 가능 (비어있으면 config에서 읽음).
+    void tryReconnectDevicesBeforeDetect(
+        const std::map<std::string, std::string>& payloadOverrides = {});
 
     // Async task implementations (executed in worker thread)
     void executePaymentStart(const DeviceTask& task);

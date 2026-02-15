@@ -270,8 +270,8 @@ bool SmartroPaymentAdapter::checkDevice() {
     }
 }
 
-bool SmartroPaymentAdapter::reconnect(const std::string& port) {
-    if (port.empty()) return false;
+bool SmartroPaymentAdapter::reconnect(const std::string& newPort) {
+    if (newPort.empty()) return false;
     {
         std::lock_guard<std::mutex> lock(stateMutex_);
         if (serialPort_->isOpen()) serialPort_->close();
@@ -281,9 +281,9 @@ bool SmartroPaymentAdapter::reconnect(const std::string& port) {
     {
         std::lock_guard<std::mutex> lock(stateMutex_);
         smartroComm_->stopResponseReceiver();
-        comPort_ = port;
+        comPort_ = newPort;
     }
-    logging::Logger::getInstance().info("Payment terminal reconnecting to " + port);
+    logging::Logger::getInstance().info("Payment terminal reconnecting to " + newPort);
     return checkDevice();
 }
 
@@ -452,7 +452,11 @@ void SmartroPaymentAdapter::eventMonitorThread() {
     logging::Logger::getInstance().info("Event monitor thread exiting");
 }
 
-bool SmartroPaymentAdapter::readCardUid(CardUidReadResponse& response) {
+// ====================================================================
+// Raw Smartro-specific methods (use vendor protocol types directly)
+// ====================================================================
+
+bool SmartroPaymentAdapter::readCardUidRaw(CardUidReadResponse& response) {
     std::lock_guard<std::mutex> lock(stateMutex_);
     
     if (!serialPort_->isOpen()) {
@@ -468,7 +472,7 @@ bool SmartroPaymentAdapter::readCardUid(CardUidReadResponse& response) {
     return true;
 }
 
-bool SmartroPaymentAdapter::getLastApproval(LastApprovalResponse& response) {
+bool SmartroPaymentAdapter::getLastApprovalRaw(LastApprovalResponse& response) {
     std::lock_guard<std::mutex> lock(stateMutex_);
     
     if (!serialPort_->isOpen()) {
@@ -484,7 +488,7 @@ bool SmartroPaymentAdapter::getLastApproval(LastApprovalResponse& response) {
     return true;
 }
 
-bool SmartroPaymentAdapter::checkIcCard(IcCardCheckResponse& response) {
+bool SmartroPaymentAdapter::checkIcCardRaw(IcCardCheckResponse& response) {
     std::lock_guard<std::mutex> lock(stateMutex_);
     
     if (!serialPort_->isOpen()) {
@@ -500,7 +504,7 @@ bool SmartroPaymentAdapter::checkIcCard(IcCardCheckResponse& response) {
     return true;
 }
 
-bool SmartroPaymentAdapter::setScreenSound(const ScreenSoundSettingRequest& request, ScreenSoundSettingResponse& response) {
+bool SmartroPaymentAdapter::setScreenSoundRaw(const ScreenSoundSettingRequest& request, ScreenSoundSettingResponse& response) {
     std::lock_guard<std::mutex> lock(stateMutex_);
     
     if (!serialPort_->isOpen()) {
@@ -516,7 +520,7 @@ bool SmartroPaymentAdapter::setScreenSound(const ScreenSoundSettingRequest& requ
     return true;
 }
 
-bool SmartroPaymentAdapter::cancelTransaction(const TransactionCancelRequest& request, TransactionCancelResponse& response) {
+bool SmartroPaymentAdapter::cancelTransactionRaw(const TransactionCancelRequest& request, TransactionCancelResponse& response) {
     std::lock_guard<std::mutex> lock(stateMutex_);
     
     if (!serialPort_->isOpen()) {
@@ -530,6 +534,110 @@ bool SmartroPaymentAdapter::cancelTransaction(const TransactionCancelRequest& re
     }
     
     return true;
+}
+
+// ====================================================================
+// Vendor-agnostic interface methods (wrap raw methods with generic types)
+// ====================================================================
+
+devices::CardUidResult SmartroPaymentAdapter::readCardUid() {
+    CardUidReadResponse raw;
+    if (!readCardUidRaw(raw)) {
+        return {false, {}, lastError_};
+    }
+    return {true, raw.uid, ""};
+}
+
+devices::IcCardCheckResult SmartroPaymentAdapter::checkIcCard() {
+    IcCardCheckResponse raw;
+    if (!checkIcCardRaw(raw)) {
+        return {false, false, 0, lastError_};
+    }
+    return {true, (raw.cardStatus == 'O'), raw.cardStatus, ""};
+}
+
+bool SmartroPaymentAdapter::setScreenSound(const devices::ScreenSoundSettings& request, devices::ScreenSoundSettings& response) {
+    ScreenSoundSettingRequest rawReq;
+    rawReq.screenBrightness = request.screenBrightness;
+    rawReq.soundVolume = request.soundVolume;
+    rawReq.touchSoundVolume = request.touchSoundVolume;
+
+    ScreenSoundSettingResponse rawResp;
+    if (!setScreenSoundRaw(rawReq, rawResp)) return false;
+
+    response.screenBrightness = rawResp.screenBrightness;
+    response.soundVolume = rawResp.soundVolume;
+    response.touchSoundVolume = rawResp.touchSoundVolume;
+    return true;
+}
+
+devices::TransactionCancelResult SmartroPaymentAdapter::cancelTransaction(const devices::TransactionCancelRequest& request) {
+    TransactionCancelRequest rawReq;
+    rawReq.cancelType = request.cancelType.empty() ? '1' : request.cancelType[0];
+    rawReq.transactionType = request.transactionType.empty() ? 1 : static_cast<uint8_t>(std::stoi(request.transactionType));
+    rawReq.amount = request.amount;
+    rawReq.approvalNumber = request.approvalNumber;
+    rawReq.originalDate = request.originalDate;
+    rawReq.originalTime = request.originalTime;
+    try { rawReq.tax = request.tax.empty() ? 0 : std::stoul(request.tax); } catch (...) { rawReq.tax = 0; }
+    try { rawReq.service = request.service.empty() ? 0 : std::stoul(request.service); } catch (...) { rawReq.service = 0; }
+    try { rawReq.installments = request.installments.empty() ? 0 : static_cast<uint8_t>(std::stoi(request.installments)); } catch (...) { rawReq.installments = 0; }
+    rawReq.additionalInfo = request.additionalInfo;
+
+    TransactionCancelResponse rawResp;
+    if (!cancelTransactionRaw(rawReq, rawResp)) {
+        return {false, "", "", "", "", "", "", "", "", "", "", lastError_};
+    }
+
+    devices::TransactionCancelResult result;
+    result.success = rawResp.isSuccess();
+    result.transactionType = std::string(1, rawResp.transactionType);
+    result.transactionMedium = std::string(1, rawResp.transactionMedium);
+    result.cardNumber = rawResp.cardNumber;
+    result.approvalAmount = rawResp.approvalAmount;
+    result.tax = rawResp.tax;
+    result.serviceCharge = rawResp.serviceCharge;
+    result.installments = rawResp.installments;
+    result.approvalNumber = rawResp.approvalNumber;
+    result.salesDate = rawResp.salesDate;
+    result.salesTime = rawResp.salesTime;
+    result.error = rawResp.isRejected() ? rawResp.rejectionInfo : "";
+    return result;
+}
+
+devices::PaymentCompleteEvent SmartroPaymentAdapter::getLastApproval(const std::string& /*transactionType*/) {
+    LastApprovalResponse raw;
+    if (!getLastApprovalRaw(raw)) {
+        devices::PaymentCompleteEvent empty;
+        empty.status = "FAILED";
+        return empty;
+    }
+    // LastApprovalResponse contains raw data bytes; return as hex in transactionId field for now
+    devices::PaymentCompleteEvent ev;
+    ev.status = "OK";
+    std::string dataHex;
+    for (size_t i = 0; i < raw.data.size(); ++i) {
+        char hex[3];
+        snprintf(hex, sizeof(hex), "%02X", raw.data[i]);
+        dataHex += hex;
+    }
+    ev.transactionId = dataHex; // raw hex data
+    return ev;
+}
+
+// Static port probe: try Smartro protocol on a given COM port
+bool SmartroPaymentAdapter::tryPort(const std::string& port) {
+    try {
+        SerialPort sp;
+        if (!sp.open(port, 115200)) return false;
+        SmartroComm comm(sp);
+        DeviceCheckResponse resp;
+        bool ok = comm.sendDeviceCheckRequest("DEFAULT_TERM", resp, 2000, port);
+        sp.close();
+        return ok;
+    } catch (...) {
+        return false;
+    }
 }
 
 } // namespace smartro
