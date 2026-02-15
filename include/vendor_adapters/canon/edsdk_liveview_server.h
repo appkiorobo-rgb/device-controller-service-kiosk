@@ -13,6 +13,7 @@
 #include <cstdint>
 #include <vector>
 #include <mutex>
+#include <condition_variable>
 #include <atomic>
 #include <thread>
 #include <string>
@@ -46,6 +47,7 @@ private:
 
     std::vector<uint8_t> frame_;
     std::mutex frameMutex_;
+    std::condition_variable frameCondition_;   // setFrame() notify -> server thread wakes immediately
     std::atomic<bool> running_{false};
     int port_{DEFAULT_PORT};
     std::thread thread_;

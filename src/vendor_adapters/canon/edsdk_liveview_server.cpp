@@ -18,11 +18,15 @@ EdsdkLiveviewServer::~EdsdkLiveviewServer() {
 
 void EdsdkLiveviewServer::setFrame(const uint8_t* data, size_t len) {
     if (!data || len == 0) return;
-    // EVF JPEG 상한: 일부 기기는 1MB 풀 버퍼로 전달함 (EdsCreateMemoryStream(1MB)와 일치).
-    static constexpr size_t kMaxFrameSize = 1536 * 1024;  // 1.5MB (1MB 프레임 수용)
+    // EVF JPEG max: some cameras send full 1MB buffer (matches EdsCreateMemoryStream(1MB)).
+    static constexpr size_t kMaxFrameSize = 1536 * 1024;  // 1.5MB safety margin
     if (len > kMaxFrameSize) return;
-    std::lock_guard<std::mutex> lock(frameMutex_);
-    frame_.assign(data, data + len);
+    {
+        std::lock_guard<std::mutex> lock(frameMutex_);
+        frame_.assign(data, data + len);
+    }
+    // Notify after mutex release -> server thread wakes immediately to send frame.
+    frameCondition_.notify_one();
 }
 
 bool EdsdkLiveviewServer::start(int port) {
@@ -37,6 +41,7 @@ bool EdsdkLiveviewServer::start(int port) {
 void EdsdkLiveviewServer::stop() {
     if (!running_) return;
     running_ = false;
+    frameCondition_.notify_all();   // Wake server thread if waiting, so it can exit
     if (thread_.joinable()) {
         thread_.join();
     }
@@ -103,15 +108,21 @@ void EdsdkLiveviewServer::run() {
                 while (running_) {
                     std::vector<uint8_t> copy;
                     {
-                        std::lock_guard<std::mutex> lock(frameMutex_);
+                        // condition_variable::wait_for: releases mutex while waiting, wakes on setFrame() notify.
+                        // Previous lock_guard + sleep_for(16ms) held mutex during sleep,
+                        // blocking setFrame() for up to 16ms -- frame production bottleneck.
+                        std::unique_lock<std::mutex> lock(frameMutex_);
                         if (frame_.empty()) {
                             auto now = std::chrono::steady_clock::now();
                             if (!firstFrameSent && std::chrono::duration_cast<std::chrono::seconds>(now - lastLogTime).count() >= 3) {
                                 logging::Logger::getInstance().info("LiveView: waiting for first EVF frame from camera...");
                                 lastLogTime = now;
                             }
-                            std::this_thread::sleep_for(std::chrono::milliseconds(16));
-                            continue;
+                            // Wait up to 16ms with mutex released. Wakes immediately on new frame.
+                            frameCondition_.wait_for(lock, std::chrono::milliseconds(16),
+                                [this]{ return !frame_.empty() || !running_; });
+                            if (!running_) break;
+                            if (frame_.empty()) continue;
                         }
                         copy.swap(frame_);
                     }

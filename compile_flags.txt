@@ -1,0 +1,3 @@
+-xc++
+-std=c++17
+-IC:/Users/sam98/Desktop/kiosk/device-controller-service-kiosk/include
