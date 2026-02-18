@@ -94,6 +94,11 @@ bool PipeClient::receiveMessage(std::string& message, uint32_t timeoutMs) {
                 }
                 return false;
             }
+            if (bytesAvailable > 0 || messageSize > 0) {
+                logging::Logger::getInstance().info("IPC peek: bytesAvailable=" + std::to_string(bytesAvailable)
+                    + " bytesRead=" + std::to_string(bytesRead)
+                    + " messageSize=" + std::to_string(messageSize));
+            }
             if (bytesAvailable >= sizeof(DWORD) && messageSize > 0 && messageSize <= BUFFER_SIZE) {
                 if (!ReadFile(pipeHandle_, &messageSize, sizeof(messageSize), &bytesRead, nullptr)) {
                     DWORD error = GetLastError();

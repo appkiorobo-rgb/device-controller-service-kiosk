@@ -10,7 +10,7 @@
 $ErrorActionPreference = 'Stop'
 $ProjectRoot = Split-Path $PSScriptRoot -Parent
 $StagingRoot = Join-Path $ProjectRoot 'installer\staging'
-$ServiceBin = Join-Path $ProjectRoot 'out\build\x64-Release-Static\bin\Release'
+$ServiceBin = Join-Path $ProjectRoot 'out\build\x64-Release-Static\bin'
 $FlutterProject = Join-Path (Split-Path $ProjectRoot -Parent) 'ai-kiosk-client'
 $FlutterRunner = Join-Path $FlutterProject 'build\windows\x64\runner\Release'
 $InnoSetupPath = 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe'
@@ -36,6 +36,11 @@ Ensure-Dir $StagingClient
 Write-Ok ('Staging: ' + $StagingRoot)
 
 # ---------- 2) C++ Device Controller Service ----------
+# LNK1104 방지: 빌드 대상 exe가 실행 중이면 링커가 쓸 수 없음 → 먼저 종료
+$ServiceExeName = 'device_controller_service.exe'
+Get-Process -Name $ServiceExeName -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+Start-Sleep -Seconds 1
+
 Write-Step 'Device Controller Service build (x64-Release-Static)'
 $BuildDir = Join-Path $ProjectRoot 'out\build\x64-Release-Static'
 if (-not (Test-Path $BuildDir)) {
